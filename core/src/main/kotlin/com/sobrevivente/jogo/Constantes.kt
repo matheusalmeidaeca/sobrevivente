@@ -41,6 +41,12 @@ object Constantes {
     const val NARIZ_COR_G = 0.85f
     const val NARIZ_COR_B = 0.20f
 
+    // Jogador: movimento (m/s e 1/s)
+    const val JOGADOR_VELOCIDADE = 4.0f
+    const val JOGADOR_VELOCIDADE_GIRO = 12f
+    // Limite do chão enquanto não há paredes (Marco 1.8)
+    const val MAPA_LIMITE = CHAO_TAMANHO / 2f - JOGADOR_RAIO
+
     // Luz
     const val LUZ_AMBIENTE_R = 0.45f
     const val LUZ_AMBIENTE_G = 0.45f
@@ -52,12 +58,26 @@ object Constantes {
     const val LUZ_SOL_DIR_Y = -1.0f
     const val LUZ_SOL_DIR_Z = -0.4f
 
-    // Câmera provisória (orbita devagar; substituída no Marco 1.2)
+    // Câmera de terceira pessoa (seção 11 do mapa)
     const val CAMERA_FOV = 67f
     const val CAMERA_NEAR = 0.1f
     const val CAMERA_FAR = 80f
-    const val CAMERA_ORBITA_DISTANCIA = 6f
-    const val CAMERA_ORBITA_ALTURA = 3.5f
-    const val CAMERA_ALVO_ALTURA = 1.0f
-    const val CAMERA_ORBITA_GRAUS_POR_SEGUNDO = 15f
+    const val CAMERA_DISTANCIA = 3.0f
+    const val CAMERA_OMBRO = 0.6f
+    const val CAMERA_PIVO_ALTURA = 1.6f
+    const val CAMERA_ALTURA_MINIMA = 0.3f
+    const val CAMERA_PITCH_INICIAL = -10f
+    const val CAMERA_PITCH_MIN = -25f
+    const val CAMERA_PITCH_MAX = 50f
+    const val CAMERA_SENSIBILIDADE = 0.25f // graus por dp arrastado
+
+    // Joystick (seção 10.3 do mapa)
+    const val JOYSTICK_RAIO_BASE_DP = 64f
+    const val JOYSTICK_RAIO_BOTAO_DP = 28f
+    const val JOYSTICK_MARGEM_DP = 40f
+    const val JOYSTICK_ZONA_MORTA = 0.12f
+    const val ZONA_JOYSTICK_ALTURA = 0.6f
+    const val JOYSTICK_SEGMENTOS = 32
+    const val JOYSTICK_ALFA_BASE = 0.20f
+    const val JOYSTICK_ALFA_BOTAO = 0.50f
 }

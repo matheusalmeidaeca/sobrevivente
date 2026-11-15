@@ -7,6 +7,7 @@ import com.badlogic.gdx.graphics.g3d.Model
 import com.badlogic.gdx.graphics.g3d.ModelInstance
 import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute
 import com.badlogic.gdx.graphics.g3d.utils.ModelBuilder
+import com.badlogic.gdx.math.MathUtils
 import com.badlogic.gdx.math.Vector3
 import com.badlogic.gdx.utils.Disposable
 import com.sobrevivente.jogo.Constantes
@@ -61,6 +62,42 @@ class Jogador : Disposable {
 
         corpo = ModelInstance(modeloCorpo)
         nariz = ModelInstance(modeloNariz)
+        atualizarTransformacao()
+    }
+
+    /**
+     * Move o jogador. `entradaX/Y` vêm do joystick (-1..1; Y positivo = frente).
+     * O movimento é relativo ao yaw da câmera. Sem alocação.
+     */
+    fun mover(dt: Float, entradaX: Float, entradaY: Float, yawCamera: Float) {
+        if (entradaX == 0f && entradaY == 0f) return
+
+        val radianos = yawCamera * MathUtils.degreesToRadians
+        val seno = MathUtils.sin(radianos)
+        val cosseno = MathUtils.cos(radianos)
+        // frente da câmera = (-seno, -cosseno); direita da câmera = (cosseno, -seno)
+        val direcaoX = -seno * entradaY + cosseno * entradaX
+        val direcaoZ = -cosseno * entradaY - seno * entradaX
+
+        posicao.x = MathUtils.clamp(
+            posicao.x + direcaoX * Constantes.JOGADOR_VELOCIDADE * dt,
+            -Constantes.MAPA_LIMITE,
+            Constantes.MAPA_LIMITE
+        )
+        posicao.z = MathUtils.clamp(
+            posicao.z + direcaoZ * Constantes.JOGADOR_VELOCIDADE * dt,
+            -Constantes.MAPA_LIMITE,
+            Constantes.MAPA_LIMITE
+        )
+
+        // O corpo vira suavemente para a direção do movimento.
+        val yawAlvo = MathUtils.atan2(-direcaoX, -direcaoZ) * MathUtils.radiansToDegrees
+        yaw = MathUtils.lerpAngleDeg(
+            yaw,
+            yawAlvo,
+            minOf(1f, Constantes.JOGADOR_VELOCIDADE_GIRO * dt)
+        )
+
         atualizarTransformacao()
     }
 
