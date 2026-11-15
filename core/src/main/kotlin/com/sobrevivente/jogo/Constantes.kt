@@ -47,6 +47,9 @@ object Constantes {
     // Limite do chão enquanto não há paredes (Marco 1.8)
     const val MAPA_LIMITE = CHAO_TAMANHO / 2f - JOGADOR_RAIO
 
+    // Jogador: vida (seção 12 do mapa)
+    const val JOGADOR_VIDA_MAXIMA = 100
+
     // Luz
     const val LUZ_AMBIENTE_R = 0.45f
     const val LUZ_AMBIENTE_G = 0.45f
@@ -80,4 +83,76 @@ object Constantes {
     const val JOYSTICK_SEGMENTOS = 32
     const val JOYSTICK_ALFA_BASE = 0.20f
     const val JOYSTICK_ALFA_BOTAO = 0.50f
+
+    // Ícone da maleta no botão central (proporções em relação ao raio do botão)
+    const val ICONE_MALETA_LARGURA = 1.1f
+    const val ICONE_MALETA_ALTURA = 0.7f
+    const val ICONE_MALETA_ALCA_LARGURA = 0.5f
+    const val ICONE_MALETA_ALCA_ALTURA = 0.3f
+    const val ICONE_MALETA_ALCA_ESPESSURA = 0.1f
+    const val ICONE_MALETA_FECHO_LARGURA = 0.2f
+    const val ICONE_MALETA_FECHO_ALTURA = 0.2f
+    const val ICONE_MALETA_COR = 0.10f
+    const val ICONE_MALETA_ALFA = 0.85f
+    const val ICONE_MALETA_FECHO_COR = 0.90f
+
+    // Botões de ação (seção 10.5 do mapa)
+    const val BOTAO_ATIRAR_DIAMETRO_DP = 80f
+    const val BOTAO_PEQUENO_DIAMETRO_DP = 56f
+    const val BOTAO_FOLGA_DP = 16f
+    const val BOTAO_ALVO_MINIMO_DP = 48f
+    const val BOTAO_ESCALA_PRESSIONADO = 0.92f
+    const val BOTAO_ESCURECER = 0.6f
+    const val BOTAO_ALFA = 0.55f
+    const val BOTAO_SEGMENTOS = 32
+    const val BOTAO_TEXTO_LARGURA_MAX = 0.8f // fração do diâmetro
+    const val BOTAO_ATIRAR_COR_R = 0.85f
+    const val BOTAO_ATIRAR_COR_G = 0.20f
+    const val BOTAO_ATIRAR_COR_B = 0.18f
+    const val BOTAO_RECARREGAR_COR_R = 0.20f
+    const val BOTAO_RECARREGAR_COR_G = 0.50f
+    const val BOTAO_RECARREGAR_COR_B = 0.90f
+    const val BOTAO_INTERAGIR_COR_R = 0.20f
+    const val BOTAO_INTERAGIR_COR_G = 0.70f
+    const val BOTAO_INTERAGIR_COR_B = 0.35f
+
+    // Fontes do HUD (multiplicadas pela densidade)
+    const val FONTE_ESCALA_HUD = 0.8f
+    const val FONTE_ESCALA_BOTAO = 0.9f // máximo; encolhe se o texto não couber
+
+    // Barra de vida (seção 10.6)
+    const val BARRA_VIDA_LARGURA_DP = 160f
+    const val BARRA_VIDA_ALTURA_DP = 16f
+    const val BARRA_VIDA_BORDA_DP = 2f
+    const val BARRA_VIDA_ESPACO_TEXTO_DP = 8f
+    const val BARRA_VIDA_COR_R = 0.25f
+    const val BARRA_VIDA_COR_G = 0.80f
+    const val BARRA_VIDA_COR_B = 0.30f
+    const val BARRA_VIDA_FUNDO_COR = 0.05f
+    const val BARRA_VIDA_FUNDO_ALFA = 0.65f
+
+    // Minimapa placeholder (seção 10.6; funcional no Marco 1.8)
+    const val MINIMAPA_LADO_DP = 120f
+    const val MINIMAPA_BORDA_DP = 2f
+    const val MINIMAPA_PONTO_DP = 4f
+    const val MINIMAPA_FUNDO_COR = 0.05f
+    const val MINIMAPA_FUNDO_ALFA = 0.50f
+    const val MINIMAPA_BORDA_ALFA = 0.60f
+    const val MINIMAPA_SEGMENTOS = 16
+
+    // Mira central
+    const val MIRA_COMPRIMENTO_DP = 8f
+    const val MIRA_ESPESSURA_DP = 2f
+    const val MIRA_FOLGA_DP = 4f
+    const val MIRA_ALFA = 0.85f
+
+    // Overlay de debug (toque longo no canto superior esquerdo)
+    const val DEBUG_TOQUE_LONGO_S = 1.0f
+    const val DEBUG_ZONA_LARGURA_DP = 220f
+    const val DEBUG_ZONA_ALTURA_DP = 72f
+    const val DEBUG_TEXTO_DESLOCAMENTO_DP = 12f
+
+    // Pausa
+    const val PAUSA_ALFA_FUNDO = 0.55f
+    const val PAUSA_ESPACO_DP = 12f
 }
