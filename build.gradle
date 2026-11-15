@@ -1,0 +1,7 @@
+// Versões travadas na seção 6 do MAPA_DE_CRIACAO.md.
+// Só alterar por decisão do dono, registrada na seção 20.
+plugins {
+    id 'com.android.application' version '8.2.2' apply false
+    id 'org.jetbrains.kotlin.android' version '1.9.22' apply false
+    id 'org.jetbrains.kotlin.jvm' version '1.9.22' apply false
+}
