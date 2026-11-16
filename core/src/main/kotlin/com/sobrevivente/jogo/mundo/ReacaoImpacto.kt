@@ -62,7 +62,7 @@ class ReacaoImpacto {
         val f = dirX * -seno + dirZ * -cosseno
         val r = dirX * cosseno + dirZ * -seno
         val ataque = minOf(1f, decorrido / 0.09f)
-        val env = ataque * MathUtils.exp(-2.7f * decorrido) * (1f + 0.30f * MathUtils.cos(13f * decorrido))
+        val env = ataque * kotlin.math.exp(-2.7f * decorrido) * (1f + 0.30f * MathUtils.cos(13f * decorrido))
         intensidade = MathUtils.clamp(env * forca, 0f, 1.4f)
         val k = Constantes.IMPACTO_INCLINA_GRAUS * forca * env
         pitch = f * k          // empurrado para a frente (f>0): tronco vai para a frente = rotacao negativa em X
