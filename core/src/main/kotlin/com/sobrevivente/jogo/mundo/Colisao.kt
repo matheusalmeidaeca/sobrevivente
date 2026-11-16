@@ -20,9 +20,14 @@ object Colisao {
     fun resolver(posicao: Vector3, raio: Float) {
         val caixas = Constantes.PAREDES
         val total = caixas.size / 4
+        val y = posicao.y
         for (passo in 0 until PASSOS) {
             var empurrou = false
             for (i in 0 until total) {
+                // Altura: so colide se o corpo (y .. y+1,8) cruza a parede (base .. base+altura).
+                // Da para pular cercas de 1 m e andar por baixo do andar alto.
+                val base = Constantes.PAREDES_BASE[i]
+                if (y >= base + Constantes.PAREDES_ALTURA[i] - 0.2f || y + 1.8f <= base + 0.2f) continue
                 val minX = caixas[i * 4]
                 val minZ = caixas[i * 4 + 1]
                 val maxX = caixas[i * 4 + 2]
@@ -47,6 +52,31 @@ object Colisao {
                 empurrou = true
             }
             if (!empurrou) return
+        }
+    }
+
+    /** Zumbis nao pisam na escada (Constantes.BLOQUEIOS_INIMIGO): empurra para fora como uma parede. */
+    fun resolverBloqueiosInimigo(posicao: Vector3, raio: Float) {
+        val caixas = Constantes.BLOQUEIOS_INIMIGO
+        for (i in 0 until caixas.size / 4) {
+            val minX = caixas[i * 4]
+            val minZ = caixas[i * 4 + 1]
+            val maxX = caixas[i * 4 + 2]
+            val maxZ = caixas[i * 4 + 3]
+            val maisPertoX = minOf(maxOf(posicao.x, minX), maxX)
+            val maisPertoZ = minOf(maxOf(posicao.z, minZ), maxZ)
+            val dx = posicao.x - maisPertoX
+            val dz = posicao.z - maisPertoZ
+            val quadrado = dx * dx + dz * dz
+            if (quadrado >= raio * raio) continue
+            if (quadrado > EPSILON) {
+                val distancia = sqrt(quadrado)
+                val penetracao = raio - distancia
+                posicao.x += dx / distancia * penetracao
+                posicao.z += dz / distancia * penetracao
+            } else {
+                empurrarParaFora(posicao, raio, minX, minZ, maxX, maxZ)
+            }
         }
     }
 
@@ -80,6 +110,7 @@ object Colisao {
         val total = caixas.size / 4
         var melhor = maximo
         for (i in 0 until total) {
+            if (Constantes.PAREDES_ALTURA[i] < 2f) continue // cercas baixas nao seguram a camera
             val minX = caixas[i * 4] - margem
             val minZ = caixas[i * 4 + 1] - margem
             val maxX = caixas[i * 4 + 2] + margem

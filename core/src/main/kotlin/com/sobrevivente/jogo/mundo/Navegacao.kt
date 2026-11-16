@@ -42,25 +42,38 @@ object Navegacao {
 
     init {
         val folga = Constantes.ENIMIGO_RAIO + Constantes.NAV_MARGEM
-        val p = Constantes.PAREDES
+        marcar(Constantes.PAREDES, folga, true)
+        marcar(Constantes.BLOQUEIOS_INIMIGO, folga, false)
+        // borda do mapa
         for (gz in 0 until lado) {
             for (gx in 0 until lado) {
                 val cx = centroX(gx)
                 val cz = centroX(gz)
-                var bloq = false
-                var i = 0
-                while (i < p.size) {
-                    if (cx > p[i] - folga && cx < p[i + 2] + folga && cz > p[i + 1] - folga && cz < p[i + 3] + folga) {
-                        bloq = true
-                        break
-                    }
-                    i += 4
-                }
-                // borda do mapa
                 if (cx < -Constantes.MAPA_LIMITE || cx > Constantes.MAPA_LIMITE ||
                     cz < -Constantes.MAPA_LIMITE || cz > Constantes.MAPA_LIMITE
-                ) bloq = true
-                bloqueada[gz * lado + gx] = bloq
+                ) bloqueada[gz * lado + gx] = true
+            }
+        }
+    }
+
+    /** Marca as celulas cobertas por cada caixa engordada. `comAltura`: ignora paredes do andar alto (base > 0,5). */
+    private fun marcar(caixas: FloatArray, folga: Float, comAltura: Boolean) {
+        for (i in 0 until caixas.size / 4) {
+            if (comAltura && Constantes.PAREDES_BASE[i] > 0.5f) continue
+            val x0 = caixas[i * 4] - folga
+            val z0 = caixas[i * 4 + 1] - folga
+            val x1 = caixas[i * 4 + 2] + folga
+            val z1 = caixas[i * 4 + 3] + folga
+            val gx0 = max(0, floor((x0 + metade) / CELULA).toInt() - 1)
+            val gx1 = min(lado - 1, floor((x1 + metade) / CELULA).toInt() + 1)
+            val gz0 = max(0, floor((z0 + metade) / CELULA).toInt() - 1)
+            val gz1 = min(lado - 1, floor((z1 + metade) / CELULA).toInt() + 1)
+            for (gz in gz0..gz1) {
+                for (gx in gx0..gx1) {
+                    val cx = centroX(gx)
+                    val cz = centroX(gz)
+                    if (cx > x0 && cx < x1 && cz > z0 && cz < z1) bloqueada[gz * lado + gx] = true
+                }
             }
         }
     }
@@ -97,7 +110,10 @@ object Navegacao {
             val z = z0 + dz * t
             var i = 0
             while (i < p.size) {
-                if (x > p[i] && x < p[i + 2] && z > p[i + 1] && z < p[i + 3]) return true
+                // cercas baixas (1 m) e o guarda-corpo nao bloqueiam o ataque; paredes de verdade sim
+                if (Constantes.PAREDES_ALTURA[i / 4] >= 2f && Constantes.PAREDES_BASE[i / 4] < 0.5f &&
+                    x > p[i] && x < p[i + 2] && z > p[i + 1] && z < p[i + 3]
+                ) return true
                 i += 4
             }
         }

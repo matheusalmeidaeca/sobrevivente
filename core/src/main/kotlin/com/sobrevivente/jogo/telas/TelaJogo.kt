@@ -105,9 +105,12 @@ class TelaJogo : ScreenAdapter() {
             }
             if (acertou) hud.mostrarAcerto()
         }
-        if (controles.consumirPressao(ControlesToque.ACAO_TROCAR) && arma.trocar()) {
-            hud.mostrarMensagem(arma.tipo.nome)
+        if (controles.consumirPressao(ControlesToque.ACAO_TROCAR)) {
+            if (arma.trocar()) hud.mostrarMensagem(arma.tipo.nome)
+            else hud.mostrarMensagem("Sem outra arma")
         }
+        if (controles.consumirPressao(ControlesToque.ACAO_PULAR)) jogador.pular()
+        if (controles.consumirPressao(ControlesToque.ACAO_AGACHAR)) jogador.alternarAgachar()
         jogador.definirArma(arma.tipo)
         jogador.definirRecarga(arma.recarregando)
         if (controles.consumirPressao(ControlesToque.ACAO_INTERAGIR)) interagir()
@@ -119,8 +122,16 @@ class TelaJogo : ScreenAdapter() {
         val item = mundo.itemMaisProximo(
             jogador.posicao.x,
             jogador.posicao.z,
+            jogador.posicao.y,
             Constantes.INTERAGIR_RAIO
         ) ?: return
+        val armaChao = item.arma
+        if (armaChao != null) { // arma no chao: pega direto, nao vai para a maleta
+            item.coletado = true
+            arma.liberar(armaChao)
+            hud.mostrarMensagem("Pegou: " + armaChao.nome)
+            return
+        }
         if (maleta.adicionar(item.tipo, item.quantidade)) {
             item.coletado = true
             hud.mostrarMensagem(
@@ -210,7 +221,11 @@ class TelaJogo : ScreenAdapter() {
                     atualizarJogador(dt, densidade)
                 }
                 jogador.atualizarAnimacao(dt)
-                mundo.atualizar(dt, jogador)
+                var fx = cameraJogo.camera.direction.x
+                var fz = cameraJogo.camera.direction.z
+                val fl = kotlin.math.sqrt(fx * fx + fz * fz)
+                if (fl > 0.001f) { fx /= fl; fz /= fl } else { fx = 0f; fz = -1f }
+                mundo.atualizar(dt, jogador, fx, fz)
             }
             hud.atualizar(dt) // o tempo das mensagens corre também com a maleta aberta
             if (!morto && jogador.vida <= 0) morrer()
@@ -230,7 +245,9 @@ class TelaJogo : ScreenAdapter() {
         )
         loteModelos.begin(cameraJogo.camera)
         loteModelos.render(mundo.chao, mundo.ambiente)
-        loteModelos.render(mundo.pisoInterno, mundo.ambiente)
+        for (i in mundo.pisos.indices) {
+            loteModelos.render(mundo.pisos[i], mundo.ambiente)
+        }
         for (i in mundo.paredes.indices) {
             loteModelos.render(mundo.paredes[i], mundo.ambiente)
         }

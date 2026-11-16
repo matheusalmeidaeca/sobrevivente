@@ -16,14 +16,14 @@ object Constantes {
     const val COR_CEU_B = 0.12f
 
     // Chão: quadrados alternados claro/escuro (ajuda a perceber movimento)
-    const val CHAO_TAMANHO = 60f
+    const val CHAO_TAMANHO = 160f
     const val CHAO_LADO_QUADRADO = 2f
-    const val CHAO_CLARO_R = 0.42f
-    const val CHAO_CLARO_G = 0.45f
-    const val CHAO_CLARO_B = 0.40f
-    const val CHAO_ESCURO_R = 0.30f
-    const val CHAO_ESCURO_G = 0.33f
-    const val CHAO_ESCURO_B = 0.29f
+    const val CHAO_CLARO_R = 0.40f
+    const val CHAO_CLARO_G = 0.46f
+    const val CHAO_CLARO_B = 0.28f
+    const val CHAO_ESCURO_R = 0.34f
+    const val CHAO_ESCURO_G = 0.40f
+    const val CHAO_ESCURO_B = 0.24f
 
     // Jogador (placeholder: cápsula + "nariz" que mostra a frente)
     const val JOGADOR_RAIO = 0.4f
@@ -64,7 +64,7 @@ object Constantes {
     // Câmera de terceira pessoa (seção 11 do mapa)
     const val CAMERA_FOV = 67f
     const val CAMERA_NEAR = 0.1f
-    const val CAMERA_FAR = 80f
+    const val CAMERA_FAR = 120f
     const val CAMERA_DISTANCIA = 3.0f
     const val CAMERA_OMBRO = 0.6f
     const val CAMERA_PIVO_ALTURA = 1.6f
@@ -237,12 +237,6 @@ object Constantes {
     const val ENIMIGO_COR_ATACANDO_B = 0.12f
     /** Quantos inimigos entram no mapa (1 a 3). Use 1 para testar um só. */
     const val INIMIGOS_ATIVOS = 3
-    /** Posições (x, z) dos inimigos, em metros; o jogador começa em (0, 0). Todos começam parados. */
-    val INIMIGOS_XZ = floatArrayOf(
-        0f, -14f,
-        -9f, -12f,
-        10f, -13f
-    )
 
     // Marcador de acerto na mira
     const val ACERTO_DURACAO_S = 0.15f
@@ -329,16 +323,6 @@ object Constantes {
     const val ITEM_COR_MUNICAO_R = 0.30f
     const val ITEM_COR_MUNICAO_G = 0.55f
     const val ITEM_COR_MUNICAO_B = 0.95f
-    /** Posições (x, z) dos itens, em metros. Ficam atrás do jogador, longe dos inimigos (z positivo). */
-    val ITENS_XZ = floatArrayOf(
-        -6f, 5f, -3f, 5f, 0f, 5f, 3f, 5f, 6f, 5f,
-        -6f, 9f, -3f, 9f, 0f, 9f, 3f, 9f, 6f, 9f
-    )
-    /** Tipo de cada item (mesma ordem de ITENS_XZ): 8 curas e 2 munições. 9 slots > 8: testa "Maleta cheia". */
-    val ITENS_TIPO = intArrayOf(
-        ITEM_TIPO_CURA, ITEM_TIPO_CURA, ITEM_TIPO_CURA, ITEM_TIPO_CURA, ITEM_TIPO_CURA,
-        ITEM_TIPO_CURA, ITEM_TIPO_CURA, ITEM_TIPO_CURA, ITEM_TIPO_MUNICAO, ITEM_TIPO_MUNICAO
-    )
 
     // ---------------- Marco 1.8: mapa de teste, colisão e minimapa ----------------
     const val PAREDE_ALTURA = 3f
@@ -349,29 +333,200 @@ object Constantes {
     const val PISO_INTERNO_COR_R = 0.24f
     const val PISO_INTERNO_COR_G = 0.21f
     const val PISO_INTERNO_COR_B = 0.19f
-    /** Piso da área interna (minX, minZ, maxX, maxZ): o prédio. */
-    val PISO_INTERNO = floatArrayOf(-14f, -24f, 14f, -8f)
 
     /**
      * Paredes e obstáculos, 4 números por caixa: minX, minZ, maxX, maxZ (metros).
      * Prédio ao norte (z negativo) com um vão de 3 m na parede sul (a "porta"), 2 pilares dentro
      * e 2 caixas fora. As paredes têm 0,4 m de espessura.
      */
+
+    // ---- VILA (gerada por ferramentas/vila/gerar_vila.py; NAO editar a mao) ----
+    /** Paredes e obstaculos (minX, minZ, maxX, maxZ). Ver PAREDES_BASE / PAREDES_ALTURA / PAREDES_TIPO. */
     val PAREDES = floatArrayOf(
-        // prédio: norte, oeste, leste
-        -14.4f, -24.4f, 14.4f, -24f,
-        -14.4f, -24f, -14f, -8f,
-        14f, -24f, 14.4f, -8f,
-        // prédio: sul, com vão entre x = -1,5 e x = 1,5
-        -14.4f, -8.4f, -1.5f, -8f,
-        1.5f, -8.4f, 14.4f, -8f,
-        // pilares dentro do prédio
-        -6f, -18f, -4.6f, -16.6f,
-        4.6f, -18f, 6f, -16.6f,
-        // caixas na área externa
-        -8f, -4f, -6f, -2f,
-        6f, -5f, 8f, -3f
+        -34f, -32f, -18f, -31.6f,
+        -34f, -18.4f, -27.5f, -18f,
+        -24.5f, -18.4f, -18f, -18f,
+        -34f, -31.6f, -33.6f, -18.4f,
+        -18.4f, -31.6f, -18f, -18.4f,
+        -31.4f, -24.75f, -18.4f, -24.55f,
+        -28f, -28f, -27f, -27f,
+        14f, -32f, 28f, -31.6f,
+        14f, -22.4f, 19.5f, -22f,
+        22.5f, -22.4f, 28f, -22f,
+        14f, -31.6f, 14.4f, -22.4f,
+        27.6f, -31.6f, 28f, -22.4f,
+        -32f, 10f, -27.5f, 10.4f,
+        -24.5f, 10f, -20f, 10.4f,
+        -32f, 19.6f, -20f, 20f,
+        -32f, 10.4f, -31.6f, 19.6f,
+        -20.4f, 10.4f, -20f, 19.6f,
+        18f, 12f, 30f, 12.4f,
+        18f, 23.6f, 30f, 24f,
+        18f, 12.4f, 18.4f, 16.5f,
+        18f, 19.5f, 18.4f, 23.6f,
+        29.6f, 12.4f, 30f, 23.6f,
+        -56f, -6f, -47f, -5.6f,
+        -56f, 1.6f, -47f, 2f,
+        -56f, -5.6f, -55.6f, 1.6f,
+        -47.4f, -5.6f, -47f, -3.5f,
+        -47.4f, -0.5f, -47f, 1.6f,
+        40f, -8f, 50f, -7.6f,
+        40f, 0.6f, 50f, 1f,
+        40f, -7.6f, 40.4f, -5f,
+        40f, -2f, 40.4f, 0.6f,
+        49.6f, -7.6f, 50f, 0.6f,
+        -10f, 40f, -4.5f, 40.4f,
+        -1.5f, 40f, 4f, 40.4f,
+        -10f, 49.6f, 4f, 50f,
+        -10f, 40.4f, -9.6f, 49.6f,
+        3.6f, 40.4f, 4f, 49.6f,
+        30f, 36f, 40f, 36.4f,
+        30f, 45.6f, 40f, 46f,
+        30f, 36.4f, 30.4f, 39.5f,
+        30f, 42.5f, 30.4f, 45.6f,
+        39.6f, 36.4f, 40f, 45.6f,
+        -48f, 36f, -37f, 36.4f,
+        -48f, 44.6f, -37f, 45f,
+        -48f, 36.4f, -47.6f, 44.6f,
+        -37.4f, 36.4f, -37f, 39f,
+        -37.4f, 42f, -37f, 44.6f,
+        55f, 30f, 64f, 30.4f,
+        55f, 37.6f, 64f, 38f,
+        55f, 30.4f, 55.4f, 32.5f,
+        55f, 35.5f, 55.4f, 37.6f,
+        63.6f, 30.4f, 64f, 37.6f,
+        -60f, -48f, -50f, -47.6f,
+        -60f, -39.4f, -56.5f, -39f,
+        -53.5f, -39.4f, -50f, -39f,
+        -60f, -47.6f, -59.6f, -39.4f,
+        -50.4f, -47.6f, -50f, -39.4f,
+        58f, -30f, 67f, -29.6f,
+        58f, -21.4f, 67f, -21f,
+        58f, -29.6f, 58.4f, -27f,
+        58f, -24f, 58.4f, -21.4f,
+        66.6f, -29.6f, 67f, -21.4f,
+        -12f, -62f, 12f, -61.6f,
+        -12f, -46.4f, -2f, -46f,
+        2f, -46.4f, 12f, -46f,
+        -12f, -61.6f, -11.6f, -46.4f,
+        11.6f, -61.6f, 12f, -46.4f,
+        38f, -52f, 58f, -51.6f,
+        38f, -38.4f, 58f, -38f,
+        38f, -51.6f, 38.4f, -47f,
+        38f, -43f, 38.4f, -38.4f,
+        57.6f, -51.6f, 58f, -38.4f,
+        -1.2f, -7.2f, 1.2f, -4.8f,
+        7.5f, 5.5f, 8.5f, 6.5f,
+        -9.5f, 6.5f, -8.5f, 7.5f,
+        11.5f, -10.5f, 12.5f, -9.5f,
+        -14.5f, -8.5f, -13.5f, -7.5f,
+        24.5f, 27.5f, 25.5f, 28.5f,
+        -25.5f, 27.5f, -24.5f, 28.5f,
+        -38.5f, -2.5f, -37.5f, -1.5f,
+        46.5f, 7.5f, 47.5f, 8.5f,
+        -4.5f, 27.5f, -3.5f, 28.5f,
+        8.5f, 29.5f, 9.5f, 30.5f,
+        -38f, -12.1f, -35f, -11.9f,
+        -35f, -12.1f, -32f, -11.9f,
+        -32f, -12.1f, -29f, -11.9f,
+        -20f, -12.1f, -17f, -11.9f,
+        -17f, -12.1f, -14f, -11.9f,
+        -14f, -12.1f, -11f, -11.9f,
+        -11f, -12.1f, -10f, -11.9f,
+        -38f, 1.9f, -35f, 2.1f,
+        -35f, 1.9f, -34f, 2.1f,
+        10f, 23.9f, 13f, 24.1f,
+        13f, 23.9f, 16f, 24.1f,
+        25f, 23.9f, 28f, 24.1f,
+        28f, 23.9f, 31f, 24.1f,
+        31f, 23.9f, 34f, 24.1f,
+        34f, 23.9f, 36f, 24.1f,
+        -20.1f, 22f, -19.9f, 25f,
+        -20.1f, 31f, -19.9f, 34f,
+        -20.1f, 34f, -19.9f, 36f,
+        31.9f, -14f, 32.1f, -11f,
+        31.9f, -11f, 32.1f, -8f,
+        31.9f, -2f, 32.1f, 1f,
+        31.9f, 1f, 32.1f, 2f,
+        -62f, 7.9f, -59f, 8.1f,
+        -59f, 7.9f, -56f, 8.1f,
+        -56f, 7.9f, -53f, 8.1f,
+        -47f, 7.9f, -44f, 8.1f,
+        -44f, 7.9f, -41f, 8.1f,
+        -41f, 7.9f, -40f, 8.1f,
+        59.9f, -8f, 60.1f, -5f,
+        59.9f, -5f, 60.1f, -2f,
+        59.9f, 4f, 60.1f, 7f,
+        59.9f, 7f, 60.1f, 10f,
+        59.9f, 10f, 60.1f, 12f,
+        -30f, 51.9f, -27f, 52.1f,
+        -27f, 51.9f, -24f, 52.1f,
+        -18f, 51.9f, -15f, 52.1f,
+        -15f, 51.9f, -12f, 52.1f,
+        46f, 49.9f, 49f, 50.1f,
+        49f, 49.9f, 52f, 50.1f,
+        58f, 49.9f, 61f, 50.1f,
+        61f, 49.9f, 64f, 50.1f,
+        -8f, -44.1f, -5f, -43.9f,
+        -5f, -44.1f, -2f, -43.9f,
+        4f, -44.1f, 7f, -43.9f,
+        7f, -44.1f, 10f, -43.9f,
+        10f, -44.1f, 13f, -43.9f,
+        13f, -44.1f, 14f, -43.9f,
+        -45.3f, -22.3f, -44.7f, -21.7f,
+        -48.3f, -20.3f, -47.7f, -19.7f,
+        -70.3f, -10.3f, -69.7f, -9.7f,
+        -72.3f, 19.7f, -71.7f, 20.3f,
+        -66.3f, 41.7f, -65.7f, 42.3f,
+        -60.3f, 59.7f, -59.7f, 60.3f,
+        -30.3f, 65.7f, -29.7f, 66.3f,
+        -12.3f, 69.7f, -11.7f, 70.3f,
+        9.7f, 67.7f, 10.3f, 68.3f,
+        29.7f, 61.7f, 30.3f, 62.3f,
+        49.7f, 69.7f, 50.3f, 70.3f,
+        67.7f, 59.7f, 68.3f, 60.3f,
+        71.7f, 39.7f, 72.3f, 40.3f,
+        73.7f, 9.7f, 74.3f, 10.3f,
+        69.7f, -14.3f, 70.3f, -13.7f,
+        65.7f, -44.3f, 66.3f, -43.7f,
+        49.7f, -70.3f, 50.3f, -69.7f,
+        29.7f, -72.3f, 30.3f, -71.7f,
+        5.7f, -76.3f, 6.3f, -75.7f,
+        -24.3f, -72.3f, -23.7f, -71.7f,
+        -50.3f, -70.3f, -49.7f, -69.7f,
+        -70.3f, -56.3f, -69.7f, -55.7f,
+        -76.3f, -34.3f, -75.7f, -33.7f,
+        19.7f, -20.3f, 20.3f, -19.7f,
+        23.7f, -16.3f, 24.3f, -15.7f,
+        -8.3f, 51.7f, -7.7f, 52.3f,
+        3.7f, 13.7f, 4.3f, 14.3f,
+        -14.3f, 17.7f, -13.7f, 18.3f,
+        61.7f, 3.7f, 62.3f, 4.3f,
+        -44.3f, 59.7f, -43.7f, 60.3f
     )
+    /** Altura da base de cada parede (0 = chao; 3,2 = guarda-corpo do andar alto). */
+    val PAREDES_BASE = floatArrayOf(0f, 0f, 0f, 0f, 0f, 3.2f, 3.2f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f)
+    val PAREDES_ALTURA = floatArrayOf(6.4f, 6.4f, 6.4f, 6.4f, 6.4f, 1f, 1f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 5f, 5f, 5f, 5f, 5f, 4.5f, 4.5f, 4.5f, 4.5f, 4.5f, 1.2f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f)
+    /** 0 casa, 1 pedra, 2 cerca/caixote, 3 celeiro, 4 guarda-corpo, 5 tronco. */
+    val PAREDES_TIPO = intArrayOf(0, 0, 0, 0, 0, 4, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 3, 3, 3, 3, 3, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5)
+    /** Piso interno das casas (minX, minZ, maxX, maxZ). */
+    val PISOS = floatArrayOf(-33.6f, -31.6f, -18.4f, -18.4f, 14.4f, -31.6f, 27.6f, -22.4f, -31.6f, 10.4f, -20.4f, 19.6f, 18.4f, 12.4f, 29.6f, 23.6f, -55.6f, -5.6f, -47.4f, 1.6f, 40.4f, -7.6f, 49.6f, 0.6f, -9.6f, 40.4f, 3.6f, 49.6f, 30.4f, 36.4f, 39.6f, 45.6f, -47.6f, 36.4f, -37.4f, 44.6f, 55.4f, 30.4f, 63.6f, 37.6f, -59.6f, -47.6f, -50.4f, -39.4f, 58.4f, -29.6f, 66.6f, -21.4f, -11.6f, -61.6f, 11.6f, -46.4f, 38.4f, -51.6f, 57.6f, -38.4f)
+    /** Andares altos: (minX, minZ, maxX, maxZ) e altura. */
+    val ALTOS = floatArrayOf(-33.6f, -31.6f, -18.4f, -24.6f)
+    val ALTOS_ALTURA = floatArrayOf(3.2f)
+    /** Rampas/escadas: (minX, minZ, maxX, maxZ), altura em baixo e em cima, e para onde sobem (0=-Z, 1=+Z, 2=+X, 3=-X). */
+    val RAMPAS = floatArrayOf(-33.6f, -24.6f, -31.4f, -19f)
+    val RAMPAS_ALTURAS = floatArrayOf(0f, 3.2f)
+    val RAMPAS_EIXO = intArrayOf(0)
+    /** Area que os zumbis nao pisam (escada). */
+    val BLOQUEIOS_INIMIGO = floatArrayOf(-33.6f, -24.6f, -31.4f, -19f)
+    val ITENS_XZ = floatArrayOf(-21f, -28.5f, -31f, -29f, -24f, -22f, 0f, 3f, 3f, 3f, -3f, 3f, 21f, -26f, 24f, -24f, -26f, 16f, 24f, 18f, -52f, -2f, 44f, -3f, -3f, 46f, 34f, 42f, -43f, 40f, 0f, -56f, 6f, -57f, -6f, -57f, 48f, -46f, 44f, -44f, -56f, -44f, 62f, -26f)
+    val ITENS_Y = floatArrayOf(3.2f, 3.2f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f)
+    /** 0 cura, 1 municao, 2 fuzil, 3 escopeta. */
+    val ITENS_TIPO = intArrayOf(3, 1, 0, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 2, 0, 1, 1, 0, 0, 1)
+    val INIMIGOS_XZ = floatArrayOf(-10f, -14f, 12f, 10f, -22f, 22f, 26f, -20f, 4f, 34f, -40f, -6f, 48f, 20f)
+    /** Pontos onde zumbis novos podem nascer (longe do jogador e fora da vista). */
+    val SPAWNS_XZ = floatArrayOf(-74f, -74f, 74f, -74f, -74f, 74f, 74f, 74f, 0f, -76f, 0f, 76f, -76f, 0f, 76f, 0f, -60f, -30f, 60f, 20f, 40f, 72f, -40f, 72f, -70f, 30f, 70f, -50f, -30f, -72f, 30f, 74f)
 
     // Câmera contra paredes
     const val CAMERA_MARGEM_PAREDE = 0.3f
@@ -417,4 +572,55 @@ object Constantes {
     const val ZUMBI_TINTA_ATACANDO_G = 0.60f
     const val ZUMBI_TINTA_ATACANDO_B = 0.55f
     const val ZUMBI_TINTA_FLASH = 2.2f
+
+    // ---- F5: movimento estilo CoD Mobile (sem deslizar), vila e respawn ----
+    const val JOGADOR_SPRINT_FATOR = 1.3f // corrida automatica com o joystick no maximo
+    const val JOGADOR_SPRINT_LIMIAR = 0.92f
+    const val JOGADOR_FATOR_AGACHADO = 0.5f
+    const val JOGADOR_FATOR_ATIRANDO = 0.7f // andar atirando/recarregando
+    const val JOGADOR_PULO_VELOCIDADE = 7.2f // m/s para cima (altura ~1,3 m: passa por cercas de 1 m)
+    const val GRAVIDADE = 20f
+    const val DEGRAU_MAXIMO = 0.6f // sobe sozinho degraus/rampas ate isso
+    const val BOTAO_PULAR_COR_R = 0.60f
+    const val BOTAO_PULAR_COR_G = 0.35f
+    const val BOTAO_PULAR_COR_B = 0.80f
+    const val BOTAO_AGACHAR_COR_R = 0.35f
+    const val BOTAO_AGACHAR_COR_G = 0.45f
+    const val BOTAO_AGACHAR_COR_B = 0.55f
+    const val ITEM_TIPO_FUZIL = 2
+    const val ITEM_TIPO_ESCOPETA = 3
+    const val PAREDE_COR_CASA_R = 0.48f
+    const val PAREDE_COR_CASA_G = 0.34f
+    const val PAREDE_COR_CASA_B = 0.22f
+    const val PAREDE_COR_PEDRA_R = 0.58f
+    const val PAREDE_COR_PEDRA_G = 0.58f
+    const val PAREDE_COR_PEDRA_B = 0.56f
+    const val PAREDE_COR_CERCA_R = 0.55f
+    const val PAREDE_COR_CERCA_G = 0.42f
+    const val PAREDE_COR_CERCA_B = 0.27f
+    const val PAREDE_COR_CELEIRO_R = 0.55f
+    const val PAREDE_COR_CELEIRO_G = 0.20f
+    const val PAREDE_COR_CELEIRO_B = 0.16f
+    const val PAREDE_COR_GRADE_R = 0.32f
+    const val PAREDE_COR_GRADE_G = 0.22f
+    const val PAREDE_COR_GRADE_B = 0.14f
+    const val PAREDE_COR_TRONCO_R = 0.30f
+    const val PAREDE_COR_TRONCO_G = 0.22f
+    const val PAREDE_COR_TRONCO_B = 0.12f
+    const val ALTO_ESPESSURA = 0.2f
+    const val ALTO_COR_R = 0.42f
+    const val ALTO_COR_G = 0.32f
+    const val ALTO_COR_B = 0.20f
+    const val RAMPA_COR_R = 0.50f
+    const val RAMPA_COR_G = 0.40f
+    const val RAMPA_COR_B = 0.25f
+    const val INIMIGOS_POOL = 14 // zumbis que podem existir ao mesmo tempo (vivos + corpos)
+    const val SPAWN_MAX_VIVOS = 9
+    const val SPAWN_INTERVALO_S = 7f
+    const val SPAWN_DIST_MIN = 45f // so nasce a mais de 45 m do jogador
+    const val SPAWN_COS_VISAO = 0.25f // atras/lado da camera: cos do angulo com a frente < 0,25 (~75 graus)
+    const val ENIMIGO_VELOCIDADE_CACA = 1.5f // zumbi novo vem andando ate o jogador
+    const val ENIMIGO_CACA_REPLANO_S = 1.5f
+    const val ENIMIGO_DY_ATAQUE = 1.5f // so ataca se estiver na mesma altura (andar de cima fica seguro)
+    const val ITEM_ARMA_ESCALA_Y = 0.15f
 }

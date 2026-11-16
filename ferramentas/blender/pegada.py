@@ -19,6 +19,9 @@ RX_MENOS_90 = np.array(an.rotacao_euler(-90.0, 0.0, 0.0))[:3, :3]  # arma -> mao
 
 ANIMACOES_ARMADAS = {  # base -> (quadros, em_loop)
     "parado": (90, True), "andar": (36, True), "correr": (22, True), "atirar": (24, False), "recarregar": (60, False),
+    # F5: movimento "CoD Mobile" (sem deslizar): atirar/recarregar andando, pular e agachar
+    "andarmirar": (36, True), "andarrecarregar": (72, False), "pular": (30, False),
+    "agachar": (90, True), "andaragachar": (36, True),
 }
 
 # Postura da arma no referencial do torax em repouso (x direita, y cima, z tras; torax ~ (0, 1.3, 0)):
@@ -166,6 +169,23 @@ def _alvo(arma, base, q):
         bal = [a_x * math.sin(TAU * (f - 0.05)), a_y * math.cos(2 * TAU * (f - 0.04)),
                0.4 * a_y * math.sin(2 * TAU * (f - 0.04)), a_p * math.cos(2 * TAU * (f - 0.1)),
                1.5 * a_p * math.sin(TAU * f)]
+    elif base == "andarmirar":  # andando e mirando: pernas da caminhada, arma na mira, balanco pequeno
+        f = (q % 36.0) / 36.0
+        post = P["mirando"]
+        bal = [0.003 * math.sin(TAU * (f - 0.05)), 0.005 * math.cos(2 * TAU * (f - 0.04)), 0.0,
+               0.8 * math.cos(2 * TAU * (f - 0.1)), 0.6 * math.sin(TAU * f)]
+    elif base == "andarrecarregar":
+        return _alvo(arma, "recarregar", (q % 72.0) * 60.0 / 72.0)
+    elif base == "pular":
+        post = P["correndo"] if q > 4.0 else P["pronto"]
+        bal = [0.0, 0.0, 0.0, 0.0, 0.0]
+    elif base in ("agachar", "andaragachar"):
+        n = 90.0 if base == "agachar" else 36.0
+        f = (q % n) / n
+        post = P["pronto"]
+        r = math.sin(2 * TAU * f)
+        bal = [0.003 * math.sin(TAU * f), 0.004 * r + (0.006 * math.cos(2 * TAU * f) if base == "andaragachar" else 0.0),
+               0.0, 0.6 * r, 0.0]
     elif base == "atirar":
         subida = _rampa(q, 0.0, 3.0)
         descida = _rampa(q, 17.0, 24.0)
@@ -205,6 +225,36 @@ def _base_pose(base, q):
         for osso, f in (("coluna", 0.45), ("quadril", 0.5), ("cabeca", 0.6)):  # menos giro: a arma ja esta alinhada
             a0 = p["ang"][osso]
             p["ang"][osso] = (a0[0], a0[1] * f, a0[2])
+    elif base == "andarmirar":
+        p = an._pose_marcha("jogador", "andar", q, 36.0)
+        a0 = p["ang"]["coluna"]
+        p["ang"]["coluna"] = (a0[0] * 0.5, a0[1] * 0.4 + 3.0, a0[2])  # tronco mais firme, ombro direito a frente
+    elif base == "andarrecarregar":
+        p = an._pose_marcha("jogador", "andar", q % 36.0, 36.0)
+        ab = _rampa(q * 60.0 / 72.0, 0.0, 9.0) * (1.0 - _rampa(q * 60.0 / 72.0, 50.0, 60.0))
+        an._somar(p, "coluna", 3.0 * ab)
+        an._somar(p, "cabeca", 5.0 * ab)
+    elif base == "pular":
+        p = an._pose_parado("jogador", 0.0)
+        chaves = [(0.0, _pernas(0.0, 0.0), (0.0, 0.0)), (5.0, _pernas(1.0, 0.55), (0.0, 0.0)),
+                  (9.0, _pernas(-0.3, 0.0), (0.0, 0.0)), (16.0, _pernas(2.0, 0.0), (0.0, 0.0)),
+                  (24.0, _pernas(3.0, 0.0), (0.0, 0.0)), (28.0, _pernas(1.0, 0.5), (0.0, 0.0)),
+                  (30.0, _pernas(0.0, 0.0), (0.0, 0.0))]
+        pj = an._avaliar(chaves, q, None)
+        for osso, ang in pj["ang"].items():
+            p["ang"][osso] = ang
+        ab = an._pulso(q - 5.0) * 0.0 + _rampa(q, 0.0, 6.0) * (1.0 - _rampa(q, 24.0, 30.0))
+        an._somar(p, "coluna", -8.0 * ab)
+    elif base in ("agachar", "andaragachar"):
+        if base == "agachar":
+            p = an._pose_parado("jogador", q)
+        else:
+            p = an._pose_marcha("jogador", "andar", q, 36.0)
+            for lado in ("esq", "dir"):  # passada menor agachado
+                for osso in ("coxa_", "canela_", "pe_"):
+                    a0 = p["ang"][osso + lado]
+                    p["ang"][osso + lado] = (a0[0] * 0.55, a0[1], a0[2])
+        _agachar(p, 0.85)
     else:  # recarregar: pe firme, tronco levemente inclinado sobre a arma, olhando para ela
         p = an._pose_parado("jogador", 0.0)
         ab = an._rampa_recarga(q) if hasattr(an, "_rampa_recarga") else _rampa(q, 0.0, 9.0) * (1.0 - _rampa(q, 50.0, 60.0))
@@ -217,6 +267,38 @@ def _base_pose(base, q):
     for osso in ("braco_esq", "braco_dir", "antebraco_esq", "antebraco_dir", "mao_esq", "mao_dir", "ombro_esq", "ombro_dir"):
         p["ang"].pop(osso, None)
     return p
+
+
+def _agachar(p, k):
+    """Agacha: quadril e joelhos dobrados, pe plano, tronco inclinado. A altura vem do aterrar()."""
+    for lado in ("esq", "dir"):
+        an._somar(p, "coxa_" + lado, 62.0 * k)
+        an._somar(p, "canela_" + lado, -118.0 * k)
+        an._somar(p, "pe_" + lado, 56.0 * k)
+    an._somar(p, "quadril", -8.0 * k)
+    an._somar(p, "coluna", -14.0 * k)
+    an._somar(p, "pescoco", 8.0 * k)
+    an._somar(p, "cabeca", 6.0 * k)
+
+
+def _pernas(modo, agacha):
+    """Angulos das pernas para o pulo: modo 0 em pe, 1 agachado, -0.3 impulso (esticada, ponta do pe), 2 encolhida, 3 pouso."""
+    d = {}
+    for lado in ("esq", "dir"):
+        if modo == 2.0:
+            c, k, pe = 52.0, -88.0, 12.0
+        elif modo == 3.0:
+            c, k, pe = 22.0, -22.0, -6.0
+        elif modo == -0.3:
+            c, k, pe = -10.0, -6.0, 28.0
+        else:
+            c, k, pe = 0.0, 0.0, 0.0
+        if agacha > 0.0:
+            c, k, pe = c + 62.0 * agacha, k - 118.0 * agacha, pe + 56.0 * agacha
+        d["coxa_" + lado] = (c, 0.0, 0.0)
+        d["canela_" + lado] = (k, 0.0, 0.0)
+        d["pe_" + lado] = (pe, 0.0, 0.0)
+    return d
 
 
 def pose_armada(arma, base, q):

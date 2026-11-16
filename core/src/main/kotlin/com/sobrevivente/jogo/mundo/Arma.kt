@@ -51,6 +51,7 @@ class Arma {
     private val tipos = TipoArma.values()
     private val carregadores = IntArray(tipos.size) { tipos[it].carregador }
     private val reservas = IntArray(tipos.size) { tipos[it].reservaInicial }
+    private val liberadas = BooleanArray(tipos.size) { it == 0 } // so a pistola no comeco; as outras sao achadas na vila
 
     var tipo = TipoArma.PISTOLA
         private set
@@ -102,9 +103,33 @@ class Arma {
     /** Passa para a proxima arma. Nao troca durante a recarga. Devolve true se trocou. */
     fun trocar(): Boolean {
         if (recarregando) return false
-        tipo = tipos[(tipo.ordinal + 1) % tipos.size]
+        var proxima = tipo.ordinal
+        for (k in 1..tipos.size) {
+            val c = (tipo.ordinal + k) % tipos.size
+            if (liberadas[c]) {
+                proxima = c
+                break
+            }
+        }
+        if (proxima == tipo.ordinal) return false
+        tipo = tipos[proxima]
         tempoCadencia = Constantes.TROCAR_ARMA_ATRASO_S // sacar a arma leva um instante
         return true
+    }
+
+    fun estaLiberada(t: TipoArma): Boolean = liberadas[t.ordinal]
+
+    /** Pegou a arma no chao: libera, enche o carregador e ja equipa. Devolve false se ja tinha (ai so ganha municao). */
+    fun liberar(t: TipoArma): Boolean {
+        val i = t.ordinal
+        val nova = !liberadas[i]
+        liberadas[i] = true
+        if (nova) carregadores[i] = t.carregador else reservas[i] += t.reservaInicial / 2
+        if (!recarregando) {
+            tipo = t
+            tempoCadencia = Constantes.TROCAR_ARMA_ATRASO_S
+        }
+        return nova
     }
 
     /** Volta ao estado inicial (carregadores cheios, reservas iniciais, pistola). Usado ao reiniciar depois da morte. */
@@ -113,6 +138,7 @@ class Arma {
             carregadores[i] = tipos[i].carregador
             reservas[i] = tipos[i].reservaInicial
         }
+        for (i in liberadas.indices) liberadas[i] = i == 0
         tipo = TipoArma.PISTOLA
         recarregando = false
         tempoRecarga = 0f

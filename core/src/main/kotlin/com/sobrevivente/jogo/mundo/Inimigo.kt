@@ -8,23 +8,24 @@ import com.badlogic.gdx.math.MathUtils
 import com.badlogic.gdx.math.Vector3
 import com.badlogic.gdx.math.collision.BoundingBox
 import com.sobrevivente.jogo.Constantes
+import kotlin.math.abs
 import kotlin.math.sqrt
 
 /**
  * Inimigo básico (seção 13 do mapa). Lógica no plano XZ.
- * Estados: PARADO (espera) <-> VAGANDO (anda sem rumo perto da origem) -> PERSEGUINDO (A* ao redor das paredes)
+ * Estados: PARADO (espera) <-> VAGANDO (anda sem rumo perto da origem) -> PERSEGUINDO (A* ao redor das paredes); zumbis que nascem longe ficam CACANDO (vem andando devagar ate o jogador)
  * -> ATACANDO (so com visao livre) -> MORTO.
  * A cor muda conforme o estado (ajuda a testar no celular) e pisca ao levar tiro.
  */
 class Inimigo(modelo: Model, x: Float, z: Float, private val animado: Boolean = false) {
 
-    enum class Estado { PARADO, VAGANDO, PERSEGUINDO, ATACANDO, MORTO }
+    enum class Estado { PARADO, VAGANDO, CACANDO, PERSEGUINDO, ATACANDO, MORTO }
 
     val instancia = ModelInstance(modelo)
     val caixa = BoundingBox()
     val posicao = Vector3(x, 0f, z) // posição dos PÉS
-    private val inicioX = x
-    private val inicioZ = z
+    private var inicioX = x
+    private var inicioZ = z
 
     var vida = Constantes.ENIMIGO_VIDA
         private set
@@ -32,7 +33,16 @@ class Inimigo(modelo: Model, x: Float, z: Float, private val animado: Boolean = 
         private set
 
     val vivo: Boolean
-        get() = estado != Estado.MORTO
+        get() = estado != Estado.MORTO && !desativado
+
+    /** Fora do jogo (pool): nao desenha, nao pensa, nao leva tiro. */
+    var desativado = false
+        private set
+    private var cacador = false
+
+    /** Pode ser reutilizado no respawn: desativado, ou morto e o corpo ja sumiu. */
+    val disponivelParaNascer: Boolean
+        get() = desativado || (estado == Estado.MORTO && tempoMorto >= Constantes.CORPO_DURACAO_S)
 
     private val cor: ColorAttribute?
     private val animador = Animador(instancia)
@@ -41,7 +51,7 @@ class Inimigo(modelo: Model, x: Float, z: Float, private val animado: Boolean = 
 
     /** Desenhar? Vivo, ou (modelo animado) ate CORPO_DURACAO_S depois de morrer. */
     val visivel: Boolean
-        get() = vivo || (animado && tempoMorto < Constantes.CORPO_DURACAO_S)
+        get() = !desativado && (vivo || (animado && tempoMorto < Constantes.CORPO_DURACAO_S))
     private val pontoMinimo = Vector3()
     private val pontoMaximo = Vector3()
     private var tempoAtaque = 0f
@@ -69,6 +79,7 @@ class Inimigo(modelo: Model, x: Float, z: Float, private val animado: Boolean = 
 
     /** Chamar uma vez por frame (jogo rodando). Sem alocação. */
     fun atualizar(dt: Float, jogador: Jogador) {
+        if (desativado) return
         if (estado == Estado.MORTO) {
             tempoMorto += dt
             if (tempoFlash > 0f) {
@@ -112,11 +123,29 @@ class Inimigo(modelo: Model, x: Float, z: Float, private val animado: Boolean = 
                     tempoEspera = MathUtils.random(Constantes.ENIMIGO_ESPERA_MIN_S, Constantes.ENIMIGO_ESPERA_MAX_S)
                 }
             }
+            Estado.CACANDO -> {
+                if (distancia <= Constantes.ENIMIGO_VISAO) {
+                    iniciarPerseguicao()
+                } else {
+                    tempoReplano -= dt
+                    if (tempoReplano <= 0f) {
+                        tempoReplano = Constantes.ENIMIGO_CACA_REPLANO_S + MathUtils.random(0f, 0.3f)
+                        planejar(jogador.posicao.x, jogador.posicao.z)
+                    }
+                    if (!seguirTrajeto(dt, Constantes.ENIMIGO_VELOCIDADE_CACA)) tempoReplano = 0f
+                }
+            }
             Estado.PERSEGUINDO -> {
                 if (distancia > Constantes.ENIMIGO_PERDE_JOGADOR) {
-                    mudarEstado(Estado.PARADO)
-                    tempoEspera = MathUtils.random(Constantes.ENIMIGO_ESPERA_MIN_S, Constantes.ENIMIGO_ESPERA_MAX_S)
+                    if (cacador) {
+                        mudarEstado(Estado.CACANDO)
+                        tempoReplano = 0f
+                    } else {
+                        mudarEstado(Estado.PARADO)
+                        tempoEspera = MathUtils.random(Constantes.ENIMIGO_ESPERA_MIN_S, Constantes.ENIMIGO_ESPERA_MAX_S)
+                    }
                 } else if (distancia <= Constantes.ENIMIGO_ALCANCE_ATAQUE &&
+                    abs(jogador.posicao.y - posicao.y) < Constantes.ENIMIGO_DY_ATAQUE &&
                     !Navegacao.paredeEntre(posicao.x, posicao.z, jogador.posicao.x, jogador.posicao.z)
                 ) {
                     mudarEstado(Estado.ATACANDO)
@@ -137,6 +166,7 @@ class Inimigo(modelo: Model, x: Float, z: Float, private val animado: Boolean = 
             Estado.ATACANDO -> {
                 rumoYaw = MathUtils.atan2(-dx, -dz) * MathUtils.radiansToDegrees
                 if (distancia > Constantes.ENIMIGO_ALCANCE_ATAQUE * 1.15f ||
+                    abs(jogador.posicao.y - posicao.y) >= Constantes.ENIMIGO_DY_ATAQUE ||
                     Navegacao.paredeEntre(posicao.x, posicao.z, jogador.posicao.x, jogador.posicao.z)
                 ) {
                     iniciarPerseguicao()
@@ -212,6 +242,7 @@ class Inimigo(modelo: Model, x: Float, z: Float, private val animado: Boolean = 
             posicao.x = MathUtils.clamp(posicao.x + px / d * passo, -Constantes.MAPA_LIMITE, Constantes.MAPA_LIMITE)
             posicao.z = MathUtils.clamp(posicao.z + pz / d * passo, -Constantes.MAPA_LIMITE, Constantes.MAPA_LIMITE)
             Colisao.resolver(posicao, Constantes.ENIMIGO_RAIO)
+            Colisao.resolverBloqueiosInimigo(posicao, Constantes.ENIMIGO_RAIO)
             val mx = posicao.x - antesX
             val mz = posicao.z - antesZ
             if (mx * mx + mz * mz > 1e-8f) rumoYaw = MathUtils.atan2(-mx, -mz) * MathUtils.radiansToDegrees
@@ -220,8 +251,43 @@ class Inimigo(modelo: Model, x: Float, z: Float, private val animado: Boolean = 
         return false
     }
 
+    /** Tira do jogo (pool): some e fica esperando o respawn. */
+    fun desativar() {
+        desativado = true
+        cacador = false
+        estado = Estado.MORTO
+        tempoMorto = Constantes.CORPO_DURACAO_S
+        tempoFlash = 0f
+    }
+
+    /** Respawn: aparece em (x, z) com vida cheia e vem cacando o jogador. */
+    fun nascer(x: Float, z: Float) {
+        desativado = false
+        cacador = true
+        posicao.set(x, 0f, z)
+        vida = Constantes.ENIMIGO_VIDA
+        tempoAtaque = 0f
+        tempoFlash = 0f
+        tempoMorto = 0f
+        trajetoN = 0
+        trajetoI = 0
+        tempoReplano = 0f
+        yaw = 0f
+        rumoYaw = 0f
+        mudarEstado(Estado.CACANDO)
+        atualizarTransformacao()
+    }
+
+    /** Muda o ponto inicial (zumbi do pool que volta a ser inicial). */
+    fun redefinirPosicao(x: Float, z: Float) {
+        inicioX = x
+        inicioZ = z
+    }
+
     /** Volta à posição inicial, com vida cheia e parado. Usado ao reiniciar depois da morte do jogador. */
     fun reiniciar() {
+        desativado = false
+        cacador = false
         posicao.set(inicioX, 0f, inicioZ)
         vida = Constantes.ENIMIGO_VIDA
         estado = Estado.PARADO
@@ -243,7 +309,7 @@ class Inimigo(modelo: Model, x: Float, z: Float, private val animado: Boolean = 
 
     /** Devolve true se este tiro matou o inimigo. */
     fun receberDano(dano: Int): Boolean {
-        if (estado == Estado.MORTO) return false
+        if (estado == Estado.MORTO || desativado) return false
         vida -= dano
         tempoFlash = Constantes.ENIMIGO_FLASH_S
         if (vida <= 0) {
@@ -262,6 +328,9 @@ class Inimigo(modelo: Model, x: Float, z: Float, private val animado: Boolean = 
         val t = Constantes.ANIM_TRANSICAO_S
         when (novo) {
             Estado.PARADO -> animador.tocar("parado", -1, 1f, t)
+            Estado.CACANDO -> animador.tocar(
+                "andar", -1, Constantes.ENIMIGO_VELOCIDADE_CACA / Constantes.ENIMIGO_VAGAR_REF, Constantes.ANIM_TRANSICAO_MARCHA_S
+            )
             Estado.VAGANDO -> animador.tocar(
                 "andar", -1, Constantes.ENIMIGO_VELOCIDADE_VAGAR / Constantes.ENIMIGO_VAGAR_REF, Constantes.ANIM_TRANSICAO_MARCHA_S
             )
@@ -283,7 +352,7 @@ class Inimigo(modelo: Model, x: Float, z: Float, private val animado: Boolean = 
             return
         }
         when (estado) {
-            Estado.PARADO, Estado.VAGANDO -> c.color.set(1f, 1f, 1f, 1f)
+            Estado.PARADO, Estado.VAGANDO, Estado.CACANDO -> c.color.set(1f, 1f, 1f, 1f)
             Estado.PERSEGUINDO -> c.color.set(
                 Constantes.ZUMBI_TINTA_PERSEGUINDO_R,
                 Constantes.ZUMBI_TINTA_PERSEGUINDO_G,
@@ -316,7 +385,7 @@ class Inimigo(modelo: Model, x: Float, z: Float, private val animado: Boolean = 
             return
         }
         when (estado) {
-            Estado.PARADO, Estado.VAGANDO -> atributo.color.set(
+            Estado.PARADO, Estado.VAGANDO, Estado.CACANDO -> atributo.color.set(
                 Constantes.ENIMIGO_COR_PARADO_R,
                 Constantes.ENIMIGO_COR_PARADO_G,
                 Constantes.ENIMIGO_COR_PARADO_B,

@@ -1,10 +1,18 @@
-# MAPA DE CRIAÇÃO v2.18 — Jogo 3D de Sobrevivência (Kotlin + Python de bastidor / Android)
+# MAPA DE CRIAÇÃO v2.19 — Jogo 3D de Sobrevivência (Kotlin + Python de bastidor / Android)
 
-**Versão do documento:** 2.18 | **Data:** 16/11/2026 | **Substitui:** v2.17
+**Versão do documento:** 2.19 | **Data:** 16/11/2026 | **Substitui:** v2.18
 **Nome provisório:** PROJETO_SOBREVIVENTE (nome final: em aberto)
 
 > Cole este arquivo inteiro no início de qualquer conversa com uma IA.
 > Ele é a **fonte única da verdade**. O que não estiver aqui, a IA **pergunta**; ela não decide.
+
+### Mudanças da v2.18 para a v2.19 (F5 — movimento CoD Mobile, vila estilo RE4, respawn)
+- **Bug do vídeo:** atirando/recarregando andando, o corpo se movia sem as pernas andarem. Novas animações armadas (por arma): `andarmirar`, `andarrecarregar`, `pular`, `agachar`, `andaragachar` (35 animações no `jogador.g3dj`, ~3,2 MB; geradas por `pegada.py`). Tiro andando = `andarmirar` em loop; recarga andando = `andarrecarregar` (a variante é fixada no início da recarga).
+- **Movimento estilo CoD Mobile, sem o deslize:** joystick no máximo (≥0,92) = corrida (x1,3); atirando/recarregando x0,7; agachado x0,5; botões **PULAR** (roxo) e **AGACHAR** (alterna). Pulo ~1,3 m passa por cercas de 1 m. Fisica vertical simples (gravidade 20, degrau/rampa até 0,6 m) em `mundo/Terreno.kt`; colisão com paredes agora considera altura (base/altura por parede).
+- **Cenário 160 x 160 m** (antes menor), inspirado na vila de Resident Evil 4: gerado por `ferramentas/vila/gerar_vila.py` (casas com portas e janelas, igreja, celeiro, cercas, árvores, rampa, loft). **Casa do fazendeiro** com **escopeta no 2º andar** (y = 3,2 m, escada externa); fuzil no chão perto da praça. Arma nova só se pega com INTERAGIR (começa só com a pistola; TROCAR pula as não achadas).
+- **Respawn:** pool de 14 zumbis, no máximo 9 vivos, tenta nascer a cada 7 s em um dos 16 pontos de `SPAWNS_XZ` que esteja a **≥ 45 m** do jogador **e fora da vista** (atrás/lado da câmera, cos < 0,25, ou com parede entre). Zumbi novo fica em `CACANDO` (anda devagar até o jogador, 1,5 m/s) até chegar a 12 m e perseguir de verdade. Zumbis **não sobem escadas** (bloqueio em `BLOQUEIOS_INIMIGO`) e só atacam com diferença de altura < 1,5 m: o 2º andar é um abrigo.
+- A* com grade 320x320 (células de 0,5 m); paredes do andar alto e cercas baixas não entram no mapa de navegação/linha de visão.
+- Limitações: sem telhados; casas são caixas simples; cenário ainda esparso; HUD/minimapa sem desenho do 2º andar; **tudo não compilado pela IA**.
 
 ### Mudanças da v2.17 para a v2.18 (F4 — armas e pegada do protagonista)
 - **3 armas** (pedido do dono): **Pistola**, **Fuzil** e **Escopeta**, cada uma com modelo 3D (caixas coloridas, `ferramentas/blender/armas.py` → `android/assets/modelos/arma_*.g3dj` + `textura_armas.png`), carregador e reserva próprios. Valores iniciais em `Constantes.kt`: pistola 25 dano / 2,5 tiros/s / 12+36 / recarga 1,5 s / 30 m; fuzil 18 / 8 / 30+90 / 2,2 s / 45 m; escopeta 6 bagos × 14, dispersão 0,045 rad / 1,1 tiros/s / 6+18 / 2,6 s / 18 m. Todas começam disponíveis (sem loot de arma ainda).
@@ -779,7 +787,7 @@ RELATÓRIO
 
 ## 22. ESTADO ATUAL (atualizar ao fim de cada sessão)
 
-- Marco atual: **F4 entregue (v2.18: 3 armas, troca, pegada com IK; não compilado pela IA)**; antes F3d ( (v2.17: referências de zumbi e protagonista)**; antes F3c ( (v2.16: suavidade, ataque com um braço, vagar e A*; não compilado pela IA)**; antes: **1.8 (dono informou "deu certo"; caixas a marcar por ele)**; trilha ativa de ferramentas: **F0 e F1 (rodaram no CI), F2 (rodou no CI; poses a aprovar) e F3 (entregue, em teste)**
+- Marco atual: **F5 entregue (v2.19: movimento CoD Mobile, vila grande, respawn, casas; não compilado pela IA)**; antes F4 entregue (v2.18: 3 armas, troca, pegada com IK; não compilado pela IA)**; antes F3d ( (v2.17: referências de zumbi e protagonista)**; antes F3c ( (v2.16: suavidade, ataque com um braço, vagar e A*; não compilado pela IA)**; antes: **1.8 (dono informou "deu certo"; caixas a marcar por ele)**; trilha ativa de ferramentas: **F0 e F1 (rodaram no CI), F2 (rodou no CI; poses a aprovar) e F3 (entregue, em teste)**
 - Último build verde confirmado: run #9 (código dos Marcos 1.7 e 1.8). F0 enviado (`ebb5ef4`); "Gerar modelo" ainda não rodado
 - Versões congeladas: **sim** (seção 6)
 - Arquivos existentes no repositório: tudo até o Marco 1.7 + 1 novo no 1.8 (`mundo/Colisao.kt`) e 8 alterados (depois do push)

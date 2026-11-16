@@ -52,6 +52,13 @@ class Jogador : Disposable {
     private var correndo = false          // histerese andar <-> correr
     private var fatorAnim = 1f            // velocidade de reproducao suavizada
     private val animador: Animador
+    private var velY = 0f
+    private var noChao = true
+    var agachado = false
+        private set
+    private var fatorMov = 1f
+    private var recargaTravada = false
+    private var recargaAndando = false
 
     // Armas (F4): cada uma e um modelo estatico preso ao osso mao_dir do esqueleto.
     private val modelosArma = arrayOfNulls<Model>(TipoArma.values().size)
@@ -170,40 +177,70 @@ class Jogador : Disposable {
      */
     fun mover(dt: Float, entradaX: Float, entradaY: Float, yawCamera: Float) {
         intensidadeMovimento = minOf(1f, sqrt(entradaX * entradaX + entradaY * entradaY))
-        if (entradaX == 0f && entradaY == 0f) return
+        val temEntrada = entradaX != 0f || entradaY != 0f
+        val mirando = tempoEncarar > 0f || recarregandoArma
 
-        val radianos = yawCamera * MathUtils.degreesToRadians
-        val seno = MathUtils.sin(radianos)
-        val cosseno = MathUtils.cos(radianos)
-        // frente da câmera = (-seno, -cosseno); direita da câmera = (cosseno, -seno)
-        val direcaoX = -seno * entradaY + cosseno * entradaX
-        val direcaoZ = -cosseno * entradaY - seno * entradaX
-
-        posicao.x = MathUtils.clamp(
-            posicao.x + direcaoX * Constantes.JOGADOR_VELOCIDADE * dt,
-            -Constantes.MAPA_LIMITE,
-            Constantes.MAPA_LIMITE
-        )
-        posicao.z = MathUtils.clamp(
-            posicao.z + direcaoZ * Constantes.JOGADOR_VELOCIDADE * dt,
-            -Constantes.MAPA_LIMITE,
-            Constantes.MAPA_LIMITE
-        )
-
-        Colisao.resolver(posicao, Constantes.JOGADOR_RAIO) // desliza nas paredes (Marco 1.8)
-
-        // O corpo vira suavemente para a direção do movimento
-        // (a não ser que esteja encarando a mira logo após atirar).
-        if (tempoEncarar <= 0f) {
-            val yawAlvo = MathUtils.atan2(-direcaoX, -direcaoZ) * MathUtils.radiansToDegrees
-            yaw = MathUtils.lerpAngleDeg(
-                yaw,
-                yawAlvo,
-                minOf(1f, Constantes.JOGADOR_VELOCIDADE_GIRO * dt)
-            )
+        // Estilo CoD Mobile: joystick no maximo = corrida; agachado e mirando/recarregando andam mais devagar. Sem deslizar.
+        fatorMov = when {
+            agachado -> Constantes.JOGADOR_FATOR_AGACHADO
+            mirando -> Constantes.JOGADOR_FATOR_ATIRANDO
+            intensidadeMovimento >= Constantes.JOGADOR_SPRINT_LIMIAR -> Constantes.JOGADOR_SPRINT_FATOR
+            else -> 1f
         }
 
+        if (temEntrada) {
+            val radianos = yawCamera * MathUtils.degreesToRadians
+            val seno = MathUtils.sin(radianos)
+            val cosseno = MathUtils.cos(radianos)
+            // frente da câmera = (-seno, -cosseno); direita da câmera = (cosseno, -seno)
+            val direcaoX = -seno * entradaY + cosseno * entradaX
+            val direcaoZ = -cosseno * entradaY - seno * entradaX
+            val v = Constantes.JOGADOR_VELOCIDADE * fatorMov
+
+            posicao.x = MathUtils.clamp(posicao.x + direcaoX * v * dt, -Constantes.MAPA_LIMITE, Constantes.MAPA_LIMITE)
+            posicao.z = MathUtils.clamp(posicao.z + direcaoZ * v * dt, -Constantes.MAPA_LIMITE, Constantes.MAPA_LIMITE)
+            Colisao.resolver(posicao, Constantes.JOGADOR_RAIO) // desliza nas paredes (Marco 1.8)
+
+            // O corpo vira suavemente para a direção do movimento
+            // (a não ser que esteja encarando a mira logo após atirar).
+            if (tempoEncarar <= 0f) {
+                val yawAlvo = MathUtils.atan2(-direcaoX, -direcaoZ) * MathUtils.radiansToDegrees
+                yaw = MathUtils.lerpAngleDeg(yaw, yawAlvo, minOf(1f, Constantes.JOGADOR_VELOCIDADE_GIRO * dt))
+            }
+        }
+
+        // Vertical: gravidade, pulo, rampas e andar alto (Terreno).
+        val chaoY = Terreno.alturaSuporte(posicao.x, posicao.z, posicao.y)
+        if (noChao && velY <= 0f && chaoY >= posicao.y - 0.01f) {
+            posicao.y = chaoY // sobe degrau/rampa
+        } else {
+            velY -= Constantes.GRAVIDADE * dt
+            posicao.y += velY * dt
+            if (posicao.y <= chaoY && velY <= 0f) {
+                posicao.y = chaoY
+                velY = 0f
+                noChao = true
+            } else {
+                noChao = false
+            }
+        }
+        if (noChao && chaoY < posicao.y - 0.01f) noChao = false // saiu da borda: cai
+        if (temEntrada || !noChao) Colisao.resolver(posicao, Constantes.JOGADOR_RAIO)
+
         atualizarTransformacao()
+    }
+
+    /** PULAR: so no chao e em pe. */
+    fun pular() {
+        if (noChao && !agachado && vida > 0) {
+            velY = Constantes.JOGADOR_PULO_VELOCIDADE
+            noChao = false
+        }
+    }
+
+    /** AGACHAR: liga/desliga (so no chao). */
+    fun alternarAgachar() {
+        if (noChao) agachado = !agachado
     }
 
     /**
@@ -217,7 +254,7 @@ class Jogador : Disposable {
             tempoEncarar = armaAtual.tempoEncarar
             tempoClarao = Constantes.CLARAO_DURACAO_S
             claraoVisivel = true
-            if (animado) animador.tocar(nomeAnim("atirar"), 1, 1f, Constantes.ANIM_TRANSICAO_TIRO_S)
+            if (animado && !andando && !agachado && noChao) animador.tocar(nomeAnim("atirar"), 1, 1f, Constantes.ANIM_TRANSICAO_TIRO_S)
         }
         if (tempoEncarar > 0f) {
             tempoEncarar -= dt
@@ -237,41 +274,62 @@ class Jogador : Disposable {
     fun atualizarAnimacao(dt: Float) {
         if (!animado) return
         val t = Constantes.ANIM_TRANSICAO_S
+        val marcha = Constantes.ANIM_TRANSICAO_MARCHA_S
+        intensidadeSuave += (intensidadeMovimento - intensidadeSuave) * minOf(1f, Constantes.ANIM_FILTRO_ENTRADA * dt)
+        if (!andando && intensidadeMovimento > Constantes.ANIM_LIMIAR_INICIAR) andando = true
+        if (andando && intensidadeSuave < Constantes.ANIM_LIMIAR_PARAR && intensidadeMovimento < 0.01f) andando = false
+        if (!correndo && intensidadeSuave >= Constantes.JOGADOR_LIMIAR_CORRER + 0.1f) correndo = true
+        if (correndo && intensidadeSuave < Constantes.JOGADOR_LIMIAR_CORRER - 0.1f) correndo = false
+        if (!andando) correndo = false
+        if (!recarregandoArma) recargaTravada = false
+
+        val mirando = tempoEncarar > 0f
+        // velocidade da animacao de marcha acompanha a velocidade real (inclui sprint/agachado/mirando)
+        val ref = if (correndo) Constantes.JOGADOR_ANIM_REF_CORRER else Constantes.JOGADOR_ANIM_REF_ANDAR
+        val alvo = MathUtils.clamp(intensidadeSuave * Constantes.JOGADOR_VELOCIDADE * fatorMov / ref, 0.6f, 1.6f)
+        fatorAnim += (alvo - fatorAnim) * minOf(1f, Constantes.ANIM_FILTRO_VELOCIDADE * dt)
+
         if (vida <= 0) {
             animador.tocarSe("morrer", 1, 1f, t)
+        } else if (!noChao) {
+            animador.tocarSe(nomeAnimOu("pular", "parado"), 1, 1f, t)
         } else if (recarregandoArma && corpo.getAnimation(nomeAnim("recarregar")) != null) {
-            animador.tocarSe(
-                nomeAnim("recarregar"), 1, Constantes.ARMA_RECARGA_ANIM_S / armaAtual.recargaS, Constantes.ANIM_TRANSICAO_S
-            )
-        } else if (tempoEncarar > 0f) {
+            if (!recargaTravada) { // a versao andando ou parada e escolhida no inicio e vale ate o fim da recarga
+                recargaAndando = andando && !agachado
+                recargaTravada = true
+            }
+            val nome = if (recargaAndando) nomeAnimOu("andarrecarregar", "recarregar") else nomeAnim("recarregar")
+            animador.tocarSe(nome, 1, Constantes.ARMA_RECARGA_ANIM_S / armaAtual.recargaS, t)
+        } else if (mirando && andando) {
+            // atirando andando: pernas andam, bracos miram (antes ele deslizava parado)
+            animador.tocarSe(nomeAnimOu(if (agachado) "andaragachar" else "andarmirar", "andar"), -1, fatorAnim, marcha)
+            animador.definirVelocidade(fatorAnim)
+        } else if (mirando && !agachado) {
             animador.tocarSe(nomeAnim("atirar"), 1, 1f, Constantes.ANIM_TRANSICAO_TIRO_S)
-        } else {
-            intensidadeSuave += (intensidadeMovimento - intensidadeSuave) * minOf(1f, Constantes.ANIM_FILTRO_ENTRADA * dt)
-            if (!andando && intensidadeMovimento > Constantes.ANIM_LIMIAR_INICIAR) andando = true
-            if (andando && intensidadeSuave < Constantes.ANIM_LIMIAR_PARAR && intensidadeMovimento < 0.01f) andando = false
-            if (!correndo && intensidadeSuave >= Constantes.JOGADOR_LIMIAR_CORRER + 0.1f) correndo = true
-            if (correndo && intensidadeSuave < Constantes.JOGADOR_LIMIAR_CORRER - 0.1f) correndo = false
-            if (!andando) {
-                correndo = false
-                animador.tocarSe(nomeAnim("parado"), -1, 1f, t)
-            } else if (correndo) {
-                val alvo = MathUtils.clamp(
-                    intensidadeSuave * Constantes.JOGADOR_VELOCIDADE / Constantes.JOGADOR_ANIM_REF_CORRER, 0.8f, 1.5f
-                )
-                fatorAnim += (alvo - fatorAnim) * minOf(1f, Constantes.ANIM_FILTRO_VELOCIDADE * dt)
-                animador.tocarSe(nomeAnim("correr"), -1, fatorAnim, Constantes.ANIM_TRANSICAO_MARCHA_S)
+        } else if (agachado) {
+            if (andando) {
+                animador.tocarSe(nomeAnimOu("andaragachar", "andar"), -1, fatorAnim, marcha)
                 animador.definirVelocidade(fatorAnim)
             } else {
-                val alvo = MathUtils.clamp(
-                    intensidadeSuave * Constantes.JOGADOR_VELOCIDADE / Constantes.JOGADOR_ANIM_REF_ANDAR, 0.6f, 1.6f
-                )
-                fatorAnim += (alvo - fatorAnim) * minOf(1f, Constantes.ANIM_FILTRO_VELOCIDADE * dt)
-                animador.tocarSe(nomeAnim("andar"), -1, fatorAnim, Constantes.ANIM_TRANSICAO_MARCHA_S)
-                animador.definirVelocidade(fatorAnim)
+                animador.tocarSe(nomeAnimOu("agachar", "parado"), -1, 1f, t)
             }
+        } else if (!andando) {
+            animador.tocarSe(nomeAnim("parado"), -1, 1f, t)
+        } else if (correndo) {
+            animador.tocarSe(nomeAnim("correr"), -1, fatorAnim, marcha)
+            animador.definirVelocidade(fatorAnim)
+        } else {
+            animador.tocarSe(nomeAnim("andar"), -1, fatorAnim, marcha)
+            animador.definirVelocidade(fatorAnim)
         }
         animador.atualizar(dt)
         atualizarArma()
+    }
+
+    /** Como nomeAnim, mas se a versao armada de `base` nao existir usa a de `alternativa`. */
+    private fun nomeAnimOu(base: String, alternativa: String): String {
+        val nome = base + "_" + armaAtual.sufixo
+        return if (corpo.getAnimation(nome) != null) nome else nomeAnim(alternativa)
     }
 
     /** Reposiciona os modelos conforme `posicao` e `yaw`. Sem alocação. */

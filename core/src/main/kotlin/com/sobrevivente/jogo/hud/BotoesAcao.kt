@@ -13,14 +13,16 @@ class BotoesAcao(
     private val controles: ControlesToque,
     private val fonte: BitmapFont
 ) {
-    private val textos = arrayOf("ATIRAR", "RECARREGAR", "INTERAGIR", "TROCAR")
+    private val textos = arrayOf("ATIRAR", "RECARREGAR", "INTERAGIR", "TROCAR", "PULAR", "AGACHAR")
 
     // Cor de cada botão: R, G, B (3 valores por botão, na ordem das ações)
     private val cores = floatArrayOf(
         Constantes.BOTAO_ATIRAR_COR_R, Constantes.BOTAO_ATIRAR_COR_G, Constantes.BOTAO_ATIRAR_COR_B,
         Constantes.BOTAO_RECARREGAR_COR_R, Constantes.BOTAO_RECARREGAR_COR_G, Constantes.BOTAO_RECARREGAR_COR_B,
         Constantes.BOTAO_INTERAGIR_COR_R, Constantes.BOTAO_INTERAGIR_COR_G, Constantes.BOTAO_INTERAGIR_COR_B,
-        Constantes.BOTAO_TROCAR_COR_R, Constantes.BOTAO_TROCAR_COR_G, Constantes.BOTAO_TROCAR_COR_B
+        Constantes.BOTAO_TROCAR_COR_R, Constantes.BOTAO_TROCAR_COR_G, Constantes.BOTAO_TROCAR_COR_B,
+        Constantes.BOTAO_PULAR_COR_R, Constantes.BOTAO_PULAR_COR_G, Constantes.BOTAO_PULAR_COR_B,
+        Constantes.BOTAO_AGACHAR_COR_R, Constantes.BOTAO_AGACHAR_COR_G, Constantes.BOTAO_AGACHAR_COR_B
     )
 
     // Um layout por botão, calculado uma vez no resize (zero alocação por frame)

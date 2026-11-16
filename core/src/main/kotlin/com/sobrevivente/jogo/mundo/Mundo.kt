@@ -13,6 +13,7 @@ import com.badlogic.gdx.graphics.g3d.environment.DirectionalLight
 import com.badlogic.gdx.graphics.g3d.utils.MeshPartBuilder
 import com.badlogic.gdx.graphics.g3d.utils.ModelBuilder
 import com.badlogic.gdx.math.Intersector
+import com.badlogic.gdx.math.MathUtils
 import com.badlogic.gdx.math.Vector3
 import com.badlogic.gdx.math.collision.BoundingBox
 import com.badlogic.gdx.math.collision.Ray
@@ -20,7 +21,7 @@ import com.badlogic.gdx.utils.Disposable
 import com.sobrevivente.jogo.Constantes
 import com.sobrevivente.jogo.inventario.TipoItem
 
-/** Cena: luz, chão, paredes, inimigos e itens no chão. Sem desenho de HUD aqui. */
+/** Cena: luz, chão, vila (paredes, casas, andar alto), inimigos (com respawn) e itens no chão. Sem desenho de HUD aqui. */
 class Mundo : Disposable {
 
     val ambiente = Environment()
@@ -32,15 +33,19 @@ class Mundo : Disposable {
     val inimigos: Array<Inimigo>
     private val modeloItemCura: Model
     private val modeloItemMunicao: Model
+    private val modeloArmaFuzil: Model? = CarregadorModelos.carregar(Constantes.MODELO_ARMA_FUZIL)
+    private val modeloArmaEscopeta: Model? = CarregadorModelos.carregar(Constantes.MODELO_ARMA_ESCOPETA)
     val itens: Array<ItemMundo>
     private val modelosParedes: Array<Model>
     val paredes: Array<ModelInstance>
     private val caixasParedes: Array<BoundingBox> // para o tiro (hitscan) não atravessar paredes
-    private val modeloPisoInterno: Model
-    val pisoInterno: ModelInstance
+    private val modelosPisos = ArrayList<Model>()
+    /** Pisos das casas, andares altos e rampas (so desenho). */
+    val pisos = ArrayList<ModelInstance>()
 
     private val raio = Ray() // reutilizado nos tiros: zero alocação por frame
     private val ponto = Vector3()
+    private var tempoSpawn = Constantes.SPAWN_INTERVALO_S
 
     init {
         ambiente.set(
@@ -66,15 +71,19 @@ class Mundo : Disposable {
         modeloChao = criarModeloChao()
         chao = ModelInstance(modeloChao)
 
+        // Pool de zumbis: os primeiros ja nascem na vila; o resto fica "morto e invisivel" esperando o respawn.
         modeloInimigo = modeloZumbi ?: criarModeloInimigo()
-        val quantidade = minOf(Constantes.INIMIGOS_ATIVOS, Constantes.INIMIGOS_XZ.size / 2)
-        inimigos = Array(quantidade) { i ->
-            Inimigo(
+        val iniciais = Constantes.INIMIGOS_XZ.size / 2
+        inimigos = Array(maxOf(Constantes.INIMIGOS_POOL, iniciais)) { i ->
+            val ativo = i < iniciais
+            val inimigo = Inimigo(
                 modeloInimigo,
-                Constantes.INIMIGOS_XZ[i * 2],
-                Constantes.INIMIGOS_XZ[i * 2 + 1],
+                if (ativo) Constantes.INIMIGOS_XZ[i * 2] else 0f,
+                if (ativo) Constantes.INIMIGOS_XZ[i * 2 + 1] else 0f,
                 modeloZumbi != null
             )
+            if (!ativo) inimigo.desativar()
+            inimigo
         }
 
         modeloItemCura = criarModeloItem(
@@ -87,69 +96,183 @@ class Mundo : Disposable {
         modelosParedes = Array(totalParedes) { i ->
             val largura = Constantes.PAREDES[i * 4 + 2] - Constantes.PAREDES[i * 4]
             val profundidade = Constantes.PAREDES[i * 4 + 3] - Constantes.PAREDES[i * 4 + 1]
-            criarModeloCaixa(
-                largura, Constantes.PAREDE_ALTURA, profundidade,
-                Constantes.PAREDE_COR_R, Constantes.PAREDE_COR_G, Constantes.PAREDE_COR_B
-            )
+            val cor = corDaParede(Constantes.PAREDES_TIPO[i])
+            criarModeloCaixa(largura, Constantes.PAREDES_ALTURA[i], profundidade, cor[0], cor[1], cor[2])
         }
         paredes = Array(totalParedes) { i ->
             val instancia = ModelInstance(modelosParedes[i])
             val centroX = (Constantes.PAREDES[i * 4] + Constantes.PAREDES[i * 4 + 2]) * 0.5f
             val centroZ = (Constantes.PAREDES[i * 4 + 1] + Constantes.PAREDES[i * 4 + 3]) * 0.5f
-            instancia.transform.setToTranslation(centroX, Constantes.PAREDE_ALTURA * 0.5f, centroZ)
+            instancia.transform.setToTranslation(
+                centroX,
+                Constantes.PAREDES_BASE[i] + Constantes.PAREDES_ALTURA[i] * 0.5f,
+                centroZ
+            )
             instancia
         }
         caixasParedes = Array(totalParedes) { i ->
             BoundingBox(
-                Vector3(Constantes.PAREDES[i * 4], 0f, Constantes.PAREDES[i * 4 + 1]),
-                Vector3(Constantes.PAREDES[i * 4 + 2], Constantes.PAREDE_ALTURA, Constantes.PAREDES[i * 4 + 3])
+                Vector3(Constantes.PAREDES[i * 4], Constantes.PAREDES_BASE[i], Constantes.PAREDES[i * 4 + 1]),
+                Vector3(
+                    Constantes.PAREDES[i * 4 + 2],
+                    Constantes.PAREDES_BASE[i] + Constantes.PAREDES_ALTURA[i],
+                    Constantes.PAREDES[i * 4 + 3]
+                )
             )
         }
 
-        val piso = Constantes.PISO_INTERNO
-        modeloPisoInterno = criarModeloCaixa(
-            piso[2] - piso[0], Constantes.PISO_INTERNO_ESPESSURA, piso[3] - piso[1],
-            Constantes.PISO_INTERNO_COR_R, Constantes.PISO_INTERNO_COR_G, Constantes.PISO_INTERNO_COR_B
-        )
-        pisoInterno = ModelInstance(modeloPisoInterno)
-        pisoInterno.transform.setToTranslation(
-            (piso[0] + piso[2]) * 0.5f,
-            Constantes.PISO_INTERNO_ESPESSURA * 0.5f,
-            (piso[1] + piso[3]) * 0.5f
-        )
+        criarPisos()
 
         val totalItens = minOf(Constantes.ITENS_XZ.size / 2, Constantes.ITENS_TIPO.size)
         itens = Array(totalItens) { i ->
-            val ehCura = Constantes.ITENS_TIPO[i] == Constantes.ITEM_TIPO_CURA
-            ItemMundo(
-                if (ehCura) modeloItemCura else modeloItemMunicao,
-                if (ehCura) TipoItem.CURA else TipoItem.MUNICAO,
-                if (ehCura) Constantes.ITEM_CURA_QUANTIDADE else Constantes.ITEM_MUNICAO_QUANTIDADE,
-                Constantes.ITENS_XZ[i * 2],
-                Constantes.ITENS_XZ[i * 2 + 1]
+            val tipoItem = Constantes.ITENS_TIPO[i]
+            val x = Constantes.ITENS_XZ[i * 2]
+            val z = Constantes.ITENS_XZ[i * 2 + 1]
+            val y = Constantes.ITENS_Y[i]
+            when (tipoItem) {
+                Constantes.ITEM_TIPO_CURA ->
+                    ItemMundo(modeloItemCura, TipoItem.CURA, Constantes.ITEM_CURA_QUANTIDADE, x, z, y, null)
+                Constantes.ITEM_TIPO_FUZIL ->
+                    ItemMundo(modeloArmaFuzil ?: modeloItemMunicao, TipoItem.MUNICAO, 0, x, z, y, TipoArma.FUZIL)
+                Constantes.ITEM_TIPO_ESCOPETA ->
+                    ItemMundo(modeloArmaEscopeta ?: modeloItemMunicao, TipoItem.MUNICAO, 0, x, z, y, TipoArma.ESCOPETA)
+                else ->
+                    ItemMundo(modeloItemMunicao, TipoItem.MUNICAO, Constantes.ITEM_MUNICAO_QUANTIDADE, x, z, y, null)
+            }
+        }
+        Navegacao.livre(0f, 0f) // monta a grade de navegacao agora (e nao no meio do jogo)
+    }
+
+    private fun corDaParede(tipo: Int): FloatArray = when (tipo) {
+        1 -> floatArrayOf(Constantes.PAREDE_COR_PEDRA_R, Constantes.PAREDE_COR_PEDRA_G, Constantes.PAREDE_COR_PEDRA_B)
+        2 -> floatArrayOf(Constantes.PAREDE_COR_CERCA_R, Constantes.PAREDE_COR_CERCA_G, Constantes.PAREDE_COR_CERCA_B)
+        3 -> floatArrayOf(Constantes.PAREDE_COR_CELEIRO_R, Constantes.PAREDE_COR_CELEIRO_G, Constantes.PAREDE_COR_CELEIRO_B)
+        4 -> floatArrayOf(Constantes.PAREDE_COR_GRADE_R, Constantes.PAREDE_COR_GRADE_G, Constantes.PAREDE_COR_GRADE_B)
+        5 -> floatArrayOf(Constantes.PAREDE_COR_TRONCO_R, Constantes.PAREDE_COR_TRONCO_G, Constantes.PAREDE_COR_TRONCO_B)
+        else -> floatArrayOf(Constantes.PAREDE_COR_CASA_R, Constantes.PAREDE_COR_CASA_G, Constantes.PAREDE_COR_CASA_B)
+    }
+
+    /** Pisos internos das casas, andares altos e rampas: caixas finas, so para ver. */
+    private fun criarPisos() {
+        val p = Constantes.PISOS
+        for (i in 0 until p.size / 4) {
+            val m = criarModeloCaixa(
+                p[i * 4 + 2] - p[i * 4], Constantes.PISO_INTERNO_ESPESSURA, p[i * 4 + 3] - p[i * 4 + 1],
+                Constantes.PISO_INTERNO_COR_R, Constantes.PISO_INTERNO_COR_G, Constantes.PISO_INTERNO_COR_B
             )
+            modelosPisos.add(m)
+            val inst = ModelInstance(m)
+            inst.transform.setToTranslation(
+                (p[i * 4] + p[i * 4 + 2]) * 0.5f, Constantes.PISO_INTERNO_ESPESSURA * 0.5f, (p[i * 4 + 1] + p[i * 4 + 3]) * 0.5f
+            )
+            pisos.add(inst)
+        }
+        val a = Constantes.ALTOS
+        for (i in 0 until a.size / 4) {
+            val h = Constantes.ALTOS_ALTURA[i]
+            val m = criarModeloCaixa(
+                a[i * 4 + 2] - a[i * 4], Constantes.ALTO_ESPESSURA, a[i * 4 + 3] - a[i * 4 + 1],
+                Constantes.ALTO_COR_R, Constantes.ALTO_COR_G, Constantes.ALTO_COR_B
+            )
+            modelosPisos.add(m)
+            val inst = ModelInstance(m)
+            inst.transform.setToTranslation(
+                (a[i * 4] + a[i * 4 + 2]) * 0.5f, h - Constantes.ALTO_ESPESSURA * 0.5f, (a[i * 4 + 1] + a[i * 4 + 3]) * 0.5f
+            )
+            pisos.add(inst)
+        }
+        val r = Constantes.RAMPAS
+        for (i in 0 until r.size / 4) {
+            val eixo = Constantes.RAMPAS_EIXO[i]
+            if (eixo > 1) continue // so rampas ao longo de Z tem desenho
+            val h0 = Constantes.RAMPAS_ALTURAS[i * 2]
+            val h1 = Constantes.RAMPAS_ALTURAS[i * 2 + 1]
+            val largura = r[i * 4 + 2] - r[i * 4]
+            val comprimento = r[i * 4 + 3] - r[i * 4 + 1]
+            val subida = h1 - h0
+            val m = criarModeloCaixa(
+                largura, 0.15f, kotlin.math.sqrt(comprimento * comprimento + subida * subida),
+                Constantes.RAMPA_COR_R, Constantes.RAMPA_COR_G, Constantes.RAMPA_COR_B
+            )
+            modelosPisos.add(m)
+            val inst = ModelInstance(m)
+            val angulo = MathUtils.atan2(subida, comprimento) * MathUtils.radiansToDegrees
+            inst.transform
+                .setToTranslation((r[i * 4] + r[i * 4 + 2]) * 0.5f, (h0 + h1) * 0.5f - 0.075f, (r[i * 4 + 1] + r[i * 4 + 3]) * 0.5f)
+                .rotate(Vector3.X, if (eixo == 0) angulo else -angulo)
+            pisos.add(inst)
         }
     }
 
-    /** Atualiza a IA dos inimigos. Chamar uma vez por frame (jogo rodando). */
-    fun atualizar(dt: Float, jogador: Jogador) {
+    /**
+     * Atualiza a IA dos inimigos e o respawn. Chamar uma vez por frame (jogo rodando).
+     * (dirX, dirZ) = frente da camera no plano XZ (para nascer fora da vista).
+     */
+    fun atualizar(dt: Float, jogador: Jogador, dirX: Float, dirZ: Float) {
         for (i in inimigos.indices) {
             inimigos[i].atualizar(dt, jogador)
         }
+        if (jogador.vida <= 0) return
+        tempoSpawn -= dt
+        if (tempoSpawn <= 0f) {
+            tempoSpawn = Constantes.SPAWN_INTERVALO_S
+            tentarNascer(jogador, dirX, dirZ)
+        }
     }
 
-    /** Coloca todos os inimigos de volta no início (vivos e parados) e devolve os itens ao chão. */
-    fun reiniciar() {
+    /**
+     * Respawn: se ha poucos zumbis vivos, escolhe um ponto de nascimento LONGE (>= SPAWN_DIST_MIN) e fora da vista
+     * (atras/ao lado da camera, ou escondido por parede), e usa um zumbi do pool que ja sumiu.
+     */
+    private fun tentarNascer(jogador: Jogador, dirX: Float, dirZ: Float) {
+        if (contarInimigosVivos() >= Constantes.SPAWN_MAX_VIVOS) return
+        var livre: Inimigo? = null
         for (i in inimigos.indices) {
-            inimigos[i].reiniciar()
+            if (inimigos[i].disponivelParaNascer) {
+                livre = inimigos[i]
+                break
+            }
+        }
+        val zumbi = livre ?: return
+        val pontos = Constantes.SPAWNS_XZ
+        val total = pontos.size / 2
+        val inicio = MathUtils.random(0, total - 1)
+        for (k in 0 until total) {
+            val idx = (inicio + k) % total
+            val sx = pontos[idx * 2]
+            val sz = pontos[idx * 2 + 1]
+            val dx = sx - jogador.posicao.x
+            val dz = sz - jogador.posicao.z
+            val d = kotlin.math.sqrt(dx * dx + dz * dz)
+            if (d < Constantes.SPAWN_DIST_MIN) continue
+            val cosAngulo = (dx * dirX + dz * dirZ) / d
+            val naVista = cosAngulo > Constantes.SPAWN_COS_VISAO &&
+                !Navegacao.paredeEntre(jogador.posicao.x, jogador.posicao.z, sx, sz)
+            if (naVista) continue
+            zumbi.nascer(sx, sz)
+            return
+        }
+    }
+
+    /** Volta ao inicio: zumbis iniciais vivos, resto some, itens no chao. */
+    fun reiniciar() {
+        val iniciais = Constantes.INIMIGOS_XZ.size / 2
+        for (i in inimigos.indices) {
+            if (i < iniciais) {
+                inimigos[i].redefinirPosicao(Constantes.INIMIGOS_XZ[i * 2], Constantes.INIMIGOS_XZ[i * 2 + 1])
+                inimigos[i].reiniciar()
+            } else {
+                inimigos[i].desativar()
+            }
         }
         for (i in itens.indices) {
             itens[i].coletado = false
         }
+        tempoSpawn = Constantes.SPAWN_INTERVALO_S
     }
 
     /** Item no chão mais perto de (x, z) dentro de `raio` metros (plano XZ), ou null. Sem alocação. */
-    fun itemMaisProximo(x: Float, z: Float, raio: Float): ItemMundo? {
+    fun itemMaisProximo(x: Float, z: Float, y: Float, raio: Float): ItemMundo? {
         var melhor: ItemMundo? = null
         var melhorQuadrado = raio * raio
         for (i in itens.indices) {
@@ -157,6 +280,7 @@ class Mundo : Disposable {
             if (item.coletado) continue
             val dx = item.x - x
             val dz = item.z - z
+            if (kotlin.math.abs(item.y - y) > 1.8f) continue // outro andar
             val quadrado = dx * dx + dz * dz
             if (quadrado <= melhorQuadrado) {
                 melhorQuadrado = quadrado
@@ -312,6 +436,8 @@ class Mundo : Disposable {
         modeloItemCura.dispose()
         modeloItemMunicao.dispose()
         for (i in modelosParedes.indices) modelosParedes[i].dispose()
-        modeloPisoInterno.dispose()
+        for (mp in modelosPisos) mp.dispose()
+        modeloArmaFuzil?.dispose()
+        modeloArmaEscopeta?.dispose()
     }
 }
