@@ -1,10 +1,17 @@
-# MAPA DE CRIAÇÃO v2.14 — Jogo 3D de Sobrevivência (Kotlin + Python de bastidor / Android)
+# MAPA DE CRIAÇÃO v2.15 — Jogo 3D de Sobrevivência (Kotlin + Python de bastidor / Android)
 
-**Versão do documento:** 2.14 | **Data:** 16/11/2026 | **Substitui:** v2.13
+**Versão do documento:** 2.15 | **Data:** 16/11/2026 | **Substitui:** v2.14
 **Nome provisório:** PROJETO_SOBREVIVENTE (nome final: em aberto)
 
 > Cole este arquivo inteiro no início de qualquer conversa com uma IA.
 > Ele é a **fonte única da verdade**. O que não estiver aqui, a IA **pergunta**; ela não decide.
+
+### Mudanças da v2.14 para a v2.15
+- **F3 aprovado pelo dono (vídeo, 16/11/2026):** boneco e zumbi animados no jogo; a correção da pose de repouso dos ossos no `.g3dj` funcionou (`GRAVAR_POSE_INVERSA = False`).
+- **Animação mais humana (F2b), pedido do dono:** esqueleto de **18 ossos** (novos: `pescoco`, `ombro_esq/dir`, `mao_esq/dir`); marcha com curvas de articulação humanas (contato do calcanhar, apoio, impulso, balanço), giro e queda da pelve, contra-giro dos ombros, balanço dos braços com atraso (cotovelo e mão seguem o ombro), cabeça estabilizada; parado com respiração, troca de peso e olhar; tiro, ataque e morte com sobreposição (cada osso reage com atraso). Zumbi com perna esquerda arrastando, cabeça pendendo, braço desgovernado e espasmos.
+- Ciclos mais longos: parado 90, andar 36 (zumbi 42), correr 22 (zumbi 26), atirar 24, atacar 36, morrer 54 (zumbi 60) quadros a 30 fps.
+- No jogo: velocidade da animação acompanha a velocidade real (joystick) para os pés não patinarem (`JOGADOR_ANIM_REF_*`); transição entre animações de 0,18 s; `numBones` = 20.
+- Orçamento 24.3 (ossos ≤ 25): 18 ossos OK. Alterados: `animacao.py`, `Constantes.kt`, `Jogador.kt`, `ModeloAnimado.kt`, modelos `.g3dj`.
 
 ### Mudanças da v2.13 para a v2.14
 - **F2 rodou no CI (log verde, 16/11/2026):** orçamento da seção 24.3 OK (1050 triângulos, 13 ossos, 512×512, 1,80 m, origem nos pés) e pele do Blender idêntica à conta em Python (0,000000 m). Falta o dono aprovar as poses na folha `previa_python.png`.
@@ -12,7 +19,7 @@
 - **F3 entregue (em teste):** `jogador.g3dj` e `zumbi.g3dj` (+ texturas) em `android/assets/modelos/`; jogador e zumbi usam o modelo animado no lugar das cápsulas, com a animação trocando conforme o estado. Se o arquivo faltar ou falhar ao carregar, o jogo **volta sozinho para a cápsula**. Alterados: `Constantes.kt`, `Jogador.kt`, `Inimigo.kt`, `Mundo.kt`, `TelaJogo.kt`. Novo: `mundo/ModeloAnimado.kt` (fora da seção 9, a confirmar).
 - Escolhas do F3 (a confirmar): jogador usa `correr` com o joystick ≥ 60% e `andar` abaixo; `atirar` reinicia a cada tiro; zumbi persegue com `correr` a 0,55× e ataca com `atacar`; o corpo do zumbi fica 5 s no chão e some; o zumbi tem tinta (laranja ao perseguir, vermelho ao atacar) e pisca claro ao levar tiro; clarão no cano mais perto das mãos.
 - **Correção no `.g3dj` (1º teste no aparelho):** o corpo saiu esticado/quebrado porque `bones` do `.g3dj` deve levar a pose de repouso (`T(+pivô)`), que o LibGDX inverte ao carregar; a v1 gravava a inversa. Constante `GRAVAR_POSE_INVERSA` em `exportar.py` (NÃO TENHO CERTEZA da correção; se ainda sair errado, inverter a constante).
-- `DefaultShader` configurado com 16 ossos (`numBones`), pois o boneco tem 13.
+- `DefaultShader` configurado com 16 ossos (`numBones`), pois o boneco tem 13 (na v2.15: 18 ossos e `numBones` = 20).
 
 ### Mudanças da v2.12 para a v2.13
 - **F2 entregue (em teste):** esqueleto de 13 ossos, pesos de pele (no máximo 2 ossos por vértice), 5 animações por personagem e exportação em `.g3dj`. Novos arquivos em `ferramentas/blender/`: `animacao.py`, `exportar.py`, `gerar_boneco.py`, `previa_python.py`, `LEIAME.md`. Alterado: `.github/workflows/gerar-modelo.yml` (etapa `f2`).
@@ -694,7 +701,7 @@ Não implementar nem detalhar agora. Quando o dono liberar, esta seção será p
 - (Resolvido em 15/11/2026) Gradle instalado pelo CI, sem wrapper: ver seção 20.
 - Sons/música (por padrão: nenhum na Fase 1).
 - (Resolvido em 16/11/2026) Como carregar modelo com esqueleto no LibGDX: **`.g3dj` com `G3dModelLoader`** (decisão do dono). O `.g3dj` **ainda não foi carregado no LibGDX pela IA** (sem LibGDX no ambiente): a prova é o teste do F3 no aparelho.
-- `numBones` do `DefaultShader` em 16 (boneco com 13 ossos): a confirmar no aparelho (limite de uniformes do GLES2).
+- `numBones` do `DefaultShader` em 20 (boneco com 18 ossos): a confirmar no aparelho (limite de uniformes do GLES2).
 - Versão do Blender e método de instalação no CI: **proposta 4.5.11 LTS, tarball oficial** (a confirmar pelo resultado do F1).
 - Convenção de **frente do modelo**: proposta no F0 = **-Z** (a confirmar pelo dono ao ver o preview).
 - (Resolvido em 15/11/2026) Marcos F0 a F3 correm agora, em paralelo aos 1.x.

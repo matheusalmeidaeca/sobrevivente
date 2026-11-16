@@ -193,9 +193,17 @@ class Jogador : Disposable {
         } else if (tempoEncarar > 0f) {
             animador.tocarSe("atirar", 1, 1f, Constantes.ANIM_TRANSICAO_TIRO_S)
         } else if (intensidadeMovimento >= Constantes.JOGADOR_LIMIAR_CORRER) {
-            animador.tocarSe("correr", -1, 1f, t)
+            val v = MathUtils.clamp(
+                intensidadeMovimento * Constantes.JOGADOR_VELOCIDADE / Constantes.JOGADOR_ANIM_REF_CORRER, 0.8f, 1.6f
+            )
+            animador.tocarSe("correr", -1, v, t)
+            animador.definirVelocidade(v)
         } else if (intensidadeMovimento > 0f) {
-            animador.tocarSe("andar", -1, 1f, t)
+            val v = MathUtils.clamp(
+                intensidadeMovimento * Constantes.JOGADOR_VELOCIDADE / Constantes.JOGADOR_ANIM_REF_ANDAR, 0.6f, 1.8f
+            )
+            animador.tocarSe("andar", -1, v, t)
+            animador.definirVelocidade(v)
         } else {
             animador.tocarSe("parado", -1, 1f, t)
         }

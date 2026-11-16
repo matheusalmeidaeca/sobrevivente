@@ -56,6 +56,11 @@ class Animador(private val instancia: ModelInstance) {
         tocar(id, vezes, velocidade, transicao)
     }
 
+    /** Ajusta a velocidade de reproducao da animacao em andamento (acompanhar a velocidade real). */
+    fun definirVelocidade(velocidade: Float) {
+        controle.current?.speed = velocidade
+    }
+
     fun atualizar(dt: Float) {
         controle.update(dt)
     }

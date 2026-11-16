@@ -349,14 +349,17 @@ object Constantes {
     // Marco F3: personagens animados (modelos .g3dj gerados no F2, copiados para android/assets/modelos)
     const val MODELO_JOGADOR = "modelos/jogador.g3dj"
     const val MODELO_ZUMBI = "modelos/zumbi.g3dj"
-    /** Ossos por modelo no shader (o boneco tem 13; o padrao do LibGDX e 12). */
-    const val NUM_OSSOS_SHADER = 16
-    const val ANIM_TRANSICAO_S = 0.12f
+    /** Ossos por modelo no shader (o boneco tem 18; o padrao do LibGDX e 12). */
+    const val NUM_OSSOS_SHADER = 20
+    const val ANIM_TRANSICAO_S = 0.18f
     const val ANIM_TRANSICAO_TIRO_S = 0.04f
     /** Joystick acima disto = correr; abaixo = andar. */
     const val JOGADOR_LIMIAR_CORRER = 0.6f
-    /** Velocidade de reproducao do ciclo `correr` do zumbi (o ciclo cobre ~3,7 m/s; o zumbi anda a 2 m/s). */
-    const val ZUMBI_ANIM_VELOCIDADE = 0.55f
+    /** Velocidade de reproducao do ciclo `correr` do zumbi (o ciclo cobre ~2,1 m/s; o zumbi anda a 2 m/s). */
+    /** Velocidade (m/s) que cada ciclo do jogador cobre a 1x; a animacao acelera/desacelera com o joystick (sem patinar). */
+    const val JOGADOR_ANIM_REF_ANDAR = 1.25f
+    const val JOGADOR_ANIM_REF_CORRER = 2.9f
+    const val ZUMBI_ANIM_VELOCIDADE = 0.95f
     const val ENIMIGO_VELOCIDADE_GIRO = 8f
     /** Quanto tempo o corpo do zumbi fica visivel depois de morrer. */
     const val CORPO_DURACAO_S = 5f
