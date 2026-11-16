@@ -51,6 +51,15 @@ class Arma {
         return false
     }
 
+    /** Volta ao estado inicial (carregador cheio, reserva inicial). Usado ao reiniciar depois da morte. */
+    fun reiniciar() {
+        carregador = Constantes.PISTOLA_CARREGADOR
+        reserva = Constantes.PISTOLA_RESERVA_INICIAL
+        recarregando = false
+        tempoRecarga = 0f
+        tempoCadencia = 0f
+    }
+
     private fun iniciarRecarga() {
         recarregando = true
         tempoRecarga = Constantes.PISTOLA_RECARGA_S

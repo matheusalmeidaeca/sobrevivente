@@ -68,6 +68,13 @@ class Mundo : Disposable {
         }
     }
 
+    /** Coloca todos os inimigos de volta no início (vivos e parados). */
+    fun reiniciar() {
+        for (i in inimigos.indices) {
+            inimigos[i].reiniciar()
+        }
+    }
+
     fun contarInimigosVivos(): Int {
         var total = 0
         for (i in inimigos.indices) {

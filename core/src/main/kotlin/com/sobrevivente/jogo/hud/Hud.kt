@@ -12,7 +12,7 @@ import com.sobrevivente.jogo.entrada.ControlesToque
 /**
  * Marco 1.3: reúne tudo que fica sobre o jogo 3D (menos o joystick, que tem classe própria):
  * barra de vida, minimapa placeholder, mira, marcador de acerto, munição, 3 botões,
- * overlay de debug e tela de pausa.
+ * overlay de debug, tela de pausa e tela de morte (Marco 1.6).
  * Só desenha; não decide nada de jogo.
  */
 class Hud(private val controles: ControlesToque) : Disposable {
@@ -24,6 +24,7 @@ class Hud(private val controles: ControlesToque) : Disposable {
     private val overlayDebug = OverlayDebug()
 
     var pausado = false
+    var morto = false
     var inimigosVivos = 0
 
     // Munição (Marco 1.4)
@@ -117,13 +118,44 @@ class Hud(private val controles: ControlesToque) : Disposable {
         if (pausado) {
             forma.setColor(0f, 0f, 0f, Constantes.PAUSA_ALFA_FUNDO)
             forma.rect(0f, 0f, largura, altura)
+        } else if (morto) {
+            desenharFormasMorte(forma)
         }
+    }
+
+    /** Véu vermelho sobre a tela e o botão REINICIAR (mais escuro enquanto o dedo está nele). */
+    private fun desenharFormasMorte(forma: ShapeRenderer) {
+        forma.setColor(
+            Constantes.MORTE_FUNDO_R,
+            Constantes.MORTE_FUNDO_G,
+            Constantes.MORTE_FUNDO_B,
+            Constantes.MORTE_FUNDO_ALFA
+        )
+        forma.rect(0f, 0f, largura, altura)
+
+        val escurecer = if (controles.reiniciarApertado) Constantes.BOTAO_ESCURECER else 1f
+        forma.setColor(
+            Constantes.REINICIAR_COR_R * escurecer,
+            Constantes.REINICIAR_COR_G * escurecer,
+            Constantes.REINICIAR_COR_B * escurecer,
+            1f
+        )
+        forma.rect(
+            controles.reiniciarEsquerda,
+            controles.reiniciarBase,
+            controles.reiniciarLargura,
+            controles.reiniciarAltura
+        )
     }
 
     /** Chamar entre lote.begin() e lote.end(). */
     fun desenharTextos(lote: SpriteBatch, fps: Int) {
         if (pausado) {
             desenharTextoPausa(lote)
+            return
+        }
+        if (morto) {
+            desenharTextosMorte(lote)
             return
         }
         definirEscala(Constantes.FONTE_ESCALA_HUD)
@@ -194,6 +226,33 @@ class Hud(private val controles: ControlesToque) : Disposable {
             0f,
             meioY - espaco,
             largura,
+            Align.center,
+            false
+        )
+    }
+
+    private fun desenharTextosMorte(lote: SpriteBatch) {
+        // Título acima do meio da tela; o botão fica logo abaixo (posição vem de ControlesToque).
+        definirEscala(Constantes.MORTE_ESCALA_TITULO)
+        val meioY = altura * 0.5f
+        fonte.draw(
+            lote,
+            Constantes.TEXTO_MORTE,
+            0f,
+            meioY + fonte.capHeight,
+            largura,
+            Align.center,
+            false
+        )
+
+        definirEscala(Constantes.REINICIAR_ESCALA_TEXTO)
+        val centroBotaoY = controles.reiniciarBase + controles.reiniciarAltura * 0.5f
+        fonte.draw(
+            lote,
+            Constantes.TEXTO_REINICIAR,
+            controles.reiniciarEsquerda,
+            centroBotaoY + fonte.capHeight * 0.5f,
+            controles.reiniciarLargura,
             Align.center,
             false
         )

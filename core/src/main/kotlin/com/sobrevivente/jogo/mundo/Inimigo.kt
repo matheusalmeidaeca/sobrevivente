@@ -22,6 +22,8 @@ class Inimigo(modelo: Model, x: Float, z: Float) {
     val instancia = ModelInstance(modelo)
     val caixa = BoundingBox()
     val posicao = Vector3(x, 0f, z) // posição dos PÉS
+    private val inicioX = x
+    private val inicioZ = z
 
     var vida = Constantes.ENIMIGO_VIDA
         private set
@@ -90,6 +92,17 @@ class Inimigo(modelo: Model, x: Float, z: Float) {
             }
             Estado.MORTO -> Unit
         }
+    }
+
+    /** Volta à posição inicial, com vida cheia e parado. Usado ao reiniciar depois da morte do jogador. */
+    fun reiniciar() {
+        posicao.set(inicioX, 0f, inicioZ)
+        vida = Constantes.ENIMIGO_VIDA
+        estado = Estado.PARADO
+        tempoAtaque = 0f
+        tempoFlash = 0f
+        aplicarCor()
+        atualizarTransformacao()
     }
 
     /** Devolve true se este tiro matou o inimigo. */

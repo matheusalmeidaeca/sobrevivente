@@ -218,4 +218,20 @@ object Constantes {
     // Texto de munição (ao lado esquerdo do botão RECARREGAR)
     const val MUNICAO_LARGURA_DP = 160f
     const val MUNICAO_ESPACO_DP = 8f
+
+    // Tela de morte e botão REINICIAR (Marco 1.6)
+    const val TEXTO_MORTE = "VOCÊ MORREU"
+    const val TEXTO_REINICIAR = "REINICIAR"
+    const val MORTE_FUNDO_R = 0.35f
+    const val MORTE_FUNDO_G = 0.02f
+    const val MORTE_FUNDO_B = 0.02f
+    const val MORTE_FUNDO_ALFA = 0.65f
+    const val MORTE_ESCALA_TITULO = 2.0f
+    const val REINICIAR_LARGURA_DP = 200f
+    const val REINICIAR_ALTURA_DP = 56f
+    const val REINICIAR_ESPACO_DP = 24f // entre o título e o botão
+    const val REINICIAR_ESCALA_TEXTO = 1.0f
+    const val REINICIAR_COR_R = 0.20f
+    const val REINICIAR_COR_G = 0.50f
+    const val REINICIAR_COR_B = 0.90f
 }

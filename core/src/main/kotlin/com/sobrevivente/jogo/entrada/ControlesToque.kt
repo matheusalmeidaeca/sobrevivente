@@ -10,6 +10,7 @@ import kotlin.math.sqrt
  * Multitouch: cada dedo é "dono" de uma função pelo ID do ponteiro.
  * Prioridade no toque: zona de debug > botões de ação > joystick/câmera.
  * Metade esquerda (parte de baixo) = joystick; metade direita (fora dos botões) = girar câmera.
+ * Com o jogador morto (Marco 1.6) só o botão REINICIAR aceita toque.
  * Todas as coordenadas daqui têm origem EMBAIXO-ESQUERDA (Y para cima),
  * já convertidas do Y do toque, que vem de cima (armadilha 5 do mapa).
  */
@@ -40,6 +41,26 @@ class ControlesToque : InputAdapter() {
     /** Quando true (pausa), nenhum toque novo é aceito. Use definirBloqueado(). */
     var bloqueado = false
         private set
+
+    /** Quando true (jogador morto), só o botão REINICIAR aceita toque. Use definirMorto(). */
+    var morto = false
+        private set
+
+    // Botão REINICIAR (retângulo, em pixels; canto inferior esquerdo + tamanho)
+    var reiniciarEsquerda = 0f
+        private set
+    var reiniciarBase = 0f
+        private set
+    var reiniciarLargura = 1f
+        private set
+    var reiniciarAltura = 1f
+        private set
+    private var ponteiroReiniciar = SEM_PONTEIRO
+    private var reiniciarPendente = false
+
+    /** True enquanto um dedo está apertando o botão REINICIAR (para o feedback visual). */
+    val reiniciarApertado: Boolean
+        get() = ponteiroReiniciar != SEM_PONTEIRO
 
     private var largura = 1f
     private var altura = 1f
@@ -78,6 +99,7 @@ class ControlesToque : InputAdapter() {
         centroX = margem + raioBase
         centroY = margem + raioBase
         calcularAcoes(densidade)
+        calcularReiniciar(densidade)
         debugLargura = Constantes.DEBUG_ZONA_LARGURA_DP * densidade
         debugAltura = Constantes.DEBUG_ZONA_ALTURA_DP * densidade
         liberarTudo()
@@ -111,6 +133,19 @@ class ControlesToque : InputAdapter() {
         )
     }
 
+    /** Botão REINICIAR: centrado na largura, logo abaixo do meio da tela (o título fica acima). */
+    private fun calcularReiniciar(densidade: Float) {
+        reiniciarLargura = Constantes.REINICIAR_LARGURA_DP * densidade
+        reiniciarAltura = Constantes.REINICIAR_ALTURA_DP * densidade
+        reiniciarEsquerda = (largura - reiniciarLargura) * 0.5f
+        reiniciarBase = altura * 0.5f - Constantes.REINICIAR_ESPACO_DP * densidade - reiniciarAltura
+    }
+
+    private fun dentroReiniciar(x: Float, y: Float): Boolean {
+        return x >= reiniciarEsquerda && x <= reiniciarEsquerda + reiniciarLargura &&
+            y >= reiniciarBase && y <= reiniciarBase + reiniciarAltura
+    }
+
     private fun definirAcao(indice: Int, x: Float, y: Float, raio: Float, alvoMinimo: Float) {
         acoesX[indice] = x
         acoesY[indice] = y
@@ -134,6 +169,20 @@ class ControlesToque : InputAdapter() {
     fun definirBloqueado(valor: Boolean) {
         bloqueado = valor
         if (valor) liberarTudo()
+    }
+
+    /** Morte: solta todos os dedos e deixa só o botão REINICIAR aceitar toque. */
+    fun definirMorto(valor: Boolean) {
+        morto = valor
+        liberarTudo()
+        reiniciarPendente = false
+    }
+
+    /** True uma única vez depois de soltar o dedo dentro do botão REINICIAR. */
+    fun consumirReiniciar(): Boolean {
+        val valor = reiniciarPendente
+        reiniciarPendente = false
+        return valor
     }
 
     /** Chamar uma vez por frame (conta o toque longo do debug). */
@@ -185,6 +234,7 @@ class ControlesToque : InputAdapter() {
         ponteiroDebug = SEM_PONTEIRO
         tempoDebug = 0f
         debugDisparado = false
+        ponteiroReiniciar = SEM_PONTEIRO
     }
 
     private fun liberarJoystick() {
@@ -242,6 +292,15 @@ class ControlesToque : InputAdapter() {
         val x = screenX.toFloat()
         val y = altura - screenY
 
+        // 0) Morto: só o botão REINICIAR responde.
+        if (morto) {
+            if (ponteiroReiniciar == SEM_PONTEIRO && dentroReiniciar(x, y)) {
+                ponteiroReiniciar = pointer
+                return true
+            }
+            return false
+        }
+
         // 1) Zona de debug (canto superior esquerdo): só conta o toque longo.
         if (x <= debugLargura && y >= altura - debugAltura) {
             if (ponteiroDebug == SEM_PONTEIRO) {
@@ -295,6 +354,7 @@ class ControlesToque : InputAdapter() {
             return true
         }
         if (pointer == ponteiroDebug) return true
+        if (pointer == ponteiroReiniciar) return true
         for (i in 0 until NUM_ACOES) {
             if (acoesPonteiro[i] == pointer) return true // botão segue apertado até soltar
         }
@@ -302,6 +362,12 @@ class ControlesToque : InputAdapter() {
     }
 
     override fun touchUp(screenX: Int, screenY: Int, pointer: Int, button: Int): Boolean {
+        if (pointer == ponteiroReiniciar) {
+            ponteiroReiniciar = SEM_PONTEIRO
+            // Só vale se soltar o dedo ainda em cima do botão.
+            if (dentroReiniciar(screenX.toFloat(), altura - screenY)) reiniciarPendente = true
+            return true
+        }
         if (pointer == ponteiroJoystick) {
             liberarJoystick()
             return true

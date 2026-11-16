@@ -18,11 +18,11 @@ import com.sobrevivente.jogo.mundo.Arma
 import com.sobrevivente.jogo.mundo.Jogador
 import com.sobrevivente.jogo.mundo.Mundo
 
-/** Marco 1.5: inimigos que perseguem, atacam e morrem a tiros (sobre o tiro do 1.4 e o HUD do 1.3). */
+/** Marco 1.6: morte do jogador (tela VOCÊ MORREU) e reinício, sobre os inimigos do 1.5, o tiro do 1.4 e o HUD do 1.3. */
 class TelaJogo : ScreenAdapter() {
 
     private val mundo = Mundo()
-    private val jogador = Jogador()
+    private var jogador = Jogador() // var: é recriado ao reiniciar depois da morte
     private val arma = Arma()
     private val cameraJogo = CameraTerceiraPessoa()
     private val controles = ControlesToque()
@@ -34,6 +34,7 @@ class TelaJogo : ScreenAdapter() {
     private val forma = ShapeRenderer()
 
     private var pausado = false
+    private var morto = false
 
     init {
         cameraJogo.seguir(jogador.posicao)
@@ -60,45 +61,78 @@ class TelaJogo : ScreenAdapter() {
         Gdx.app.log("TELA", if (pausado) "pausado" else "retomado")
     }
 
+    /** Câmera, movimento e tiro (só com o jogador vivo e o jogo rodando). */
+    private fun atualizarJogador(dt: Float, densidade: Float) {
+        cameraJogo.girar(
+            controles.consumirGiroX() / densidade,
+            controles.consumirGiroY() / densidade
+        )
+        jogador.mover(dt, controles.movimentoX, controles.movimentoY, cameraJogo.yaw)
+        cameraJogo.seguir(jogador.posicao)
+
+        // Tiro: o raio sai da câmera, atravessa o centro da tela (onde fica a mira)
+        val atirou = arma.atualizar(
+            dt,
+            controles.acaoPressionada(ControlesToque.ACAO_ATIRAR),
+            controles.consumirPressao(ControlesToque.ACAO_RECARREGAR)
+        )
+        if (atirou) {
+            val acertou = mundo.atirar(
+                cameraJogo.camera.position,
+                cameraJogo.camera.direction,
+                Constantes.PISTOLA_ALCANCE,
+                Constantes.PISTOLA_DANO
+            )
+            if (acertou) hud.mostrarAcerto()
+        }
+        jogador.atualizarTiro(dt, cameraJogo.yaw, atirou)
+    }
+
+    private fun morrer() {
+        morto = true
+        hud.morto = true
+        controles.definirMorto(true) // solta os dedos; só REINICIAR responde
+        Gdx.app.log("TELA", "jogador morreu")
+    }
+
+    /** Restaura vida, munição e inimigos. O jogador é recriado (descarta o corpo antigo). */
+    private fun reiniciar() {
+        jogador.dispose()
+        jogador = Jogador()
+        arma.reiniciar()
+        mundo.reiniciar()
+        cameraJogo.seguir(jogador.posicao)
+        morto = false
+        hud.morto = false
+        controles.definirMorto(false)
+        Gdx.app.log("TELA", "reiniciado")
+    }
+
     override fun render(delta: Float) {
         val dt = minOf(delta, Constantes.DELTA_MAXIMO)
         val densidade = Gdx.graphics.density
 
         // Entrada de alto nível
         controles.atualizar(dt)
-        if (controles.consumirVoltar()) alternarPausa()
+        val apertouVoltar = controles.consumirVoltar()
+        if (apertouVoltar && !morto) alternarPausa() // morto: Voltar não pausa
         if (controles.consumirAlternarDebug()) hud.alternarDebug()
+        if (morto && controles.consumirReiniciar()) reiniciar()
 
         // Lógica (parada durante a pausa)
         if (!pausado) {
-            cameraJogo.girar(
-                controles.consumirGiroX() / densidade,
-                controles.consumirGiroY() / densidade
-            )
-            jogador.mover(dt, controles.movimentoX, controles.movimentoY, cameraJogo.yaw)
-            cameraJogo.seguir(jogador.posicao)
-
-            // Tiro: o raio sai da câmera, atravessa o centro da tela (onde fica a mira)
-            val atirou = arma.atualizar(
-                dt,
-                controles.acaoPressionada(ControlesToque.ACAO_ATIRAR),
-                controles.consumirPressao(ControlesToque.ACAO_RECARREGAR)
-            )
-            if (atirou) {
-                val acertou = mundo.atirar(
-                    cameraJogo.camera.position,
-                    cameraJogo.camera.direction,
-                    Constantes.PISTOLA_ALCANCE,
-                    Constantes.PISTOLA_DANO
-                )
-                if (acertou) hud.mostrarAcerto()
+            if (morto) {
+                // Sem movimento nem tiro; só deixa um clarão em andamento terminar.
+                jogador.atualizarTiro(dt, cameraJogo.yaw, false)
+            } else {
+                atualizarJogador(dt, densidade)
             }
-            jogador.atualizarTiro(dt, cameraJogo.yaw, atirou)
             mundo.atualizar(dt, jogador)
             hud.atualizar(dt)
+            if (!morto && jogador.vida <= 0) morrer()
         }
         hud.definirMunicao(arma.carregador, arma.reserva, arma.recarregando)
-        hud.definirVida(jogador.vida, Constantes.JOGADOR_VIDA_MAXIMA)
+        hud.definirVida(maxOf(jogador.vida, 0), Constantes.JOGADOR_VIDA_MAXIMA)
         hud.inimigosVivos = mundo.contarInimigosVivos()
 
         // Desenho 3D
