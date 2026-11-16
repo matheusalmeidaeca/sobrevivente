@@ -1,0 +1,32 @@
+// ferramentas/gerador-boneco-kotlin/build.gradle
+// Programa JVM Kotlin sem dependencias externas (so a stdlib e o JDK: AWT/ImageIO).
+plugins {
+    id 'org.jetbrains.kotlin.jvm' version '1.9.22'
+    id 'application'
+}
+
+repositories {
+    mavenCentral()
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+compileKotlin {
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+}
+
+application {
+    mainClass = 'gerador.MainKt'
+    applicationDefaultJvmArgs = ['-Djava.awt.headless=true']
+}
+
+// "gradle run" grava tudo na pasta saida/ (ignorada pelo git).
+run {
+    args 'saida'
+    workingDir = projectDir
+}

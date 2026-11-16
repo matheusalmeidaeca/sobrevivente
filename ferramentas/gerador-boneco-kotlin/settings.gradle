@@ -1,0 +1,3 @@
+// ferramentas/gerador-boneco-kotlin/settings.gradle
+// Projeto Gradle SEPARADO do jogo: nao entra no APK e nao esta no settings.gradle da raiz.
+rootProject.name = 'gerador-boneco'

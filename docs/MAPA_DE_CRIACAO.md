@@ -1,10 +1,22 @@
-# MAPA DE CRIAÇÃO v2.8 — Jogo 3D de Sobrevivência (Kotlin + Python de bastidor / Android)
+# MAPA DE CRIAÇÃO v2.10 — Jogo 3D de Sobrevivência (Kotlin + Python de bastidor / Android)
 
-**Versão do documento:** 2.8 | **Data:** 15/11/2026 | **Substitui:** v2.7
+**Versão do documento:** 2.10 | **Data:** 15/11/2026 | **Substitui:** v2.9
 **Nome provisório:** PROJETO_SOBREVIVENTE (nome final: em aberto)
 
 > Cole este arquivo inteiro no início de qualquer conversa com uma IA.
 > Ele é a **fonte única da verdade**. O que não estiver aqui, a IA **pergunta**; ela não decide.
+
+### Mudanças da v2.9 para a v2.10
+- O dono deu **"ok"** para iniciar o **Marco F0** (gerador Kotlin do boneco). **F0 em teste** (não compilado pela IA: sem compilador Kotlin no ambiente da conversa; só um protótipo descartável em Python validou geometria, UV e textura).
+- Novos: `ferramentas/gerador-boneco-kotlin/` (`settings.gradle`, `build.gradle`, `LEIAME.md` e, em `src/main/kotlin/gerador/`: `Parametros.kt`, `Geometria.kt`, `Textura.kt`, `Previa.kt`, `ExportadorObj.kt`, `Main.kt`) e `.github/workflows/gerar-modelo.yml`.
+- **Arquivos fora da estrutura da seção 9 (a confirmar):** os 6 `.kt` acima (a seção 9 só prevê a pasta).
+- Escolhas (a confirmar): projeto Gradle **separado** do jogo (não entra no `settings.gradle` da raiz); **frente do modelo = -Z** (bate com yaw 0, sem girar no jogo); esquerda = -X; 10 lados por anel; **1.050 triângulos** (orçamento 2.000); 6 peças-grupo com textura atlas 512x512 gerada por código; saída `boneco.obj/.mtl` (jogador) **e** `zumbi.obj/.mtl` (mesma malha, outra textura); `preview.png` único com 6 quadros; `relatorio.txt`; normais planas por triângulo; a pose do zumbi continua igual à do jogador até o F2 (animações).
+
+### Mudanças da v2.8 para a v2.9
+- O dono informou que o **Marco 1.8 "deu certo"** (aprovação dele; as caixas da seção 17 continuam para o dono marcar).
+- **Foco agora: estética dos personagens** (pipeline da seção 24). Os marcos F0 a F3 passam a correr **agora**, em paralelo aos 1.x; a história (Fase 2) continua reservada.
+- **Decisões do dono (seção 20):** estilo de arte **low-poly realista com proporções humanas**; inimigos **humanos infectados (zumbis)**; acabamento do boneco com **textura simples de roupa 512x512** (gerada por código, sem pintura à mão nem asset externo).
+- Proposta da IA (a confirmar): o F0 passa a gerar também **UVs** e a textura PNG; jogador e zumbi usam a **mesma malha-base** com texturas e poses diferentes (ver seção 24.2).
 
 ### Mudanças da v2.7 para a v2.8
 - O dono pediu a **próxima fase** de novo: Marco 1.7 tratado como entregue (aprovação do dono a confirmar; nenhuma caixa marcada pela IA).
@@ -600,7 +612,7 @@ Regra: um marco só fecha quando **eu** marcar todos os itens depois de testar n
 - [ ] **Teste:** arrastar o joystick **não** abre a maleta; tocar rápido abre; maleta cheia recusa item
 - Como testar a coleta: os 10 cubos de teste estão atrás do ponto inicial (verdes = cura, azuis = munição); chegue a menos de 1,5 m e aperte INTERAGIR. Para testar a cura, leve dano de um inimigo antes.
 
-### Marco 1.8: Mapa de teste e minimapa (EM TESTE)
+### Marco 1.8: Mapa de teste e minimapa (dono informou "deu certo" em 15/11/2026)
 - [ ] Paredes e portas simples (AABB), áreas interna e externa, tudo original
 - [ ] Colisão com deslizamento em paredes para jogador e inimigos
 - [ ] Minimapa funcional (jogador e inimigos)
@@ -639,7 +651,8 @@ Não implementar nem detalhar agora. Quando o dono liberar, esta seção será p
 
 ### Em aberto (a IA PERGUNTA, não decide)
 - Nome final do jogo (e então o pacote).
-- Estilo de arte (low-poly realista, estilo PS1 etc.).
+- (Resolvido em 15/11/2026) Estilo de arte: low-poly realista, proporções humanas; inimigos = zumbis; textura de roupa 512x512 (seção 20).
+- Detalhes do zumbi (ferimentos, roupa rasgada, pele) e do jogador (aparência, roupa): a IA PERGUNTA antes de gerar.
 - Armas e inimigos além da pistola e do inimigo básico.
 - Enredo e personagens.
 - (Resolvido) Ambiente de trabalho do dono: Termux no celular (colar comandos e `git push`) e GitHub Actions para compilar.
@@ -647,8 +660,8 @@ Não implementar nem detalhar agora. Quando o dono liberar, esta seção será p
 - Sons/música (por padrão: nenhum na Fase 1).
 - **Como carregar modelo com esqueleto no LibGDX:** gdx-gltf (dependência extra; versão compatível com LibGDX 1.12.1 a confirmar) ou outra via. Sem decisão, o jogo segue com cápsula/OBJ.
 - Versão do Blender e método de instalação no CI.
-- Convenção de **frente do modelo** (qual eixo é a frente) para bater com yaw 0 = −Z.
-- Se os marcos de ferramentas (F0 a F3) correm em paralelo ou só depois do Marco 1.8.
+- Convenção de **frente do modelo**: proposta no F0 = **-Z** (a confirmar pelo dono ao ver o preview).
+- (Resolvido em 15/11/2026) Marcos F0 a F3 correm agora, em paralelo aos 1.x.
 
 ---
 
@@ -661,6 +674,10 @@ Não implementar nem detalhar agora. Quando o dono liberar, esta seção será p
 | 15/11/2026 | Básico antes da história | Dono | Escolha do dono |
 | 15/11/2026 | LibGDX + Groovy DSL + colisão própria XZ | Proposta (a confirmar) | Simplicidade e desempenho no aparelho alvo |
 | 15/11/2026 | Python como única linguagem adicional (ferramentas de ativos); sem GLSL/C++/Rust/Lua | Dono | Modelagem melhor via Blender sem tela, mantendo o jogo em Kotlin |
+| 15/11/2026 | Estilo de arte: low-poly realista, proporções humanas | Dono | Escolha do dono |
+| 15/11/2026 | Inimigos: humanos infectados (zumbis) | Dono | Escolha do dono |
+| 15/11/2026 | Boneco com textura simples de roupa 512x512 (gerada por código) | Dono | Escolha do dono |
+| 15/11/2026 | Marcos F0 a F3 liberados agora, em paralelo aos 1.x | Dono (pedido de foco na estética) | Prioridade do dono |
 | 15/11/2026 | Gradle 8.5 instalado pelo CI (sem wrapper); versões da seção 6 congeladas | Dono (validou no teste) | Build verde e app rodando no aparelho alvo |
 
 ---
@@ -696,13 +713,13 @@ RELATÓRIO
 
 ## 22. ESTADO ATUAL (atualizar ao fim de cada sessão)
 
-- Marco atual: **1.8 (em teste)**
+- Marco atual: **1.8 (dono informou "deu certo"; caixas a marcar por ele)**; trilha ativa de ferramentas: **F0 (em teste)**
 - Último build verde confirmado: o do código do Marco 1.6; os builds do 1.7 e do 1.8 ainda não foram confirmados
 - Versões congeladas: **sim** (seção 6)
 - Arquivos existentes no repositório: tudo até o Marco 1.7 + 1 novo no 1.8 (`mundo/Colisao.kt`) e 8 alterados (depois do push)
 - Problemas conhecidos: faixa preta lateral (recorte da câmera) ainda a confirmar na tela cheia; os Marcos 1.7 e 1.8 não foram compilados pela IA (sem compilador no ambiente da conversa)
 - Observações: HUD sem Scene2D (ver v2.4); Voltar do Android vira pausa (ou fecha a maleta, se aberta); acentos na fonte padrão não verificados (textos do 1.7 sem acento); inimigos sem linha de visão nem pathfinding
-- Marcos de ferramentas (seção 24): **F0 não iniciado**
+- Marcos de ferramentas (seção 24): **F0 em teste** (código entregue, ainda não compilado nem rodado no CI)
 
 ---
 
@@ -723,11 +740,12 @@ RELATÓRIO
 
 ### 24.2 Marcos de ferramentas (com teste de aceite)
 
-**F0: Gerador Kotlin do boneco**
+**F0: Gerador Kotlin do boneco (EM TESTE)**
 - [ ] Programa JVM Kotlin sem dependências gera `boneco.obj`, `boneco.mtl` e `preview.png` (frente, lado e costas)
 - [ ] Workflow manual entrega o artefato
 - [ ] Partes separadas e nomeadas: cabeça, tronco, braço esq./dir., perna esq./dir.
-- [ ] **Teste:** baixar o artefato e ver o preview no celular; altura 1,8 m, origem nos pés
+- [ ] (proposta, a confirmar) Proporções humanas realistas (~7,5 cabeças de altura), UVs em cada parte e `textura_jogador.png` / `textura_zumbi.png` 512x512 geradas por código; mesma malha-base para os dois
+- [ ] **Teste:** rodar o workflow "Gerar modelo", baixar o artefato `boneco-f0` e ver `preview.png` no celular; `relatorio.txt` deve mostrar altura 1,8 m e yMin 0 (o programa falha sozinho se não bater)
 - [ ] A IA verifica (NÃO presumir) se o `ObjLoader` do LibGDX preserva as partes separadas
 
 **F1: Blender sem tela roda no CI**
