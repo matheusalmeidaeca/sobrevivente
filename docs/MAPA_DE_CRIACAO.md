@@ -804,7 +804,7 @@ RELATÓRIO
 
 ## 22. ESTADO ATUAL (atualizar ao fim de cada sessão)
 
-- Marco atual: **F7 entregue (v2.21: personagens redondos, sombras reais, pós-processamento, cenário com volume, partículas; não compilado pela IA)**; antes F6 entregue (v2.20: estética geral; não compilado pela IA)**; antes F5 entregue (v2.19: movimento CoD Mobile, vila grande, respawn, casas; não compilado pela IA)**; antes F4 entregue (v2.18: 3 armas, troca, pegada com IK; não compilado pela IA)**; antes F3d ( (v2.17: referências de zumbi e protagonista)**; antes F3c ( (v2.16: suavidade, ataque com um braço, vagar e A*; não compilado pela IA)**; antes: **1.8 (dono informou "deu certo"; caixas a marcar por ele)**; trilha ativa de ferramentas: **F0 e F1 (rodaram no CI), F2 (rodou no CI; poses a aprovar) e F3 (entregue, em teste)**
+- Marco atual: **F8 entregue (v2.22: personagens em alta definição — jogador ~33k tris, zumbi ~16k; pulo em 3 fases pular/cair/pousar; inclinação nas curvas; ferramentas em ferramentas/hd; não compilado pela IA)**; antes F7 entregue (v2.21: personagens redondos, sombras reais, pós-processamento, cenário com volume, partículas; não compilado pela IA)**; antes F6 entregue (v2.20: estética geral; não compilado pela IA)**; antes F5 entregue (v2.19: movimento CoD Mobile, vila grande, respawn, casas; não compilado pela IA)**; antes F4 entregue (v2.18: 3 armas, troca, pegada com IK; não compilado pela IA)**; antes F3d ( (v2.17: referências de zumbi e protagonista)**; antes F3c ( (v2.16: suavidade, ataque com um braço, vagar e A*; não compilado pela IA)**; antes: **1.8 (dono informou "deu certo"; caixas a marcar por ele)**; trilha ativa de ferramentas: **F0 e F1 (rodaram no CI), F2 (rodou no CI; poses a aprovar) e F3 (entregue, em teste)**
 - Último build verde confirmado: run #9 (código dos Marcos 1.7 e 1.8). F0 enviado (`ebb5ef4`); "Gerar modelo" ainda não rodado
 - Versões congeladas: **sim** (seção 6)
 - Arquivos existentes no repositório: tudo até o Marco 1.7 + 1 novo no 1.8 (`mundo/Colisao.kt`) e 8 alterados (depois do push)
@@ -956,3 +956,9 @@ Estado em 15/11/2026: o `gerar-modelo.yml` já está no repositório com a etapa
 - O conteúdo do `build-apk.yml` **não foi visto** pela IA (não afirmar como o Gradle é instalado nele sem o dono colar).
 - A IA não tem compilador Kotlin nem Blender na conversa: tudo é testado pelo CI do dono.
 
+
+
+### F8 (v2.22) — Personagens HD e pulo
+- Modelos gerados 100% em Python (`ferramentas/hd/gerar_modelos_hd.py <saida>`): rosto esculpido, cabelo em mechas, camisa com botões/bolsos, cinto, jeans, botas com cadarço, mãos com dedos e unhas. Atlas 1024². Zumbi com rasgos/feridas. Esqueleto de 18 ossos inalterado (NUM_OSSOS_SHADER = 20).
+- Animações novas: `pular` (subida), `cair` (queda), `pousar` (absorção), em todas as versões armadas. Jogador.kt escolhe pela velocidade vertical (Constantes.PULO_*). Inclinação do corpo nas curvas (INCLINACAO_CURVA_*).
+- Riscos: custo de triângulos em celulares fracos (9 zumbis); tempos do pulo a ajustar no aparelho; sinal da inclinação a confirmar.

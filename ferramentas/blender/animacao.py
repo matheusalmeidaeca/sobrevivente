@@ -27,14 +27,14 @@ OSSOS = [
     ("coluna", "quadril", (0.0, 1.00, 0.0), (0.0, 1.50, 0.0)),
     ("pescoco", "coluna", (0.0, 1.50, 0.0), (0.0, 1.56, 0.0)),
     ("cabeca", "pescoco", (0.0, 1.56, 0.0), (0.0, 1.80, 0.0)),
-    ("ombro_esq", "coluna", (-0.19, 1.44, 0.0), (-0.255, 1.44, 0.0)),
-    ("braco_esq", "ombro_esq", (-0.255, 1.44, 0.0), (-0.255, 1.20, 0.0)),
-    ("antebraco_esq", "braco_esq", (-0.255, 1.20, 0.0), (-0.255, 0.84, 0.0)),
-    ("mao_esq", "antebraco_esq", (-0.255, 0.84, 0.0), (-0.255, 0.68, 0.0)),
-    ("ombro_dir", "coluna", (0.19, 1.44, 0.0), (0.255, 1.44, 0.0)),
-    ("braco_dir", "ombro_dir", (0.255, 1.44, 0.0), (0.255, 1.20, 0.0)),
-    ("antebraco_dir", "braco_dir", (0.255, 1.20, 0.0), (0.255, 0.84, 0.0)),
-    ("mao_dir", "antebraco_dir", (0.255, 0.84, 0.0), (0.255, 0.68, 0.0)),
+    ("ombro_esq", "coluna", (-0.19, 1.44, 0.0), (-0.246, 1.44, 0.0)),
+    ("braco_esq", "ombro_esq", (-0.246, 1.44, 0.0), (-0.246, 1.20, 0.0)),
+    ("antebraco_esq", "braco_esq", (-0.246, 1.20, 0.0), (-0.246, 0.84, 0.0)),
+    ("mao_esq", "antebraco_esq", (-0.246, 0.84, 0.0), (-0.246, 0.68, 0.0)),
+    ("ombro_dir", "coluna", (0.19, 1.44, 0.0), (0.246, 1.44, 0.0)),
+    ("braco_dir", "ombro_dir", (0.246, 1.44, 0.0), (0.246, 1.20, 0.0)),
+    ("antebraco_dir", "braco_dir", (0.246, 1.20, 0.0), (0.246, 0.84, 0.0)),
+    ("mao_dir", "antebraco_dir", (0.246, 0.84, 0.0), (0.246, 0.68, 0.0)),
     ("coxa_esq", "quadril", (-0.095, 0.91, 0.0), (-0.095, 0.50, 0.0)),
     ("canela_esq", "coxa_esq", (-0.095, 0.50, 0.0), (-0.095, 0.09, 0.0)),
     ("pe_esq", "canela_esq", (-0.095, 0.09, 0.0), (-0.095, 0.04, -0.13)),
@@ -50,14 +50,15 @@ PIVO = {o[0]: o[2] for o in OSSOS}
 # nas de loop o ultimo quadro e igual ao primeiro (fecha o ciclo sem pulo).
 ANIMACOES = {
     "jogador": [("parado", 90, True), ("andar", 36, True), ("correr", 22, True),
-                ("atirar", 24, False), ("morrer", 54, False)],
+                ("atirar", 24, False), ("morrer", 54, False),
+                ("pular", 12, False), ("cair", 12, False), ("pousar", 16, False)],
     "zumbi": [("parado", 180, True), ("andar", 42, True), ("correr", 26, True),
               ("atacar", 72, True), ("morrer", 60, False)],
 }
 
 # Quadros mostrados na folha de preview (1 por animacao).
 QUADRO_PREVIA = {
-    "parado": 0, "andar": 6, "correr": 4, "atirar": 3, "atacar": 14, "morrer": 54,
+    "parado": 0, "andar": 6, "correr": 4, "atirar": 3, "atacar": 14, "morrer": 54, "pular": 8, "cair": 8, "pousar": 4,
 }
 
 # Velocidade (m/s) do corpo que cada ciclo cobre com 1x de reproducao (medida pela velocidade do pe de apoio).
@@ -211,9 +212,25 @@ def _periodico(q, pontos, periodo):
     return _hermite(q, estendido)
 
 
+_CACHE_EM_PE = {}
+
+
+def _altura_em_pe(pontos):
+    """Altura do quadril com o corpo em pe, pes no chao (referencia para as poses no ar)."""
+    chave = (len(pontos), pontos[0][0], pontos[0][1], pontos[0][2])
+    if chave not in _CACHE_EM_PE:
+        p = pose_vazia()
+        p["raiz"][1] = 0.0
+        w = matrizes_mundo(p)
+        _CACHE_EM_PE[chave] = -min(deformar(w, pesos, (x, y, z))[1] for x, y, z, pesos in pontos)
+    return _CACHE_EM_PE[chave]
+
+
 def aterrar(pose, pontos):
     """Ajusta a altura do quadril para o ponto mais baixo da malha ficar em y = 0 (+ quicada).
-    `pontos` = lista de (x, y, z, pesos). So mexe em pose['raiz'][1]. Nunca deixa o corpo afundar no chao."""
+    `pontos` = lista de (x, y, z, pesos). So mexe em pose['raiz'][1]. Nunca deixa o corpo afundar no chao.
+    F8: pose['ar'] (0..1) mistura com a altura "em pe": no ar o corpo nao e puxado para baixo ao encolher as pernas
+    (quem move o corpo no ar e a fisica do jogo)."""
     pose["raiz"][1] = 0.0
     w = matrizes_mundo(pose)
     menor = None
@@ -221,7 +238,11 @@ def aterrar(pose, pontos):
         yy = deformar(w, pesos, (x, y, z))[1]
         if menor is None or yy < menor:
             menor = yy
-    pose["raiz"][1] = -menor + pose.get("salto", 0.0)
+    y_chao = -menor
+    ar = pose.get("ar", 0.0)
+    if ar > 0.0:
+        y_chao = y_chao * (1.0 - ar) + _altura_em_pe(pontos) * ar
+    pose["raiz"][1] = y_chao + pose.get("salto", 0.0)
     return pose
 
 
@@ -251,16 +272,20 @@ def pesos_do_vertice(grupo, x, y, z):
         if y > 0.90:  # cotovelo: braco acima de 1,28, antebraco abaixo de 1,12
             t = _suave((1.28 - y) / 0.16)
             return [("braco_" + lado, 1.0 - t), ("antebraco_" + lado, t)]
-        u = _suave((0.90 - y) / 0.10)  # punho: antebraco acima de 0,90, mao abaixo de 0,80
+        u = _suave((0.88 - y) / 0.07)  # punho: antebraco acima de 0,90, mao abaixo de 0,80
         return [("antebraco_" + lado, 1.0 - u), ("mao_" + lado, u)]
     if grupo.startswith("perna"):
-        if y <= 0.085 and (z < -0.045 or z > 0.045):  # caixa do pe (so ela passa de |z| = 0,045)
-            return [("pe_" + lado, 1.0)]
-        if y >= 0.12:
-            a = _suave((y - 0.44) / 0.12)  # joelho: coxa acima de 0,56, canela abaixo de 0,44
-            return [("coxa_" + lado, a), ("canela_" + lado, 1.0 - a)]
-        b = _suave((y - 0.07) / 0.05)  # tornozelo: pe ate 0,07, canela a partir de 0,12
-        return [("canela_" + lado, b), ("pe_" + lado, 1.0 - b)]
+        # F8 (malha HD): bota/pe segue o osso do pe, tornozelo mistura, joelho mistura, topo da coxa segue um pouco o quadril
+        if y < 0.12:
+            b = _suave((y - 0.07) / 0.06)  # tornozelo: pe ate 0,07, canela a partir de 0,13
+            zf = _suave((abs(z - 0.012) - 0.036) / 0.012) * (1.0 - _suave((y - 0.11) / 0.03))
+            wc = b * (1.0 - zf)
+            return [("canela_" + lado, wc), ("pe_" + lado, 1.0 - wc)]
+        if y > 0.84:
+            q = _suave((y - 0.84) / 0.10) * 0.5
+            return [("coxa_" + lado, 1.0 - q), ("quadril", q)]
+        a = _suave((y - 0.44) / 0.12)  # joelho: coxa acima de 0,56, canela abaixo de 0,44
+        return [("coxa_" + lado, a), ("canela_" + lado, 1.0 - a)]
     raise ValueError("peca desconhecida: " + grupo)
 
 
@@ -344,11 +369,11 @@ MARCHA = {
 # SH = encolher de ombros; SALTO = quicada (m)
 MARCHA_PARAM = {
     ("jogador", "andar"): dict(esc_esq=1.0, esc_dir=1.0, joelho=1.0, pe_esq=0.0, pe_dir=0.0, h0=0.0,
-                               BR=17, BR0=4, CO=14, CV=10, HM=5, PY=2.2, SY=3.6, PR=2.0, PX=0.010,
+                               BR=17, BR0=4, CO=14, CV=10, HM=5, PY=2.4, SY=3.8, PR=2.6, PX=0.013,
                                INC=-4.0, SH=1.2, SALTO=0.0, loll=0.0, lat=0.0),
     ("jogador", "correr"): dict(esc_esq=1.0, esc_dir=1.0, joelho=1.0, pe_esq=0.0, pe_dir=0.0, h0=2.0,
                                 BR=32, BR0=10, CO=76, CV=8, HM=8, PY=3.8, SY=6.0, PR=2.4, PX=0.008,
-                                INC=-13.0, SH=1.5, SALTO=0.06, loll=0.0, lat=0.0),
+                                INC=-15.0, SH=1.5, SALTO=0.08, loll=0.0, lat=0.0),
     ("zumbi", "andar"): dict(esc_esq=0.62, esc_dir=0.95, joelho=0.8, pe_esq=-12.0, pe_dir=-2.0, h0=7.0,
                              BR=11, BR0=16, CO=20, CV=9, HM=10, PY=3.0, SY=5.0, PR=3.4, PX=0.018,
                              INC=-26.0, SH=1.2, SALTO=0.0, loll=1.0, lat=2.0),
@@ -630,6 +655,79 @@ def _pose_morrer(estilo, q):
 
 
 # ---------------------------------------------------------------------------
+# Pulo (F8): 3 clipes encadeados pela fisica do jogo.
+#   pular  (12 q): impulso -> corpo estica -> sobe com as pernas encolhendo (o jogo segura a ultima pose)
+#   cair   (12 q): topo do pulo (encolhido, bracos abertos) -> pernas descem procurando o chao
+#   pousar (16 q): contato -> amortece (agacha) -> levanta
+# Angulos: coxa (+ = joelho para frente), canela (- = dobra), pe (- = ponta para baixo).
+# ---------------------------------------------------------------------------
+def _pernas_s(c, k, pe, c2=None, k2=None, pe2=None):
+    """Chave das duas pernas. (c2,k2,pe2) = perna direita se for diferente (salto assimetrico)."""
+    c2 = c if c2 is None else c2
+    k2 = k if k2 is None else k2
+    pe2 = pe if pe2 is None else pe2
+    return {"coxa_esq": (c, 0.0, -1.5), "canela_esq": (k, 0.0, 0.0), "pe_esq": (pe, 0.0, 0.0),
+            "coxa_dir": (c2, 0.0, 1.5), "canela_dir": (k2, 0.0, 0.0), "pe_dir": (pe2, 0.0, 0.0)}
+
+
+def _tronco_s(quadril, coluna, pescoco, cabeca, ry=0.0):
+    return {"quadril": (quadril, 0.0, 0.0), "coluna": (coluna, ry, 0.0), "pescoco": (pescoco, -0.4 * ry, 0.0),
+            "cabeca": (cabeca, -0.5 * ry, 0.0)}
+
+
+def _bracos_s(rx, rz, cot, mao=8.0, rx2=None):
+    rx2 = rx if rx2 is None else rx2
+    return {"ombro_esq": (0.0, 0.0, -rz * 0.25), "ombro_dir": (0.0, 0.0, rz * 0.25),
+            "braco_esq": (rx, 0.0, -rz), "braco_dir": (rx2, 0.0, rz),
+            "antebraco_esq": (cot, 0.0, 0.0), "antebraco_dir": (cot, 0.0, 0.0),
+            "mao_esq": (mao, 0.0, 0.0), "mao_dir": (mao, 0.0, 0.0)}
+
+
+def _junta(*ds):
+    out = {}
+    for d in ds:
+        out.update(d)
+    return out
+
+
+# atrasos (em quadros): cadeia cinematica reage com folga (sobreposicao): braco > antebraco > mao; cabeca atrasa do tronco
+ATRASO_SALTO = {"braco_esq": 1.0, "braco_dir": 1.4, "antebraco_esq": 2.2, "antebraco_dir": 2.6, "mao_esq": 3.4,
+                "mao_dir": 3.8, "cabeca": 1.6, "pescoco": 0.8}
+
+
+def _pose_salto(fase, q):
+    ar_pts = None
+    if fase == "pular":
+        chaves = [
+            (0.0, _junta(_pernas_s(30, -58, 28), _tronco_s(-6, -13, 6, 5), _bracos_s(-22, 6, 16)), (0.0, 0.0)),
+            (3.0, _junta(_pernas_s(-4, -6, -34), _tronco_s(2, 3, -3, -4), _bracos_s(42, 22, 26)), (0.0, 0.0)),
+            (7.0, _junta(_pernas_s(30, -62, -12, 46, -84, -6), _tronco_s(-2, -5, 2, -2, 2.5), _bracos_s(50, 40, 34, 6, 38)), (0.0, 0.0)),
+            (12.0, _junta(_pernas_s(40, -76, -8, 52, -92, -4), _tronco_s(-3, -7, 3, -1, 3.0), _bracos_s(48, 48, 38, 6, 40)), (0.0, 0.0)),
+        ]
+        p = _avaliar(chaves, q, None, ATRASO_SALTO)
+        p["ar"] = _suave((q - 1.0) / 4.5)
+    elif fase == "cair":
+        chaves = [
+            (0.0, _junta(_pernas_s(40, -76, -8, 52, -92, -4), _tronco_s(-3, -7, 3, -1, 3.0), _bracos_s(48, 48, 38, 6, 40)), (0.0, 0.0)),
+            (4.0, _junta(_pernas_s(46, -86, -4, 40, -72, 0), _tronco_s(-4, -9, 3, 0, -2.0), _bracos_s(38, 54, 30, 6, 34)), (0.0, 0.0)),
+            (12.0, _junta(_pernas_s(24, -26, 8, 20, -20, 10), _tronco_s(-5, -6, 2, 3, 0.0), _bracos_s(34, 40, 26, 8, 30)), (0.0, 0.0)),
+        ]
+        p = _avaliar(chaves, q, None, ATRASO_SALTO)
+        p["ar"] = 1.0
+    else:  # pousar
+        chaves = [
+            (0.0, _junta(_pernas_s(24, -26, 8, 20, -20, 10), _tronco_s(-5, -6, 2, 3), _bracos_s(34, 40, 26, 8, 30)), (0.0, 0.0)),
+            (4.0, _junta(_pernas_s(58, -104, 42, 54, -98, 38), _tronco_s(-9, -22, 9, 7), _bracos_s(20, 26, 30)), (0.0, 0.0)),
+            (9.0, _junta(_pernas_s(24, -34, 14), _tronco_s(-4, -9, 4, 3), _bracos_s(6, 12, 20)), (0.0, 0.0)),
+            (16.0, _junta(_pernas_s(2, -3, 1), _tronco_s(0, -1, 0, 0), _bracos_s(3, 5, 12)), (0.0, 0.0)),
+        ]
+        p = _avaliar(chaves, q, None, {"braco_esq": 1.0, "braco_dir": 1.4, "antebraco_esq": 2.2, "antebraco_dir": 2.6,
+                                       "mao_esq": 3.0, "mao_dir": 3.4, "cabeca": 1.4})
+        p["ar"] = 1.0 - _suave(q / 2.5)
+    return p
+
+
+# ---------------------------------------------------------------------------
 # Interface do modulo
 # ---------------------------------------------------------------------------
 def pose_sem_chao(estilo, animacao, q):
@@ -638,6 +736,8 @@ def pose_sem_chao(estilo, animacao, q):
         import pegada
         base, arma = pegada.separar(animacao)
         return pegada.pose_armada(arma, base, q)
+    if animacao in ("pular", "cair", "pousar"):
+        return _pose_salto(animacao, q)
     if animacao == "parado":
         return _pose_parado(estilo, q)
     if animacao in ("andar", "correr"):

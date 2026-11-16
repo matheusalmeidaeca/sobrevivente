@@ -55,6 +55,10 @@ class Jogador : Disposable {
     private var velY = 0f
     private var pousou = false
     private var noChao = true
+    private var estavaNoAr = false
+    private var tempoPouso = 0f
+    private var yawAnterior = 0f
+    private var inclinacao = 0f
     var agachado = false
         private set
     private var fatorMov = 1f
@@ -297,6 +301,14 @@ class Jogador : Disposable {
         if (!recarregandoArma) recargaTravada = false
 
         val mirando = tempoEncarar > 0f
+        if (estavaNoAr && noChao) tempoPouso = Constantes.PULO_DURACAO_POUSO_S
+        estavaNoAr = !noChao
+        if (tempoPouso > 0f) tempoPouso -= dt
+        // inclinacao do corpo nas curvas (suavizada)
+        val taxaGiro = MathUtils.clamp((((yaw - yawAnterior + 540f) % 360f + 360f) % 360f - 180f) / maxOf(dt, 0.001f), -540f, 540f)
+        yawAnterior = yaw
+        val alvoIncl = if (noChao && andando) MathUtils.clamp(taxaGiro * Constantes.INCLINACAO_CURVA_K, -Constantes.INCLINACAO_CURVA_MAX, Constantes.INCLINACAO_CURVA_MAX) else 0f
+        inclinacao += (alvoIncl - inclinacao) * minOf(1f, 8f * dt)
         // velocidade da animacao de marcha acompanha a velocidade real (inclui sprint/agachado/mirando)
         val ref = if (correndo) Constantes.JOGADOR_ANIM_REF_CORRER else Constantes.JOGADOR_ANIM_REF_ANDAR
         val alvo = MathUtils.clamp(intensidadeSuave * Constantes.JOGADOR_VELOCIDADE * fatorMov / ref, 0.6f, 1.6f)
@@ -305,7 +317,12 @@ class Jogador : Disposable {
         if (vida <= 0) {
             animador.tocarSe("morrer", 1, 1f, t)
         } else if (!noChao) {
-            animador.tocarSe(nomeAnimOu("pular", "parado"), 1, 1f, t)
+            // pulo em fases pela fisica: subida -> apice/queda (clipes seguram a ultima pose)
+            if (velY > Constantes.PULO_LIMIAR_SUBIDA) animador.tocarSe(nomeAnimOu("pular", "parado"), 1, 1f, Constantes.PULO_TRANSICAO_SUBIDA_S)
+            else animador.tocarSe(nomeAnimOu("cair", "pular"), 1, 1f, Constantes.PULO_TRANSICAO_QUEDA_S)
+        } else if (tempoPouso > 0f && !andando && !agachado && !mirando && !recarregandoArma &&
+            corpo.getAnimation(nomeAnim("pousar")) != null) {
+            animador.tocarSe(nomeAnim("pousar"), 1, 1f, Constantes.PULO_TRANSICAO_POUSO_S)
         } else if (recarregandoArma && corpo.getAnimation(nomeAnim("recarregar")) != null) {
             if (!recargaTravada) { // a versao andando ou parada e escolhida no inicio e vale ate o fim da recarga
                 recargaAndando = andando && !agachado
@@ -349,7 +366,7 @@ class Jogador : Disposable {
     fun atualizarTransformacao() {
         if (animado) {
             // Modelo do F2: origem nos pes, frente = -Z.
-            corpo.transform.setToTranslation(posicao.x, posicao.y, posicao.z).rotate(Vector3.Y, yaw)
+            corpo.transform.setToTranslation(posicao.x, posicao.y, posicao.z).rotate(Vector3.Y, yaw).rotate(Vector3.Z, inclinacao)
         } else {
             corpo.transform.setToTranslation(
                 posicao.x,

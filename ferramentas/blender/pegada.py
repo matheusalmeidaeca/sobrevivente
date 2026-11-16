@@ -20,7 +20,8 @@ RX_MENOS_90 = np.array(an.rotacao_euler(-90.0, 0.0, 0.0))[:3, :3]  # arma -> mao
 ANIMACOES_ARMADAS = {  # base -> (quadros, em_loop)
     "parado": (90, True), "andar": (36, True), "correr": (22, True), "atirar": (24, False), "recarregar": (60, False),
     # F5: movimento "CoD Mobile" (sem deslizar): atirar/recarregar andando, pular e agachar
-    "andarmirar": (36, True), "andarrecarregar": (72, False), "pular": (30, False),
+    "andarmirar": (36, True), "andarrecarregar": (72, False), "pular": (12, False), "cair": (12, False),
+    "pousar": (16, False),
     "agachar": (90, True), "andaragachar": (36, True),
 }
 
@@ -176,8 +177,11 @@ def _alvo(arma, base, q):
                0.8 * math.cos(2 * TAU * (f - 0.1)), 0.6 * math.sin(TAU * f)]
     elif base == "andarrecarregar":
         return _alvo(arma, "recarregar", (q % 72.0) * 60.0 / 72.0)
-    elif base == "pular":
-        post = P["correndo"] if q > 4.0 else P["pronto"]
+    elif base in ("pular", "cair"):
+        post = _mistura(P["pronto"], P["correndo"], _rampa(q, 0.0, 4.0)) if base == "pular" else P["correndo"]
+        bal = [0.0, 0.0, 0.0, 0.0, 0.0]
+    elif base == "pousar":
+        post = _mistura(P["correndo"], P["pronto"], _rampa(q, 0.0, 8.0))
         bal = [0.0, 0.0, 0.0, 0.0, 0.0]
     elif base in ("agachar", "andaragachar"):
         n = 90.0 if base == "agachar" else 36.0
@@ -234,17 +238,8 @@ def _base_pose(base, q):
         ab = _rampa(q * 60.0 / 72.0, 0.0, 9.0) * (1.0 - _rampa(q * 60.0 / 72.0, 50.0, 60.0))
         an._somar(p, "coluna", 3.0 * ab)
         an._somar(p, "cabeca", 5.0 * ab)
-    elif base == "pular":
-        p = an._pose_parado("jogador", 0.0)
-        chaves = [(0.0, _pernas(0.0, 0.0), (0.0, 0.0)), (5.0, _pernas(1.0, 0.55), (0.0, 0.0)),
-                  (9.0, _pernas(-0.3, 0.0), (0.0, 0.0)), (16.0, _pernas(2.0, 0.0), (0.0, 0.0)),
-                  (24.0, _pernas(3.0, 0.0), (0.0, 0.0)), (28.0, _pernas(1.0, 0.5), (0.0, 0.0)),
-                  (30.0, _pernas(0.0, 0.0), (0.0, 0.0))]
-        pj = an._avaliar(chaves, q, None)
-        for osso, ang in pj["ang"].items():
-            p["ang"][osso] = ang
-        ab = an._pulso(q - 5.0) * 0.0 + _rampa(q, 0.0, 6.0) * (1.0 - _rampa(q, 24.0, 30.0))
-        an._somar(p, "coluna", -8.0 * ab)
+    elif base in ("pular", "cair", "pousar"):
+        p = an._pose_salto(base, q)
     elif base in ("agachar", "andaragachar"):
         if base == "agachar":
             p = an._pose_parado("jogador", q)

@@ -6,6 +6,8 @@ import os
 import animacao as an
 
 CASAS = 5  # casas decimais gravadas no JSON
+CASAS_MALHA = 4  # vertices/normais/UV (F8: malha HD, arquivo menor)
+PASSO_PONTOS = 6  # F8: so 1 a cada N vertices entra no ajuste de altura do pe (aterrar); basta e e rapido
 # O G3dModelLoader/Model do LibGDX guarda em "bones" a pose de REPOUSO do osso (T(+pivo)) e inverte ao carregar.
 # (A v1 gravava T(-pivo) e o modelo explodiu no jogo.) NAO TENHO CERTEZA: se o corpo ainda sair errado, troque para True.
 GRAVAR_POSE_INVERSA = False
@@ -73,6 +75,10 @@ def _r(x):
     return round(float(x), CASAS)
 
 
+def _rm(x):
+    return round(float(x), CASAS_MALHA)
+
+
 def _nos_do_esqueleto(poses_repouso=True):
     """Arvore de nos (so ossos) no repouso: translacao local = pivo - pivo do pai."""
     filhos = {n: [] for n in an.NOMES_OSSOS}
@@ -124,11 +130,11 @@ def montar_g3dj(id_modelo, tris, textura, estilo, passo_chaves=1):
             raise ValueError("vertice com mais de 2 influencias")
         while len(pes) < 2:
             pes.append((pes[0][0], 0.0))
-        dados += [_r(vtx["p"][0]), _r(vtx["p"][1]), _r(vtx["p"][2]),
-                  _r(vtx["n"][0]), _r(vtx["n"][1]), _r(vtx["n"][2]),
-                  _r(vtx["uv"][0]), _r(1.0 - vtx["uv"][1]),  # LibGDX: origem da textura no topo
-                  float(indice_osso[pes[0][0]]), _r(pes[0][1]),
-                  float(indice_osso[pes[1][0]]), _r(pes[1][1])]
+        dados += [_rm(vtx["p"][0]), _rm(vtx["p"][1]), _rm(vtx["p"][2]),
+                  _rm(vtx["n"][0]), _rm(vtx["n"][1]), _rm(vtx["n"][2]),
+                  _rm(vtx["uv"][0]), _rm(1.0 - vtx["uv"][1]),  # LibGDX: origem da textura no topo
+                  float(indice_osso[pes[0][0]]), _rm(pes[0][1]),
+                  float(indice_osso[pes[1][0]]), _rm(pes[1][1])]
     modelo = {
         "version": [0, 1], "id": id_modelo,
         "meshes": [{
@@ -148,7 +154,7 @@ def montar_g3dj(id_modelo, tris, textura, estilo, passo_chaves=1):
     no_malha = {"id": "malha", "parts": [{"meshpartid": "malha_parte", "materialid": "material", "bones": bones}]}
     modelo["nodes"] = [_nos_do_esqueleto(), no_malha]
 
-    pontos = [(v["p"][0], v["p"][1], v["p"][2], v["pesos"]) for v in vertices]
+    pontos = [(v["p"][0], v["p"][1], v["p"][2], v["pesos"]) for v in vertices][::PASSO_PONTOS]
     animacoes = []
     for nome_anim, n_quadros, _loop in an.listar_animacoes_exportacao(estilo):
         quadros = [(q, an.pose_final(estilo, nome_anim, float(q), pontos))

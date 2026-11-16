@@ -555,6 +555,15 @@ object Constantes {
     const val ANIM_LIMIAR_INICIAR = 0.12f
     const val ANIM_LIMIAR_PARAR = 0.05f
     const val ANIM_TRANSICAO_S = 0.22f
+
+    // F8: pulo em fases (pular -> cair -> pousar) e inclinacao nas curvas
+    const val PULO_LIMIAR_SUBIDA = 0.5f
+    const val PULO_TRANSICAO_SUBIDA_S = 0.06f
+    const val PULO_TRANSICAO_QUEDA_S = 0.10f
+    const val PULO_TRANSICAO_POUSO_S = 0.05f
+    const val PULO_DURACAO_POUSO_S = 0.5f
+    const val INCLINACAO_CURVA_K = 0.012f   // graus de inclinacao por grau/s de giro
+    const val INCLINACAO_CURVA_MAX = 6f
     const val ANIM_TRANSICAO_TIRO_S = 0.12f
     /** Joystick acima disto = correr; abaixo = andar. */
     const val JOGADOR_LIMIAR_CORRER = 0.6f
