@@ -43,6 +43,12 @@ class Mundo : Disposable {
     /** Pisos das casas, andares altos e rampas (so desenho). */
     val pisos = ArrayList<ModelInstance>()
 
+    /** Visual da vila: ceu, decoracao, telhados (F6). */
+    val cenario = Cenario()
+    private val modeloSombra: Model = Cenario.criarModeloSombra()
+    /** Sombras redondas: 0 = jogador, 1.. = zumbis (mesma ordem de `inimigos`). */
+    val sombras: Array<ModelInstance>
+
     private val raio = Ray() // reutilizado nos tiros: zero alocação por frame
     private val ponto = Vector3()
     private var tempoSpawn = Constantes.SPAWN_INTERVALO_S
@@ -68,6 +74,8 @@ class Mundo : Disposable {
             )
         )
 
+        ambiente.set(ColorAttribute(ColorAttribute.Fog, Constantes.NEVOA_R, Constantes.NEVOA_G, Constantes.NEVOA_B, 1f))
+        sombras = Array(Constantes.INIMIGOS_POOL.coerceAtLeast(Constantes.INIMIGOS_XZ.size / 2) + 1) { ModelInstance(modeloSombra) }
         modeloChao = criarModeloChao()
         chao = ModelInstance(modeloChao)
 
@@ -149,6 +157,9 @@ class Mundo : Disposable {
         3 -> floatArrayOf(Constantes.PAREDE_COR_CELEIRO_R, Constantes.PAREDE_COR_CELEIRO_G, Constantes.PAREDE_COR_CELEIRO_B)
         4 -> floatArrayOf(Constantes.PAREDE_COR_GRADE_R, Constantes.PAREDE_COR_GRADE_G, Constantes.PAREDE_COR_GRADE_B)
         5 -> floatArrayOf(Constantes.PAREDE_COR_TRONCO_R, Constantes.PAREDE_COR_TRONCO_G, Constantes.PAREDE_COR_TRONCO_B)
+        6 -> floatArrayOf(0.74f, 0.66f, 0.50f) // reboco creme
+        7 -> floatArrayOf(0.70f, 0.52f, 0.34f) // ocre
+        8 -> floatArrayOf(0.56f, 0.60f, 0.60f) // cinza azulado
         else -> floatArrayOf(Constantes.PAREDE_COR_CASA_R, Constantes.PAREDE_COR_CASA_G, Constantes.PAREDE_COR_CASA_B)
     }
 
@@ -212,6 +223,8 @@ class Mundo : Disposable {
         for (i in inimigos.indices) {
             inimigos[i].atualizar(dt, jogador)
         }
+        cenario.atualizar(jogador.posicao.x, jogador.posicao.y, jogador.posicao.z)
+        atualizarSombras(jogador)
         if (jogador.vida <= 0) return
         tempoSpawn -= dt
         if (tempoSpawn <= 0f) {
@@ -219,6 +232,20 @@ class Mundo : Disposable {
             tentarNascer(jogador, dirX, dirZ)
         }
     }
+
+    /** Posiciona as sombras redondas sob o jogador e os zumbis visiveis. */
+    private fun atualizarSombras(jogador: Jogador) {
+        val r0 = Constantes.SOMBRA_RAIO_JOGADOR * 2f
+        sombras[0].transform.setToTranslation(jogador.posicao.x, jogador.posicao.y + 0.05f, jogador.posicao.z).scale(r0, 1f, r0)
+        val r1 = Constantes.SOMBRA_RAIO_ZUMBI * 2f
+        for (i in inimigos.indices) {
+            val z = inimigos[i]
+            sombras[i + 1].transform.setToTranslation(z.posicao.x, z.posicao.y + 0.05f, z.posicao.z).scale(r1, 1f, r1)
+        }
+    }
+
+    /** Sombra do zumbi `i` deve ser desenhada? (vivo e longe nao importa: so some quando o zumbi some). */
+    fun sombraDoZumbiVisivel(i: Int): Boolean = inimigos[i].vivo
 
     /**
      * Respawn: se ha poucos zumbis vivos, escolhe um ponto de nascimento LONGE (>= SPAWN_DIST_MIN) e fora da vista
@@ -377,61 +404,49 @@ class Mundo : Disposable {
         )
     }
 
+    /** Chao em quadrados de 2 m, cada um com um tom de verde/terra um pouco diferente (cor por vertice): sem cara de tabuleiro. */
     private fun criarModeloChao(): Model {
-        val atributos = (Usage.Position or Usage.Normal).toLong()
-        val materialClaro = criarMaterial(
-            Constantes.CHAO_CLARO_R, Constantes.CHAO_CLARO_G, Constantes.CHAO_CLARO_B
-        )
-        val materialEscuro = criarMaterial(
-            Constantes.CHAO_ESCURO_R, Constantes.CHAO_ESCURO_G, Constantes.CHAO_ESCURO_B
-        )
-
+        val atributos = (Usage.Position or Usage.Normal or Usage.ColorPacked).toLong()
         val lado = Constantes.CHAO_LADO_QUADRADO
         val quantidade = (Constantes.CHAO_TAMANHO / lado).toInt()
         val inicio = -Constantes.CHAO_TAMANHO / 2f
-
         val construtor = ModelBuilder()
         construtor.begin()
-        // Cada parte é escrita por completo antes de começar a próxima.
-        adicionarQuadrados(
-            construtor.part("chao_claro", GL20.GL_TRIANGLES, atributos, materialClaro),
-            quantidade, lado, inicio, 0
+        val parte = construtor.part(
+            "chao", GL20.GL_TRIANGLES, atributos,
+            Material(IntAttribute.createCullFace(GL20.GL_NONE))
         )
-        adicionarQuadrados(
-            construtor.part("chao_escuro", GL20.GL_TRIANGLES, atributos, materialEscuro),
-            quantidade, lado, inicio, 1
-        )
-        return construtor.end()
-    }
-
-    private fun adicionarQuadrados(
-        parte: MeshPartBuilder,
-        quantidade: Int,
-        lado: Float,
-        inicio: Float,
-        paridade: Int
-    ) {
+        val rnd = java.util.Random(42)
         for (i in 0 until quantidade) {
             for (j in 0 until quantidade) {
-                if ((i + j) % 2 != paridade) continue
                 val x0 = inicio + i * lado
-                val x1 = x0 + lado
                 val z0 = inicio + j * lado
-                val z1 = z0 + lado
-                // Sentido anti-horário visto de cima; normal para cima (+Y).
+                // manchas grandes (ondas) + variacao pequena por quadrado; um pouco mais seco/amarelado em algumas zonas
+                val onda = MathUtils.sin(i * 0.23f) * MathUtils.cos(j * 0.19f) * 0.5f + 0.5f
+                val seco = MathUtils.clamp(onda * 0.8f + rnd.nextFloat() * 0.25f - 0.1f, 0f, 1f)
+                val brilho = 0.86f + rnd.nextFloat() * 0.22f
+                parte.setColor(
+                    MathUtils.lerp(0.30f, 0.46f, seco) * brilho,
+                    MathUtils.lerp(0.42f, 0.44f, seco) * brilho,
+                    MathUtils.lerp(0.20f, 0.24f, seco) * brilho,
+                    1f
+                )
                 parte.rect(
                     x0, 0f, z0,
-                    x0, 0f, z1,
-                    x1, 0f, z1,
-                    x1, 0f, z0,
+                    x0, 0f, z0 + lado,
+                    x0 + lado, 0f, z0 + lado,
+                    x0 + lado, 0f, z0,
                     0f, 1f, 0f
                 )
             }
         }
+        return construtor.end()
     }
 
     override fun dispose() {
         modeloChao.dispose()
+        modeloSombra.dispose()
+        cenario.dispose()
         modeloInimigo.dispose()
         modeloItemCura.dispose()
         modeloItemMunicao.dispose()

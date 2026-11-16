@@ -44,6 +44,13 @@ class Inimigo(modelo: Model, x: Float, z: Float, private val animado: Boolean = 
     val disponivelParaNascer: Boolean
         get() = desativado || (estado == Estado.MORTO && tempoMorto >= Constantes.CORPO_DURACAO_S)
 
+    // Variacao visual (F6): cada zumbi tem altura, largura e tom de pele proprios; sorteados de novo a cada respawn
+    private var escalaAltura = 1f
+    private var escalaLargura = 1f
+    private var tintaR = 1f
+    private var tintaG = 1f
+    private var tintaB = 1f
+
     private val cor: ColorAttribute?
     private val animador = Animador(instancia)
     private var yaw = 0f
@@ -66,7 +73,22 @@ class Inimigo(modelo: Model, x: Float, z: Float, private val animado: Boolean = 
     private var tempoEspera = MathUtils.random(Constantes.ENIMIGO_ESPERA_MIN_S, Constantes.ENIMIGO_ESPERA_MAX_S)
     private var rumoYaw = 0f // para onde o corpo quer olhar andando
 
+    /** Sorteia aparencia: magro/gordo, alto/baixo e um tom de pele (so com o modelo animado). */
+    private fun sortearAparencia() {
+        if (!animado) return
+        escalaAltura = MathUtils.random(Constantes.ZUMBI_ESCALA_ALTURA_MIN, Constantes.ZUMBI_ESCALA_ALTURA_MAX)
+        escalaLargura = MathUtils.random(Constantes.ZUMBI_ESCALA_LARGURA_MIN, Constantes.ZUMBI_ESCALA_LARGURA_MAX)
+        when (MathUtils.random(0, 4)) {
+            0 -> { tintaR = 1f; tintaG = 1f; tintaB = 1f }
+            1 -> { tintaR = 0.88f; tintaG = 1.0f; tintaB = 0.84f }   // esverdeado
+            2 -> { tintaR = 1.0f; tintaG = 0.90f; tintaB = 0.82f }   // pele morta amarelada
+            3 -> { tintaR = 0.82f; tintaG = 0.86f; tintaB = 0.96f }   // azulado / frio
+            else -> { tintaR = 0.74f; tintaG = 0.74f; tintaB = 0.72f } // sujo, escuro
+        }
+    }
+
     init {
+        sortearAparencia()
         // Cada ModelInstance tem cópia própria do material: a cor não afeta os outros inimigos.
         cor = instancia.materials.get(0).get(ColorAttribute.Diffuse) as? ColorAttribute
         aplicarCor()
@@ -264,6 +286,7 @@ class Inimigo(modelo: Model, x: Float, z: Float, private val animado: Boolean = 
     fun nascer(x: Float, z: Float) {
         desativado = false
         cacador = true
+        sortearAparencia()
         posicao.set(x, 0f, z)
         vida = Constantes.ENIMIGO_VIDA
         tempoAtaque = 0f
@@ -352,20 +375,20 @@ class Inimigo(modelo: Model, x: Float, z: Float, private val animado: Boolean = 
             return
         }
         when (estado) {
-            Estado.PARADO, Estado.VAGANDO, Estado.CACANDO -> c.color.set(1f, 1f, 1f, 1f)
+            Estado.PARADO, Estado.VAGANDO, Estado.CACANDO -> c.color.set(tintaR, tintaG, tintaB, 1f)
             Estado.PERSEGUINDO -> c.color.set(
-                Constantes.ZUMBI_TINTA_PERSEGUINDO_R,
-                Constantes.ZUMBI_TINTA_PERSEGUINDO_G,
-                Constantes.ZUMBI_TINTA_PERSEGUINDO_B,
+                Constantes.ZUMBI_TINTA_PERSEGUINDO_R * tintaR,
+                Constantes.ZUMBI_TINTA_PERSEGUINDO_G * tintaG,
+                Constantes.ZUMBI_TINTA_PERSEGUINDO_B * tintaB,
                 1f
             )
             Estado.ATACANDO -> c.color.set(
-                Constantes.ZUMBI_TINTA_ATACANDO_R,
-                Constantes.ZUMBI_TINTA_ATACANDO_G,
-                Constantes.ZUMBI_TINTA_ATACANDO_B,
+                Constantes.ZUMBI_TINTA_ATACANDO_R * tintaR,
+                Constantes.ZUMBI_TINTA_ATACANDO_G * tintaG,
+                Constantes.ZUMBI_TINTA_ATACANDO_B * tintaB,
                 1f
             )
-            Estado.MORTO -> c.color.set(1f, 1f, 1f, 1f)
+            Estado.MORTO -> c.color.set(tintaR * 0.8f, tintaG * 0.8f, tintaB * 0.8f, 1f)
         }
     }
 
@@ -415,6 +438,7 @@ class Inimigo(modelo: Model, x: Float, z: Float, private val animado: Boolean = 
         if (animado) {
             // Modelo do F2: origem nos pes, frente = -Z.
             instancia.transform.setToTranslation(posicao.x, posicao.y, posicao.z).rotate(Vector3.Y, yaw)
+                .scale(escalaLargura, escalaAltura, escalaLargura)
         } else {
             instancia.transform.setToTranslation(
                 posicao.x,

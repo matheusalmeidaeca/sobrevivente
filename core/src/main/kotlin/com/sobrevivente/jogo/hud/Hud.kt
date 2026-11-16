@@ -337,7 +337,16 @@ class Hud(
         val cx = largura * 0.5f
         val cy = altura * 0.5f
         val meia = miraEspessura * 0.5f
+        // contorno escuro: a mira continua visivel contra o ceu claro e a nevoa
+        val o = miraEspessura * 0.6f
+        forma.setColor(0f, 0f, 0f, Constantes.MIRA_ALFA * 0.55f)
+        forma.rect(cx + miraFolga - o, cy - meia - o, miraComprimento + 2f * o, miraEspessura + 2f * o)
+        forma.rect(cx - miraFolga - miraComprimento - o, cy - meia - o, miraComprimento + 2f * o, miraEspessura + 2f * o)
+        forma.rect(cx - meia - o, cy + miraFolga - o, miraEspessura + 2f * o, miraComprimento + 2f * o)
+        forma.rect(cx - meia - o, cy - miraFolga - miraComprimento - o, miraEspessura + 2f * o, miraComprimento + 2f * o)
+        forma.rect(cx - meia - o, cy - meia - o, miraEspessura + 2f * o, miraEspessura + 2f * o)
         forma.setColor(1f, 1f, 1f, Constantes.MIRA_ALFA)
+        forma.rect(cx - meia, cy - meia, miraEspessura, miraEspessura) // ponto central
         forma.rect(cx + miraFolga, cy - meia, miraComprimento, miraEspessura)
         forma.rect(cx - miraFolga - miraComprimento, cy - meia, miraComprimento, miraEspessura)
         forma.rect(cx - meia, cy + miraFolga, miraEspessura, miraComprimento)

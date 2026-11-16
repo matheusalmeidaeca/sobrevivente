@@ -34,24 +34,43 @@ class BarraVida {
     /** Y da base da barra, para posicionar o overlay de debug logo abaixo. */
     fun baseY(): Float = y - borda
 
-    /** Chamar entre forma.begin(Filled) e forma.end(), com blending ligado. */
+    /** Chamar entre forma.begin(Filled) e forma.end(), com blending ligado. Cor muda com a vida; marcas a cada 25%. */
     fun desenharFormas(forma: ShapeRenderer) {
         val fundo = Constantes.BARRA_VIDA_FUNDO_COR
         forma.setColor(fundo, fundo, fundo, Constantes.BARRA_VIDA_FUNDO_ALFA)
         forma.rect(x - borda, y - borda, largura + 2f * borda, altura + 2f * borda)
+        forma.setColor(0.22f, 0.04f, 0.04f, 0.85f) // parte vazia
+        forma.rect(x, y, largura, altura)
 
         val proporcao = if (vidaMaxima > 0) {
             (vida.toFloat() / vidaMaxima.toFloat()).coerceIn(0f, 1f)
         } else {
             0f
         }
-        forma.setColor(
-            Constantes.BARRA_VIDA_COR_R,
-            Constantes.BARRA_VIDA_COR_G,
-            Constantes.BARRA_VIDA_COR_B,
-            1f
-        )
+        // verde -> amarelo -> vermelho conforme a vida cai
+        val r: Float
+        val g: Float
+        val b: Float
+        if (proporcao > 0.5f) {
+            val t = (proporcao - 0.5f) * 2f
+            r = 0.95f + (Constantes.BARRA_VIDA_COR_R - 0.95f) * t
+            g = 0.80f + (Constantes.BARRA_VIDA_COR_G - 0.80f) * t
+            b = 0.15f + (Constantes.BARRA_VIDA_COR_B - 0.15f) * t
+        } else {
+            val t = proporcao * 2f
+            r = 0.85f + 0.10f * t
+            g = 0.12f + 0.68f * t
+            b = 0.10f + 0.05f * t
+        }
+        forma.setColor(r, g, b, 1f)
         forma.rect(x, y, largura * proporcao, altura)
+        forma.setColor(1f, 1f, 1f, 0.22f) // brilho na metade de cima
+        forma.rect(x, y + altura * 0.5f, largura * proporcao, altura * 0.5f)
+        forma.setColor(0f, 0f, 0f, 0.35f) // marcas de 25%
+        val marca = maxOf(1f, borda * 0.6f)
+        for (k in 1..3) {
+            forma.rect(x + largura * 0.25f * k - marca * 0.5f, y, marca, altura)
+        }
     }
 
     /** Chamar entre lote.begin() e lote.end(), com a fonte já na escala do HUD. */

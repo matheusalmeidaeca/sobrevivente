@@ -23,6 +23,9 @@ bloq_inimigo = []
 itens = []    # (x, z, y, tipo) tipo: 0 cura, 1 municao, 2 fuzil, 3 escopeta
 spawns = []
 inimigos = []
+casas_info = []  # (x0, z0, w, d, alt, tipo, lado, pos, larg) para a decoracao
+decor = []       # caixas so de desenho: (cx, cy, cz, sx, sy, sz, rotY, r, g, b)
+telhados = []    # (x0, z0, x1, z1, yBase, altura, forma, r, g, b, oculta) forma 0 cumeeira em X, 1 em Z, 2 piramide
 
 
 def caixa(x0, z0, x1, z1, tipo=0, alt=3.0, base=0.0):
@@ -32,6 +35,7 @@ def caixa(x0, z0, x1, z1, tipo=0, alt=3.0, base=0.0):
 def casa(x0, z0, w, d, lado, pos=0.5, larg=3.0, tipo=0, alt=3.0, janela=None):
     """Quatro paredes com UMA porta no `lado` ('N','S','L','O'); pos = posicao do centro da porta (0..1)."""
     x1, z1 = x0 + w, z0 + d
+    casas_info.append((x0, z0, w, d, alt, tipo, lado, pos, larg))
     def horiz(z, porta):  # parede horizontal (norte/sul)
         if not porta:
             caixa(x0, z, x1, z + T, tipo, alt)
@@ -88,20 +92,21 @@ itens.append((-31.0, -29.0, ALTURA_ANDAR, 1))
 itens.append((-24.0, -22.0, 0.0, 0))
 caixa(-28.0, -28.0, -27.0, -27.0, 2, 1.0, ALTURA_ANDAR)  # caixote em cima
 
-casa(14, -32, 14, 10, 'S', 0.5)
-casa(-32, 10, 12, 10, 'N', 0.5)
-casa(18, 12, 12, 12, 'O', 0.5)
+casa(14, -32, 14, 10, 'S', 0.5, 3.0, 6)
+casa(-32, 10, 12, 10, 'N', 0.5, 3.0, 7)
+casa(18, 12, 12, 12, 'O', 0.5, 3.0, 8)
 casa(-56, -6, 9, 8, 'L', 0.5)
-casa(40, -8, 10, 9, 'O', 0.5)
-casa(-10, 40, 14, 10, 'N', 0.5)
-casa(30, 36, 10, 10, 'O', 0.5)
+casa(40, -8, 10, 9, 'O', 0.5, 3.0, 6)
+casa(-10, 40, 14, 10, 'N', 0.5, 3.0, 7)
+casa(30, 36, 10, 10, 'O', 0.5, 3.0, 8)
 casa(-48, 36, 11, 9, 'L', 0.5)
-casa(55, 30, 9, 8, 'O', 0.5)
-casa(-60, -48, 10, 9, 'S', 0.5)
+casa(55, 30, 9, 8, 'O', 0.5, 3.0, 6)
+casa(-60, -48, 10, 9, 'S', 0.5, 3.0, 7)
 casa(58, -30, 9, 9, 'O', 0.5)
 # IGREJA (pedra, alta) e CELEIRO
 casa(-12, -62, 24, 16, 'S', 0.5, 4.0, 1, 5.0)
 casa(38, -52, 20, 14, 'O', 0.5, 4.0, 3, 4.5)
+caixa(-19.0, -50.0, -14.0, -45.0, 1, 11.0)   # torre do sino (pedra)
 # poco e caixotes
 caixa(-1.2, -7.2, 1.2, -4.8, 1, 1.2)
 for (cx, cz) in [(8, 6), (-9, 7), (12, -10), (-14, -8), (25, 28), (-25, 28), (-38, -2), (47, 8), (-4, 28), (9, 30)]:
@@ -138,6 +143,133 @@ itens += [
 inimigos += [(-10.0, -14.0), (12.0, 10.0), (-22.0, 22.0), (26.0, -20.0), (4.0, 34.0), (-40.0, -6.0), (48.0, 20.0)]
 spawns += [(-74, -74), (74, -74), (-74, 74), (74, 74), (0, -76), (0, 76), (-76, 0), (76, 0), (-60, -30), (60, 20),
            (40, 72), (-40, 72), (-70, 30), (70, -50), (-30, -72), (30, 74)]
+
+
+# ------------------------------------------------------------------ DECORACAO (so desenho, sem colisao)
+import random
+rnd = random.Random(7)
+PAL_TELHA = [(0.52, 0.24, 0.17), (0.32, 0.34, 0.38), (0.40, 0.27, 0.18), (0.36, 0.40, 0.30)]
+MADEIRA = (0.20, 0.13, 0.08)
+PEDRA = (0.50, 0.50, 0.48)
+MOLDURA = (0.62, 0.56, 0.46)
+VIDRO = (0.10, 0.13, 0.17)
+TERRA = (0.43, 0.35, 0.25)
+
+
+def dec(cx, cy, cz, sx, sy, sz, cor, rot=0.0):
+    decor.append((cx, cy, cz, sx, sy, sz, rot, cor[0], cor[1], cor[2]))
+
+
+def janela(cx, cy, cz, eixo, lado):
+    """Janela na parede: moldura clara + vidro escuro + travessas + peitoril. eixo 'x': parede ao longo de X."""
+    if eixo == 'x':
+        dec(cx, cy, cz + lado * 0.03, 1.5, 1.2, 0.08, MOLDURA)
+        dec(cx, cy, cz + lado * 0.07, 1.2, 0.9, 0.08, VIDRO)
+        dec(cx, cy, cz + lado * 0.11, 0.08, 0.9, 0.06, MOLDURA)
+        dec(cx, cy, cz + lado * 0.11, 1.2, 0.08, 0.06, MOLDURA)
+        dec(cx, cy - 0.68, cz + lado * 0.12, 1.7, 0.1, 0.22, (0.30, 0.20, 0.12))
+    else:
+        dec(cx + lado * 0.03, cy, cz, 0.08, 1.2, 1.5, MOLDURA)
+        dec(cx + lado * 0.07, cy, cz, 0.08, 0.9, 1.2, VIDRO)
+        dec(cx + lado * 0.11, cy, cz, 0.06, 0.9, 0.08, MOLDURA)
+        dec(cx + lado * 0.11, cy, cz, 0.06, 0.08, 1.2, MOLDURA)
+        dec(cx + lado * 0.12, cy - 0.68, cz, 0.22, 0.1, 1.7, (0.30, 0.20, 0.12))
+
+
+for idx, (x0, z0, w, d, alt, tipo, lado, pos, larg) in enumerate(casas_info):
+    x1, z1 = x0 + w, z0 + d
+    pedra = tipo == 1
+    for (ax, az, bx, bz) in [(x0, z0, x1, z0 + T), (x0, z1 - T, x1, z1), (x0, z0, x0 + T, z1), (x1 - T, z0, x1, z1)]:
+        dec((ax + bx) / 2, 0.3, (az + bz) / 2, bx - ax + 0.12, 0.6, bz - az + 0.12, PEDRA)
+        if not pedra:
+            dec((ax + bx) / 2, alt - 0.12, (az + bz) / 2, bx - ax + 0.16, 0.24, bz - az + 0.16, MADEIRA)
+    if not pedra:
+        for (cx, cz) in [(x0 + T / 2, z0 + T / 2), (x1 - T / 2, z0 + T / 2), (x0 + T / 2, z1 - T / 2), (x1 - T / 2, z1 - T / 2)]:
+            dec(cx, alt / 2, cz, 0.36, alt, 0.36, MADEIRA)
+    fileiras = [1.7, 4.9] if alt > 6 else [1.7 if alt < 4 else 2.6]
+    for yy in fileiras:
+        for (sentido, comp, fixo, ladodir) in [('x', (x0, x1), z0, -1), ('x', (x0, x1), z1, 1), ('z', (z0, z1), x0, -1), ('z', (z0, z1), x1, 1)]:
+            ehporta = (lado == 'N' and sentido == 'x' and fixo == z0) or (lado == 'S' and sentido == 'x' and fixo == z1) \
+                or (lado == 'O' and sentido == 'z' and fixo == x0) or (lado == 'L' and sentido == 'z' and fixo == x1)
+            if ehporta:
+                continue
+            ext = comp[1] - comp[0]
+            n = max(1, int((ext - 2.0) // 4.0))
+            for k in range(n):
+                c = comp[0] + ext * (k + 1) / (n + 1)
+                if sentido == 'x':
+                    janela(c, yy, fixo, 'x', ladodir)
+                else:
+                    janela(fixo, yy, c, 'z', ladodir)
+    altp = min(alt - 0.5, 3.4)
+    corv = (0.45, 0.33, 0.22) if not pedra else PEDRA
+    if lado in ('N', 'S'):
+        zc = z0 if lado == 'N' else z1
+        cx = x0 + w * pos
+        sg = -1 if lado == 'N' else 1
+        dec(cx - larg / 2 - 0.1, altp / 2, zc, 0.22, altp, 0.7, MADEIRA)
+        dec(cx + larg / 2 + 0.1, altp / 2, zc, 0.22, altp, 0.7, MADEIRA)
+        dec(cx, altp + (alt - altp) / 2, zc, larg + 0.4, alt - altp, 0.5, corv)
+        dec(cx, 0.06, zc + sg * 0.9, larg + 0.6, 0.12, 1.4, PEDRA)
+    else:
+        xc = x0 if lado == 'O' else x1
+        cz = z0 + d * pos
+        sg = -1 if lado == 'O' else 1
+        dec(xc, altp / 2, cz - larg / 2 - 0.1, 0.7, altp, 0.22, MADEIRA)
+        dec(xc, altp / 2, cz + larg / 2 + 0.1, 0.7, altp, 0.22, MADEIRA)
+        dec(xc, altp + (alt - altp) / 2, cz, 0.5, alt - altp, larg + 0.4, corv)
+        dec(xc + sg * 0.9, 0.06, cz, 1.4, 0.12, larg + 0.6, PEDRA)
+    o = 0.6
+    forma = 0 if w >= d else 1
+    corr = PAL_TELHA[idx % len(PAL_TELHA)] if tipo != 3 else (0.50, 0.20, 0.15)
+    vao = d if forma == 0 else w
+    alturaT = max(1.4, vao * 0.38)
+    telhados.append((x0 - o, z0 - o, x1 + o, z1 + o, alt, alturaT, forma, corr[0], corr[1], corr[2], 1))
+    if tipo in (0, 6, 7, 8) and alt < 4 and lado != 'L':
+        dec(x1 + 0.3, (alt + alturaT * 0.5 + 0.8) / 2, z0 + d * 0.25, 0.9, alt + alturaT * 0.5 + 0.8, 0.9, (0.38, 0.31, 0.27))
+        dec(x1 + 0.3, alt + alturaT * 0.5 + 0.9, z0 + d * 0.25, 1.1, 0.2, 1.1, (0.28, 0.24, 0.22))
+
+telhados.append((-19.5, -50.5, -13.5, -44.5, 11.0, 4.5, 2, 0.30, 0.32, 0.36, 0))
+dec(-16.5, 16.1, -47.5, 0.12, 1.2, 0.12, (0.80, 0.72, 0.30))
+dec(-16.5, 16.4, -47.5, 0.6, 0.12, 0.12, (0.80, 0.72, 0.30))
+for yy in (6.0, 9.0):
+    dec(-16.5, yy, -44.95, 0.8, 1.4, 0.08, (0.08, 0.09, 0.12))
+    dec(-13.95, yy, -47.5, 0.08, 1.4, 0.8, (0.08, 0.09, 0.12))
+
+dec(0.0, 0.0175, 0.0, 14.0, 0.035, 14.0, (0.46, 0.45, 0.42))
+dec(0.0, 0.0200, 0.0, 10.0, 0.04, 10.0, (0.40, 0.39, 0.37), 45.0)
+dec(0.0, 0.0125, 0.0, 5.0, 0.025, 76.0, TERRA)
+dec(0.0, 0.0125, 0.0, 76.0, 0.025, 5.0, TERRA)
+for (x0, z0, w, d, alt, tipo, lado, pos, larg) in casas_info:
+    cx, cz = x0 + w * pos, z0 + d * pos
+    if lado == 'N':
+        dec(cx, 0.0125, z0 - 4.5, larg + 0.4, 0.025, 9.0, TERRA)
+    elif lado == 'S':
+        dec(cx, 0.0125, z0 + d + 4.5, larg + 0.4, 0.025, 9.0, TERRA)
+    elif lado == 'O':
+        dec(x0 - 4.5, 0.0125, cz, 9.0, 0.025, larg + 0.4, TERRA)
+    else:
+        dec(x0 + w + 4.5, 0.0125, cz, 9.0, 0.025, larg + 0.4, TERRA)
+dec(-31.0, 0.0125, -16.0, 2.4, 0.025, 12.0, TERRA)
+
+for (x, z) in arvs:
+    g = rnd.uniform(0.0, 1.0)
+    cor = (0.14 + 0.06 * g, 0.30 + 0.12 * g, 0.12 + 0.04 * g)
+    cor2 = (cor[0] * 0.85, cor[1] * 0.85, cor[2] * 0.85)
+    dec(x, 3.6, z, 4.2, 1.6, 4.2, cor2, rnd.uniform(0, 45))
+    dec(x, 5.0, z, 3.2, 1.5, 3.2, cor, rnd.uniform(0, 45))
+    dec(x, 6.3, z, 2.0, 1.4, 2.0, cor, rnd.uniform(0, 45))
+    dec(x, 7.2, z, 1.0, 0.8, 1.0, (cor[0] * 1.1, cor[1] * 1.1, cor[2]), rnd.uniform(0, 45))
+for _ in range(60):
+    px, pz = rnd.uniform(-74, 74), rnd.uniform(-74, 74)
+    if abs(px) < 8 and abs(pz) < 8:
+        continue
+    t = rnd.uniform(0.3, 0.7)
+    dec(px, t / 2, pz, t * 1.3, t, t, (0.42, 0.42, 0.40), rnd.uniform(0, 90))
+for _ in range(120):
+    px, pz = rnd.uniform(-76, 76), rnd.uniform(-76, 76)
+    gg = rnd.uniform(0.0, 1.0)
+    dec(px, 0.15, pz, rnd.uniform(0.5, 1.2), 0.3, rnd.uniform(0.5, 1.2), (0.20 + 0.08 * gg, 0.34 + 0.1 * gg, 0.14), rnd.uniform(0, 90))
 
 # ------------------------------------------------------------------ teste de navegacao (mesma grade/folga do Navegacao.kt)
 CEL = 0.5
@@ -260,6 +392,43 @@ def kotlin():
     return "\n".join(o) + "\n"
 
 
+def kotlin_decor():
+    """Arquivo VilaDecoracao.kt: os numeros vao em TEXTO (um array grande demais estoura o limite de 64 KB do metodo da JVM)."""
+    def txt(linhas):
+        return ";".join(",".join(f(v)[:-1] for v in l) for l in linhas)
+    o = ["// core/src/main/kotlin/com/sobrevivente/jogo/mundo/VilaDecoracao.kt",
+         "// GERADO por ferramentas/vila/gerar_vila.py - NAO editar a mao.",
+         "package com.sobrevivente.jogo.mundo", "",
+         "/** Decoracao so de desenho (sem colisao) e telhados da vila. Numeros em texto, lidos uma vez ao abrir o jogo. */",
+         "object VilaDecoracao {",
+         "    private fun ler(s: String): FloatArray {",
+         "        val linhas = s.split(';')",
+         "        val out = ArrayList<Float>()",
+         "        for (l in linhas) for (n in l.split(',')) if (n.isNotEmpty()) out.add(n.toFloat())",
+         "        return out.toFloatArray()",
+         "    }", "",
+         "    /** Por caixa: cx, cy, cz, sx, sy, sz, rotY(graus), r, g, b  (10 numeros). */",
+         "    val CAIXAS: FloatArray by lazy { ler(CAIXAS_TXT) }",
+         "    /** Por telhado: x0, z0, x1, z1, yBase, altura, forma (0 cumeeira em X, 1 em Z, 2 piramide), r, g, b, oculta (1 = some com o jogador dentro) (11 numeros). */",
+         "    val TELHADOS: FloatArray by lazy { ler(TELHADOS_TXT) }", ""]
+    # blocos de texto < 60 KB cada: divide em pedacos concatenados em tempo de execucao
+    def bloco(nome, linhas):
+        partes, atual = [], []
+        tam = 0
+        for l in linhas:
+            t = ",".join(f(v)[:-1] for v in l)
+            if tam + len(t) > 30000:
+                partes.append(atual); atual = []; tam = 0
+            atual.append(t); tam += len(t) + 1
+        partes.append(atual)
+        out = ["    private val %s: String = listOf(" % nome]
+        out.append(",\n".join('        "' + ";".join(p) + '"' for p in partes))
+        out.append("    ).joinToString(\";\")")
+        return out
+    o += bloco("CAIXAS_TXT", decor) + [""] + bloco("TELHADOS_TXT", telhados) + ["}"]
+    return "\n".join(o) + "\n"
+
+
 # ------------------------------------------------------------------ previa
 def previa(caminho, b):
     from PIL import Image, ImageDraw
@@ -276,7 +445,7 @@ def previa(caminho, b):
         d.rectangle([px(x0, z0), px(x1, z1)], fill=(120, 96, 66))
     for (x0, z0, x1, z1, a, c, e) in rampas:
         d.rectangle([px(x0, z0), px(x1, z1)], fill=(170, 140, 90))
-    cor = {0: (120, 84, 56), 1: (150, 150, 150), 2: (140, 110, 70), 3: (150, 60, 50), 4: (80, 60, 40), 5: (40, 70, 30)}
+    cor = {0: (120, 84, 56), 1: (150, 150, 150), 2: (140, 110, 70), 3: (150, 60, 50), 4: (80, 60, 40), 5: (40, 70, 30), 6: (190, 170, 130), 7: (180, 140, 90), 8: (150, 160, 160)}
     for (x0, z0, x1, z1, base, alt, tipo) in paredes:
         d.rectangle([px(x0, z0), px(x1, z1)], fill=cor[tipo])
     for (x, z, y, t) in itens:
@@ -299,4 +468,6 @@ if __name__ == "__main__":
     print("paredes:", len(paredes), "itens:", len(itens), "spawns:", len(spawns), "erros:", len(erros))
     with open(os.path.join(saida, "vila_constantes.kt.txt"), "w") as fh:
         fh.write(kotlin())
+    with open(os.path.join(saida, "VilaDecoracao.kt"), "w") as fh:
+        fh.write(kotlin_decor())
     previa(os.path.join(saida, "vila_previa.png"), grade)

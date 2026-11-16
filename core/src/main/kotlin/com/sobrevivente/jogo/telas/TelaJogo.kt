@@ -243,8 +243,21 @@ class TelaJogo : ScreenAdapter() {
             1f,
             true
         )
+        // Ceu (sem luz, sem escrever profundidade) em passada propria, depois o mundo
+        mundo.cenario.seguirCamera(cameraJogo.camera)
+        loteModelos.begin(cameraJogo.camera)
+        loteModelos.render(mundo.cenario.ceu)
+        loteModelos.end()
         loteModelos.begin(cameraJogo.camera)
         loteModelos.render(mundo.chao, mundo.ambiente)
+        loteModelos.render(mundo.cenario.decoracao, mundo.ambiente)
+        for (i in mundo.cenario.telhados.indices) {
+            if (mundo.cenario.telhadoVisivel(i)) loteModelos.render(mundo.cenario.telhados[i], mundo.ambiente)
+        }
+        loteModelos.render(mundo.sombras[0], mundo.ambiente)
+        for (i in mundo.inimigos.indices) {
+            if (mundo.inimigos[i].visivel && mundo.sombraDoZumbiVisivel(i)) loteModelos.render(mundo.sombras[i + 1], mundo.ambiente)
+        }
         for (i in mundo.pisos.indices) {
             loteModelos.render(mundo.pisos[i], mundo.ambiente)
         }

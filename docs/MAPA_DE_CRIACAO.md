@@ -1,10 +1,17 @@
-# MAPA DE CRIAÇÃO v2.19 — Jogo 3D de Sobrevivência (Kotlin + Python de bastidor / Android)
+# MAPA DE CRIAÇÃO v2.20 — Jogo 3D de Sobrevivência (Kotlin + Python de bastidor / Android)
 
-**Versão do documento:** 2.19 | **Data:** 16/11/2026 | **Substitui:** v2.18
+**Versão do documento:** 2.20 | **Data:** 16/11/2026 | **Substitui:** v2.19
 **Nome provisório:** PROJETO_SOBREVIVENTE (nome final: em aberto)
 
 > Cole este arquivo inteiro no início de qualquer conversa com uma IA.
 > Ele é a **fonte única da verdade**. O que não estiver aqui, a IA **pergunta**; ela não decide.
+
+### Mudanças da v2.19 para a v2.20 (F6 — estética geral)
+- **Ceu e luz:** domo em degradê (horizonte claro -> zênite azulado) que segue a câmera (`mundo/Cenario.kt`), **névoa** do LibGDX (`ColorAttribute.Fog`, cor = horizonte; some o fim do mundo na bruma, far = 120 m), sol mais quente. Chão com tom de verde/terra por quadrado (cor por vértice, sem cara de tabuleiro). **Sombras redondas** translúcidas sob o jogador e os zumbis.
+- **Vila:** telhados de duas águas (somem quando o jogador entra na casa, para a câmera ver dentro), chaminés, janelas com moldura/vidro/peitoril (2 fileiras na casa do fazendeiro), batentes e vergas de porta, rodapé de pedra e vigas de madeira, reboco em 4 cores, torre do sino com telhado piramidal e cruz, praça de pedra, ruas e trilhas de terra, copas de árvore em camadas, pedras e capim. Tudo isso é **só desenho** (sem colisão), gerado por `ferramentas/vila/gerar_vila.py` em `mundo/VilaDecoracao.kt` (números em texto, para não estourar o limite de 64 KB de método da JVM) e fundido em **um** modelo com cor por vértice.
+- **Personagens:** texturas embelezadas por `ferramentas/texturas/embelezar.py` (partindo de `base_*.png`): costuras, tecido, bolsos, cinto, luvas, rosto com sobrancelhas; zumbi com roupa rasgada, sangue escorrendo, cicatrizes, pele doente. Cada zumbi sorteia **altura, largura e tom de pele** (magro/gordo/alto/baixo; 5 tons) a cada respawn.
+- **HUD:** botões com sombra, aro claro, miolo com borda escura e brilho; barra de vida muda de verde para amarelo e vermelho e tem marcas de 25%; mira com contorno escuro e ponto central.
+- Limitações: sem sombras reais; tudo é caixa (sem curvas); telhado/janela não têm colisão; a névoa depende do shader padrão do LibGDX (NAO TENHO CERTEZA da força no celular: ajustar `CAMERA_FAR`/cor); tudo **não compilado pela IA**.
 
 ### Mudanças da v2.18 para a v2.19 (F5 — movimento CoD Mobile, vila estilo RE4, respawn)
 - **Bug do vídeo:** atirando/recarregando andando, o corpo se movia sem as pernas andarem. Novas animações armadas (por arma): `andarmirar`, `andarrecarregar`, `pular`, `agachar`, `andaragachar` (35 animações no `jogador.g3dj`, ~3,2 MB; geradas por `pegada.py`). Tiro andando = `andarmirar` em loop; recarga andando = `andarrecarregar` (a variante é fixada no início da recarga).
@@ -787,7 +794,7 @@ RELATÓRIO
 
 ## 22. ESTADO ATUAL (atualizar ao fim de cada sessão)
 
-- Marco atual: **F5 entregue (v2.19: movimento CoD Mobile, vila grande, respawn, casas; não compilado pela IA)**; antes F4 entregue (v2.18: 3 armas, troca, pegada com IK; não compilado pela IA)**; antes F3d ( (v2.17: referências de zumbi e protagonista)**; antes F3c ( (v2.16: suavidade, ataque com um braço, vagar e A*; não compilado pela IA)**; antes: **1.8 (dono informou "deu certo"; caixas a marcar por ele)**; trilha ativa de ferramentas: **F0 e F1 (rodaram no CI), F2 (rodou no CI; poses a aprovar) e F3 (entregue, em teste)**
+- Marco atual: **F6 entregue (v2.20: estética geral; não compilado pela IA)**; antes F5 entregue (v2.19: movimento CoD Mobile, vila grande, respawn, casas; não compilado pela IA)**; antes F4 entregue (v2.18: 3 armas, troca, pegada com IK; não compilado pela IA)**; antes F3d ( (v2.17: referências de zumbi e protagonista)**; antes F3c ( (v2.16: suavidade, ataque com um braço, vagar e A*; não compilado pela IA)**; antes: **1.8 (dono informou "deu certo"; caixas a marcar por ele)**; trilha ativa de ferramentas: **F0 e F1 (rodaram no CI), F2 (rodou no CI; poses a aprovar) e F3 (entregue, em teste)**
 - Último build verde confirmado: run #9 (código dos Marcos 1.7 e 1.8). F0 enviado (`ebb5ef4`); "Gerar modelo" ainda não rodado
 - Versões congeladas: **sim** (seção 6)
 - Arquivos existentes no repositório: tudo até o Marco 1.7 + 1 novo no 1.8 (`mundo/Colisao.kt`) e 8 alterados (depois do push)

@@ -47,20 +47,33 @@ class BotoesAcao(
         }
     }
 
-    /** Chamar entre forma.begin(Filled) e forma.end(), com blending ligado. */
+    /**
+     * Chamar entre forma.begin(Filled) e forma.end(), com blending ligado.
+     * Cada botao: sombra suave, aro claro, miolo colorido (mais escuro na borda), brilho no alto (efeito de vidro).
+     */
     fun desenharFormas(forma: ShapeRenderer) {
         for (i in 0 until ControlesToque.NUM_ACOES) {
             val pressionado = controles.acaoPressionada(i)
             val raio = controles.acaoRaio(i) *
                 (if (pressionado) Constantes.BOTAO_ESCALA_PRESSIONADO else 1f)
             val fator = if (pressionado) Constantes.BOTAO_ESCURECER else 1f
-            forma.setColor(
-                cores[i * 3] * fator,
-                cores[i * 3 + 1] * fator,
-                cores[i * 3 + 2] * fator,
-                Constantes.BOTAO_ALFA
-            )
-            forma.circle(controles.acaoX(i), controles.acaoY(i), raio, Constantes.BOTAO_SEGMENTOS)
+            val x = controles.acaoX(i)
+            val y = controles.acaoY(i)
+            val r = cores[i * 3] * fator
+            val g = cores[i * 3 + 1] * fator
+            val b = cores[i * 3 + 2] * fator
+            val seg = Constantes.BOTAO_SEGMENTOS
+
+            forma.setColor(0f, 0f, 0f, 0.28f) // sombra
+            forma.circle(x, y - raio * 0.06f, raio * 1.08f, seg)
+            forma.setColor(1f, 1f, 1f, if (pressionado) 0.35f else 0.60f) // aro
+            forma.circle(x, y, raio * 1.02f, seg)
+            forma.setColor(r * 0.55f, g * 0.55f, b * 0.55f, 0.92f) // borda escura do miolo
+            forma.circle(x, y, raio * 0.96f, seg)
+            forma.setColor(r, g, b, 0.88f) // miolo
+            forma.circle(x, y + raio * 0.02f, raio * 0.86f, seg)
+            forma.setColor(1f, 1f, 1f, if (pressionado) 0.06f else 0.20f) // brilho
+            forma.circle(x - raio * 0.10f, y + raio * 0.34f, raio * 0.46f, seg)
         }
     }
 
