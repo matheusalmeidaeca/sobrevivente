@@ -120,7 +120,7 @@ class Inimigo(modelo: Model, x: Float, z: Float) {
     }
 
     private fun perseguir(dt: Float, dx: Float, dz: Float, distancia: Float) {
-        // Perseguição direta (sem pathfinding na Fase 1). Colisão com paredes: Marco 1.8.
+        // Perseguição direta (sem pathfinding na Fase 1), deslizando nas paredes (Marco 1.8).
         val fator = Constantes.ENIMIGO_VELOCIDADE * dt / distancia
         posicao.x = MathUtils.clamp(
             posicao.x + dx * fator,
@@ -132,6 +132,7 @@ class Inimigo(modelo: Model, x: Float, z: Float) {
             -Constantes.MAPA_LIMITE,
             Constantes.MAPA_LIMITE
         )
+        Colisao.resolver(posicao, Constantes.ENIMIGO_RAIO)
         atualizarTransformacao()
     }
 

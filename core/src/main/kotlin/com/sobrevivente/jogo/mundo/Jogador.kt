@@ -98,6 +98,11 @@ class Jogador : Disposable {
         vida = maxOf(0, vida - dano)
     }
 
+    /** Recupera vida (item de cura, Marco 1.7), sem passar do máximo. */
+    fun curar(valor: Int) {
+        vida = minOf(Constantes.JOGADOR_VIDA_MAXIMA, vida + valor)
+    }
+
     /**
      * Move o jogador. `entradaX/Y` vêm do joystick (-1..1; Y positivo = frente).
      * O movimento é relativo ao yaw da câmera. Sem alocação.
@@ -122,6 +127,8 @@ class Jogador : Disposable {
             -Constantes.MAPA_LIMITE,
             Constantes.MAPA_LIMITE
         )
+
+        Colisao.resolver(posicao, Constantes.JOGADOR_RAIO) // desliza nas paredes (Marco 1.8)
 
         // O corpo vira suavemente para a direção do movimento
         // (a não ser que esteja encarando a mira logo após atirar).

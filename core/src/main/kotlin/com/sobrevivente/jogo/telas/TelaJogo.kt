@@ -14,11 +14,13 @@ import com.sobrevivente.jogo.camera.CameraTerceiraPessoa
 import com.sobrevivente.jogo.entrada.ControlesToque
 import com.sobrevivente.jogo.hud.Hud
 import com.sobrevivente.jogo.hud.Joystick
+import com.sobrevivente.jogo.inventario.Maleta
+import com.sobrevivente.jogo.inventario.TipoItem
 import com.sobrevivente.jogo.mundo.Arma
 import com.sobrevivente.jogo.mundo.Jogador
 import com.sobrevivente.jogo.mundo.Mundo
 
-/** Marco 1.6: morte do jogador (tela VOCÊ MORREU) e reinício, sobre os inimigos do 1.5, o tiro do 1.4 e o HUD do 1.3. */
+/** Marco 1.8: mapa de teste (paredes, colisão, minimapa), sobre maleta (1.7), morte/reinício (1.6), inimigos (1.5), tiro (1.4) e HUD (1.3). */
 class TelaJogo : ScreenAdapter() {
 
     private val mundo = Mundo()
@@ -27,7 +29,8 @@ class TelaJogo : ScreenAdapter() {
     private val cameraJogo = CameraTerceiraPessoa()
     private val controles = ControlesToque()
     private val joystick = Joystick(controles)
-    private val hud = Hud(controles)
+    private val maleta = Maleta()
+    private val hud = Hud(controles, maleta, mundo)
 
     private val loteModelos = ModelBatch()
     private val lote = SpriteBatch()
@@ -35,6 +38,7 @@ class TelaJogo : ScreenAdapter() {
 
     private var pausado = false
     private var morto = false
+    private var maletaAberta = false
 
     init {
         cameraJogo.seguir(jogador.posicao)
@@ -85,7 +89,55 @@ class TelaJogo : ScreenAdapter() {
             )
             if (acertou) hud.mostrarAcerto()
         }
+        if (controles.consumirPressao(ControlesToque.ACAO_INTERAGIR)) interagir()
         jogador.atualizarTiro(dt, cameraJogo.yaw, atirou)
+    }
+
+    /** INTERAGIR: guarda na maleta o item mais perto (raio 1,5 m). Se não couber, recusa. */
+    private fun interagir() {
+        val item = mundo.itemMaisProximo(
+            jogador.posicao.x,
+            jogador.posicao.z,
+            Constantes.INTERAGIR_RAIO
+        ) ?: return
+        if (maleta.adicionar(item.tipo, item.quantidade)) {
+            item.coletado = true
+            hud.mostrarMensagem(
+                if (item.tipo == TipoItem.CURA) Constantes.MSG_PEGOU_CURA else Constantes.MSG_PEGOU_MUNICAO
+            )
+        } else {
+            hud.mostrarMensagem(Constantes.MSG_MALETA_CHEIA)
+        }
+    }
+
+    /** Toque num slot da maleta: cura +30 de vida (consome 1); munição vai toda para a reserva da arma. */
+    private fun usarSlot(indice: Int) {
+        val item = maleta.item(indice) ?: return
+        when (item.tipo) {
+            TipoItem.CURA -> {
+                if (jogador.vida >= Constantes.JOGADOR_VIDA_MAXIMA) {
+                    hud.mostrarMensagem(Constantes.MSG_VIDA_CHEIA)
+                    return
+                }
+                jogador.curar(Constantes.CURA_VALOR)
+                maleta.remover(indice, 1)
+                hud.mostrarMensagem(Constantes.MSG_USOU_CURA)
+            }
+            TipoItem.MUNICAO -> {
+                val quantidade = item.quantidade
+                arma.adicionarReserva(quantidade)
+                maleta.remover(indice, quantidade)
+                hud.mostrarMensagem(Constantes.MSG_USOU_MUNICAO)
+            }
+        }
+    }
+
+    /** Abre/fecha a maleta. Aberta, o jogo para (como a pausa) e o joystick fica desativado. */
+    private fun alternarMaleta() {
+        maletaAberta = !maletaAberta
+        hud.maletaAberta = maletaAberta
+        controles.definirModoMaleta(maletaAberta)
+        Gdx.app.log("TELA", if (maletaAberta) "maleta aberta" else "maleta fechada")
     }
 
     private fun morrer() {
@@ -101,6 +153,8 @@ class TelaJogo : ScreenAdapter() {
         jogador = Jogador()
         arma.reiniciar()
         mundo.reiniciar()
+        maleta.limpar()
+        hud.limparMensagem()
         cameraJogo.seguir(jogador.posicao)
         morto = false
         hud.morto = false
@@ -115,25 +169,34 @@ class TelaJogo : ScreenAdapter() {
         // Entrada de alto nível
         controles.atualizar(dt)
         val apertouVoltar = controles.consumirVoltar()
-        if (apertouVoltar && !morto) alternarPausa() // morto: Voltar não pausa
+        if (apertouVoltar) {
+            if (maletaAberta) alternarMaleta() // Voltar fecha a maleta
+            else if (!morto) alternarPausa() // morto: Voltar não pausa
+        }
         if (controles.consumirAlternarDebug()) hud.alternarDebug()
+        if (controles.consumirAlternarMaleta() && !pausado && !morto) alternarMaleta()
+        val slotUsado = controles.consumirUsarSlot()
+        if (slotUsado >= 0 && maletaAberta) usarSlot(slotUsado)
         if (morto && controles.consumirReiniciar()) reiniciar()
 
-        // Lógica (parada durante a pausa)
+        // Lógica (parada durante a pausa e com a maleta aberta)
         if (!pausado) {
-            if (morto) {
-                // Sem movimento nem tiro; só deixa um clarão em andamento terminar.
-                jogador.atualizarTiro(dt, cameraJogo.yaw, false)
-            } else {
-                atualizarJogador(dt, densidade)
+            if (!maletaAberta) {
+                if (morto) {
+                    // Sem movimento nem tiro; só deixa um clarão em andamento terminar.
+                    jogador.atualizarTiro(dt, cameraJogo.yaw, false)
+                } else {
+                    atualizarJogador(dt, densidade)
+                }
+                mundo.atualizar(dt, jogador)
             }
-            mundo.atualizar(dt, jogador)
-            hud.atualizar(dt)
+            hud.atualizar(dt) // o tempo das mensagens corre também com a maleta aberta
             if (!morto && jogador.vida <= 0) morrer()
         }
         hud.definirMunicao(arma.carregador, arma.reserva, arma.recarregando)
         hud.definirVida(maxOf(jogador.vida, 0), Constantes.JOGADOR_VIDA_MAXIMA)
         hud.inimigosVivos = mundo.contarInimigosVivos()
+        hud.definirJogador(jogador.posicao.x, jogador.posicao.z)
 
         // Desenho 3D
         ScreenUtils.clear(
@@ -145,6 +208,10 @@ class TelaJogo : ScreenAdapter() {
         )
         loteModelos.begin(cameraJogo.camera)
         loteModelos.render(mundo.chao, mundo.ambiente)
+        loteModelos.render(mundo.pisoInterno, mundo.ambiente)
+        for (i in mundo.paredes.indices) {
+            loteModelos.render(mundo.paredes[i], mundo.ambiente)
+        }
         loteModelos.render(jogador.corpo, mundo.ambiente)
         loteModelos.render(jogador.nariz, mundo.ambiente)
         if (jogador.claraoVisivel) loteModelos.render(jogador.clarao, mundo.ambiente)
@@ -152,14 +219,19 @@ class TelaJogo : ScreenAdapter() {
             val inimigo = mundo.inimigos[i]
             if (inimigo.vivo) loteModelos.render(inimigo.instancia, mundo.ambiente)
         }
+        for (i in mundo.itens.indices) {
+            val item = mundo.itens[i]
+            if (!item.coletado) loteModelos.render(item.instancia, mundo.ambiente)
+        }
         loteModelos.end()
 
         // HUD: formas com transparência, depois textos
         Gdx.gl.glEnable(GL20.GL_BLEND)
         Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA)
         forma.begin(ShapeRenderer.ShapeType.Filled)
-        joystick.desenhar(forma)
+        if (!maletaAberta) joystick.desenhar(forma)
         hud.desenharFormas(forma)
+        if (maletaAberta) joystick.desenhar(forma) // por cima do véu: é o botão que fecha a maleta
         forma.end()
 
         lote.begin()

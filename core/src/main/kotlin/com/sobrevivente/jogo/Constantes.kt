@@ -234,4 +234,115 @@ object Constantes {
     const val REINICIAR_COR_R = 0.20f
     const val REINICIAR_COR_G = 0.50f
     const val REINICIAR_COR_B = 0.90f
+
+    // ---------------- Marco 1.7: Maleta (seção 14 do mapa) ----------------
+    const val MALETA_COLUNAS = 4
+    const val MALETA_LINHAS = 2
+    const val MALETA_SLOTS = MALETA_COLUNAS * MALETA_LINHAS
+    const val MALETA_MUNICAO_POR_SLOT = 36
+    const val MALETA_CURA_POR_SLOT = 1
+    const val CURA_VALOR = 30 // vida recuperada por item de cura
+
+    // Toque curto no botão central abre/fecha a maleta (seção 10.4)
+    const val MALETA_TOQUE_CURTO_MS = 250L
+    const val MALETA_TOQUE_DESLOC_DP = 8f
+
+    // Coleta com INTERAGIR (seção 14)
+    const val INTERAGIR_RAIO = 1.5f // metros, no plano XZ
+
+    // Desenho da grade
+    const val MALETA_SLOT_LADO_DP = 72f
+    const val MALETA_SLOT_ESPACO_DP = 8f
+    const val MALETA_CENTRO_ALTURA = 0.52f // fração da altura da tela onde fica o centro da grade
+    const val MALETA_FUNDO_ALFA = 0.50f
+    const val MALETA_SLOT_BORDA_DP = 2f
+    const val MALETA_SLOT_BORDA_COR = 0.70f
+    const val MALETA_SLOT_FUNDO_COR = 0.12f
+    const val MALETA_ITEM_ESCURECER = 0.75f // escurece a cor do item para o texto branco ficar legível
+    const val MALETA_ESCALA_TITULO = 1.2f
+    const val MALETA_TITULO_ESPACO_DP = 14f
+    const val MALETA_DICA_ESPACO_DP = 12f
+    const val TEXTO_MALETA = "MALETA"
+    const val TEXTO_MALETA_DICA = "Toque no item para usar. Botao central ou VOLTAR fecha."
+    const val ROTULO_CURA = "CURA"
+    const val ROTULO_MUNICAO = "MUN"
+
+    // Mensagens curtas na tela (sem acento: a fonte padrão não foi verificada com acentos)
+    const val MSG_PEGOU_CURA = "Pegou: cura"
+    const val MSG_PEGOU_MUNICAO = "Pegou: municao"
+    const val MSG_MALETA_CHEIA = "Maleta cheia"
+    const val MSG_USOU_CURA = "Curou +$CURA_VALOR"
+    const val MSG_USOU_MUNICAO = "Municao na reserva"
+    const val MSG_VIDA_CHEIA = "Vida cheia"
+    const val MENSAGEM_DURACAO_S = 1.5f
+    const val MENSAGEM_ALTURA = 0.18f // fração da altura da tela (texto centrado na largura)
+    const val MENSAGEM_ESCALA = 1.0f
+
+    // Itens no chão (cubos de teste)
+    const val ITEM_TIPO_CURA = 0
+    const val ITEM_TIPO_MUNICAO = 1
+    const val ITEM_MUNICAO_QUANTIDADE = 12
+    const val ITEM_CURA_QUANTIDADE = 1
+    const val ITEM_LADO = 0.4f
+    const val ITEM_FOLGA_CHAO = 0.05f
+    const val ITEM_COR_CURA_R = 0.25f
+    const val ITEM_COR_CURA_G = 0.85f
+    const val ITEM_COR_CURA_B = 0.35f
+    const val ITEM_COR_MUNICAO_R = 0.30f
+    const val ITEM_COR_MUNICAO_G = 0.55f
+    const val ITEM_COR_MUNICAO_B = 0.95f
+    /** Posições (x, z) dos itens, em metros. Ficam atrás do jogador, longe dos inimigos (z positivo). */
+    val ITENS_XZ = floatArrayOf(
+        -6f, 5f, -3f, 5f, 0f, 5f, 3f, 5f, 6f, 5f,
+        -6f, 9f, -3f, 9f, 0f, 9f, 3f, 9f, 6f, 9f
+    )
+    /** Tipo de cada item (mesma ordem de ITENS_XZ): 8 curas e 2 munições. 9 slots > 8: testa "Maleta cheia". */
+    val ITENS_TIPO = intArrayOf(
+        ITEM_TIPO_CURA, ITEM_TIPO_CURA, ITEM_TIPO_CURA, ITEM_TIPO_CURA, ITEM_TIPO_CURA,
+        ITEM_TIPO_CURA, ITEM_TIPO_CURA, ITEM_TIPO_CURA, ITEM_TIPO_MUNICAO, ITEM_TIPO_MUNICAO
+    )
+
+    // ---------------- Marco 1.8: mapa de teste, colisão e minimapa ----------------
+    const val PAREDE_ALTURA = 3f
+    const val PAREDE_COR_R = 0.55f
+    const val PAREDE_COR_G = 0.52f
+    const val PAREDE_COR_B = 0.48f
+    const val PISO_INTERNO_ESPESSURA = 0.02f
+    const val PISO_INTERNO_COR_R = 0.24f
+    const val PISO_INTERNO_COR_G = 0.21f
+    const val PISO_INTERNO_COR_B = 0.19f
+    /** Piso da área interna (minX, minZ, maxX, maxZ): o prédio. */
+    val PISO_INTERNO = floatArrayOf(-14f, -24f, 14f, -8f)
+
+    /**
+     * Paredes e obstáculos, 4 números por caixa: minX, minZ, maxX, maxZ (metros).
+     * Prédio ao norte (z negativo) com um vão de 3 m na parede sul (a "porta"), 2 pilares dentro
+     * e 2 caixas fora. As paredes têm 0,4 m de espessura.
+     */
+    val PAREDES = floatArrayOf(
+        // prédio: norte, oeste, leste
+        -14.4f, -24.4f, 14.4f, -24f,
+        -14.4f, -24f, -14f, -8f,
+        14f, -24f, 14.4f, -8f,
+        // prédio: sul, com vão entre x = -1,5 e x = 1,5
+        -14.4f, -8.4f, -1.5f, -8f,
+        1.5f, -8.4f, 14.4f, -8f,
+        // pilares dentro do prédio
+        -6f, -18f, -4.6f, -16.6f,
+        4.6f, -18f, 6f, -16.6f,
+        // caixas na área externa
+        -8f, -4f, -6f, -2f,
+        6f, -5f, 8f, -3f
+    )
+
+    // Câmera contra paredes
+    const val CAMERA_MARGEM_PAREDE = 0.3f
+    const val CAMERA_FATOR_MINIMO = 0.2f // a câmera nunca chega mais perto que 20% da distância
+
+    // Minimapa funcional (norte fixo: -Z para cima)
+    const val MINIMAPA_PAREDE_COR = 0.80f
+    const val MINIMAPA_PAREDE_ALFA = 0.90f
+    const val MINIMAPA_INIMIGO_COR_R = 1.0f
+    const val MINIMAPA_INIMIGO_COR_G = 0.25f
+    const val MINIMAPA_INIMIGO_COR_B = 0.25f
 }

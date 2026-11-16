@@ -6,6 +6,8 @@ import com.badlogic.gdx.graphics.PerspectiveCamera
 import com.badlogic.gdx.math.MathUtils
 import com.badlogic.gdx.math.Vector3
 import com.sobrevivente.jogo.Constantes
+import com.sobrevivente.jogo.mundo.Colisao
+import kotlin.math.sqrt
 
 /**
  * Câmera atrás do ombro. Convenções (seção 8.1 do mapa):
@@ -63,11 +65,24 @@ class CameraTerceiraPessoa {
             cameraY = Constantes.CAMERA_ALTURA_MINIMA // não atravessa o chão
         }
 
-        camera.position.set(
-            alvo.x - frenteX * Constantes.CAMERA_DISTANCIA + direitaX * Constantes.CAMERA_OMBRO,
-            cameraY,
-            alvo.z - frenteZ * Constantes.CAMERA_DISTANCIA + direitaZ * Constantes.CAMERA_OMBRO
-        )
+        val desejadoX = alvo.x - frenteX * Constantes.CAMERA_DISTANCIA + direitaX * Constantes.CAMERA_OMBRO
+        val desejadoZ = alvo.z - frenteZ * Constantes.CAMERA_DISTANCIA + direitaZ * Constantes.CAMERA_OMBRO
+
+        // Parede entre o jogador e a câmera: aproxima a câmera (Marco 1.8), no plano XZ.
+        val dx = desejadoX - alvo.x
+        val dz = desejadoZ - alvo.z
+        val comprimento = sqrt(dx * dx + dz * dz)
+        var fator = 1f
+        if (comprimento > 0.0001f) {
+            val livre = Colisao.distanciaLivreXZ(
+                alvo.x, alvo.z, dx / comprimento, dz / comprimento,
+                comprimento, Constantes.CAMERA_MARGEM_PAREDE
+            )
+            if (livre < comprimento) fator = maxOf(Constantes.CAMERA_FATOR_MINIMO, livre / comprimento)
+        }
+        cameraY = maxOf(Constantes.CAMERA_ALTURA_MINIMA, pivoY + (cameraY - pivoY) * fator)
+
+        camera.position.set(alvo.x + dx * fator, cameraY, alvo.z + dz * fator)
         camera.direction.set(frenteX, frenteY, frenteZ)
         camera.up.set(0f, 1f, 0f)
         camera.update()

@@ -8,14 +8,21 @@ import com.badlogic.gdx.utils.Align
 import com.badlogic.gdx.utils.Disposable
 import com.sobrevivente.jogo.Constantes
 import com.sobrevivente.jogo.entrada.ControlesToque
+import com.sobrevivente.jogo.inventario.Maleta
+import com.sobrevivente.jogo.inventario.TipoItem
+import com.sobrevivente.jogo.mundo.Mundo
 
 /**
  * Marco 1.3: reúne tudo que fica sobre o jogo 3D (menos o joystick, que tem classe própria):
  * barra de vida, minimapa placeholder, mira, marcador de acerto, munição, 3 botões,
- * overlay de debug, tela de pausa e tela de morte (Marco 1.6).
+ * overlay de debug, tela de pausa, tela de morte (Marco 1.6) e grade da maleta (Marco 1.7).
  * Só desenha; não decide nada de jogo.
  */
-class Hud(private val controles: ControlesToque) : Disposable {
+class Hud(
+    private val controles: ControlesToque,
+    private val maleta: Maleta,
+    private val mundo: Mundo
+) : Disposable {
 
     private val fonte = BitmapFont()
     private val barraVida = BarraVida()
@@ -25,7 +32,10 @@ class Hud(private val controles: ControlesToque) : Disposable {
 
     var pausado = false
     var morto = false
+    var maletaAberta = false
     var inimigosVivos = 0
+    private var jogadorX = 0f
+    private var jogadorZ = 0f
 
     // Munição (Marco 1.4)
     private var carregador = 0
@@ -41,6 +51,11 @@ class Hud(private val controles: ControlesToque) : Disposable {
     private var acertoFolga = 0f
     private var acertoComprimento = 0f
     private var acertoEspessura = 0f
+
+    // Mensagem curta no centro (ex.: "Maleta cheia"); o texto é sempre uma constante, sem alocação
+    private var mensagem: String? = null
+    private var tempoMensagem = 0f
+    private val textoSlot = StringBuilder(16) // reutilizado: zero alocação por frame
 
     private var largura = 1f
     private var altura = 1f
@@ -66,13 +81,29 @@ class Hud(private val controles: ControlesToque) : Disposable {
         recarregando = emRecarga
     }
 
+    /** Posição do jogador no plano XZ (para o minimapa). Chamar todo frame. */
+    fun definirJogador(x: Float, z: Float) {
+        jogadorX = x
+        jogadorZ = z
+    }
+
     fun mostrarAcerto() {
         tempoAcerto = Constantes.ACERTO_DURACAO_S
     }
 
-    /** Chamar todo frame com o jogo rodando. */
+    fun mostrarMensagem(texto: String) {
+        mensagem = texto
+        tempoMensagem = Constantes.MENSAGEM_DURACAO_S
+    }
+
+    fun limparMensagem() {
+        tempoMensagem = 0f
+    }
+
+    /** Chamar todo frame (jogo rodando ou maleta aberta). */
     fun atualizar(dt: Float) {
         if (tempoAcerto > 0f) tempoAcerto -= dt
+        if (tempoMensagem > 0f) tempoMensagem -= dt
     }
 
     fun alternarDebug() {
@@ -110,7 +141,7 @@ class Hud(private val controles: ControlesToque) : Disposable {
 
     /** Chamar entre forma.begin(Filled) e forma.end(), com blending ligado. */
     fun desenharFormas(forma: ShapeRenderer) {
-        minimapa.desenhar(forma)
+        minimapa.desenhar(forma, jogadorX, jogadorZ, mundo)
         barraVida.desenharFormas(forma)
         desenharMira(forma)
         desenharMarcadorAcerto(forma)
@@ -120,6 +151,48 @@ class Hud(private val controles: ControlesToque) : Disposable {
             forma.rect(0f, 0f, largura, altura)
         } else if (morto) {
             desenharFormasMorte(forma)
+        } else if (maletaAberta) {
+            desenharFormasMaleta(forma)
+        }
+    }
+
+    /** Véu escuro e a grade 2 x 4. Item: quadrado colorido por tipo; slot vazio: só moldura. */
+    private fun desenharFormasMaleta(forma: ShapeRenderer) {
+        forma.setColor(0f, 0f, 0f, Constantes.MALETA_FUNDO_ALFA)
+        forma.rect(0f, 0f, largura, altura)
+
+        val borda = Constantes.MALETA_SLOT_BORDA_DP * densidade
+        val lado = controles.slotLado
+        for (i in 0 until Constantes.MALETA_SLOTS) {
+            val esquerda = controles.slotEsquerda(i)
+            val base = controles.slotBase(i)
+            val escurecer = if (controles.slotApertado == i) Constantes.BOTAO_ESCURECER else 1f
+
+            val moldura = Constantes.MALETA_SLOT_BORDA_COR
+            forma.setColor(moldura, moldura, moldura, 1f)
+            forma.rect(esquerda, base, lado, lado)
+
+            val fundo = Constantes.MALETA_SLOT_FUNDO_COR * escurecer
+            forma.setColor(fundo, fundo, fundo, 1f)
+            forma.rect(esquerda + borda, base + borda, lado - 2f * borda, lado - 2f * borda)
+
+            val item = maleta.item(i) ?: continue
+            val fator = Constantes.MALETA_ITEM_ESCURECER * escurecer
+            when (item.tipo) {
+                TipoItem.CURA -> forma.setColor(
+                    Constantes.ITEM_COR_CURA_R * fator,
+                    Constantes.ITEM_COR_CURA_G * fator,
+                    Constantes.ITEM_COR_CURA_B * fator,
+                    1f
+                )
+                TipoItem.MUNICAO -> forma.setColor(
+                    Constantes.ITEM_COR_MUNICAO_R * fator,
+                    Constantes.ITEM_COR_MUNICAO_G * fator,
+                    Constantes.ITEM_COR_MUNICAO_B * fator,
+                    1f
+                )
+            }
+            forma.rect(esquerda + 2f * borda, base + 2f * borda, lado - 4f * borda, lado - 4f * borda)
         }
     }
 
@@ -163,6 +236,61 @@ class Hud(private val controles: ControlesToque) : Disposable {
         overlayDebug.desenhar(lote, fonte, fps, inimigosVivos, debugX, debugYTopo)
         desenharMunicao(lote)
         botoes.desenharTextos(lote)
+        if (maletaAberta) desenharTextosMaleta(lote)
+        desenharMensagem(lote)
+    }
+
+    /** Rótulo de cada item (CURA / MUN 36), título e dica de uso. */
+    private fun desenharTextosMaleta(lote: SpriteBatch) {
+        definirEscala(Constantes.FONTE_ESCALA_HUD) // os botões acima podem ter mudado a escala da fonte
+        val lado = controles.slotLado
+        for (i in 0 until Constantes.MALETA_SLOTS) {
+            val item = maleta.item(i) ?: continue
+            textoSlot.setLength(0)
+            when (item.tipo) {
+                TipoItem.CURA -> textoSlot.append(Constantes.ROTULO_CURA)
+                TipoItem.MUNICAO -> textoSlot.append(Constantes.ROTULO_MUNICAO).append(' ').append(item.quantidade)
+            }
+            fonte.draw(
+                lote,
+                textoSlot,
+                controles.slotEsquerda(i),
+                controles.slotBase(i) + lado * 0.5f + fonte.capHeight * 0.5f,
+                lado,
+                Align.center,
+                false
+            )
+        }
+
+        val gradeTopo = controles.gradeBase + controles.gradeAltura
+        definirEscala(Constantes.MALETA_ESCALA_TITULO)
+        fonte.draw(
+            lote,
+            Constantes.TEXTO_MALETA,
+            0f,
+            gradeTopo + Constantes.MALETA_TITULO_ESPACO_DP * densidade + fonte.capHeight,
+            largura,
+            Align.center,
+            false
+        )
+
+        definirEscala(Constantes.FONTE_ESCALA_HUD)
+        fonte.draw(
+            lote,
+            Constantes.TEXTO_MALETA_DICA,
+            0f,
+            controles.gradeBase - Constantes.MALETA_DICA_ESPACO_DP * densidade,
+            largura,
+            Align.center,
+            false
+        )
+    }
+
+    private fun desenharMensagem(lote: SpriteBatch) {
+        val texto = mensagem ?: return
+        if (tempoMensagem <= 0f) return
+        definirEscala(Constantes.MENSAGEM_ESCALA)
+        fonte.draw(lote, texto, 0f, altura * Constantes.MENSAGEM_ALTURA, largura, Align.center, false)
     }
 
     private fun desenharMunicao(lote: SpriteBatch) {

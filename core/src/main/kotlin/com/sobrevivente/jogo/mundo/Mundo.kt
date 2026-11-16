@@ -14,11 +14,13 @@ import com.badlogic.gdx.graphics.g3d.utils.MeshPartBuilder
 import com.badlogic.gdx.graphics.g3d.utils.ModelBuilder
 import com.badlogic.gdx.math.Intersector
 import com.badlogic.gdx.math.Vector3
+import com.badlogic.gdx.math.collision.BoundingBox
 import com.badlogic.gdx.math.collision.Ray
 import com.badlogic.gdx.utils.Disposable
 import com.sobrevivente.jogo.Constantes
+import com.sobrevivente.jogo.inventario.TipoItem
 
-/** Cena: luz, chão e inimigos. Sem desenho de HUD aqui. */
+/** Cena: luz, chão, paredes, inimigos e itens no chão. Sem desenho de HUD aqui. */
 class Mundo : Disposable {
 
     val ambiente = Environment()
@@ -26,6 +28,14 @@ class Mundo : Disposable {
     private val modeloChao: Model
     private val modeloInimigo: Model
     val inimigos: Array<Inimigo>
+    private val modeloItemCura: Model
+    private val modeloItemMunicao: Model
+    val itens: Array<ItemMundo>
+    private val modelosParedes: Array<Model>
+    val paredes: Array<ModelInstance>
+    private val caixasParedes: Array<BoundingBox> // para o tiro (hitscan) não atravessar paredes
+    private val modeloPisoInterno: Model
+    val pisoInterno: ModelInstance
 
     private val raio = Ray() // reutilizado nos tiros: zero alocação por frame
     private val ponto = Vector3()
@@ -59,6 +69,59 @@ class Mundo : Disposable {
         inimigos = Array(quantidade) { i ->
             Inimigo(modeloInimigo, Constantes.INIMIGOS_XZ[i * 2], Constantes.INIMIGOS_XZ[i * 2 + 1])
         }
+
+        modeloItemCura = criarModeloItem(
+            Constantes.ITEM_COR_CURA_R, Constantes.ITEM_COR_CURA_G, Constantes.ITEM_COR_CURA_B
+        )
+        modeloItemMunicao = criarModeloItem(
+            Constantes.ITEM_COR_MUNICAO_R, Constantes.ITEM_COR_MUNICAO_G, Constantes.ITEM_COR_MUNICAO_B
+        )
+        val totalParedes = Constantes.PAREDES.size / 4
+        modelosParedes = Array(totalParedes) { i ->
+            val largura = Constantes.PAREDES[i * 4 + 2] - Constantes.PAREDES[i * 4]
+            val profundidade = Constantes.PAREDES[i * 4 + 3] - Constantes.PAREDES[i * 4 + 1]
+            criarModeloCaixa(
+                largura, Constantes.PAREDE_ALTURA, profundidade,
+                Constantes.PAREDE_COR_R, Constantes.PAREDE_COR_G, Constantes.PAREDE_COR_B
+            )
+        }
+        paredes = Array(totalParedes) { i ->
+            val instancia = ModelInstance(modelosParedes[i])
+            val centroX = (Constantes.PAREDES[i * 4] + Constantes.PAREDES[i * 4 + 2]) * 0.5f
+            val centroZ = (Constantes.PAREDES[i * 4 + 1] + Constantes.PAREDES[i * 4 + 3]) * 0.5f
+            instancia.transform.setToTranslation(centroX, Constantes.PAREDE_ALTURA * 0.5f, centroZ)
+            instancia
+        }
+        caixasParedes = Array(totalParedes) { i ->
+            BoundingBox(
+                Vector3(Constantes.PAREDES[i * 4], 0f, Constantes.PAREDES[i * 4 + 1]),
+                Vector3(Constantes.PAREDES[i * 4 + 2], Constantes.PAREDE_ALTURA, Constantes.PAREDES[i * 4 + 3])
+            )
+        }
+
+        val piso = Constantes.PISO_INTERNO
+        modeloPisoInterno = criarModeloCaixa(
+            piso[2] - piso[0], Constantes.PISO_INTERNO_ESPESSURA, piso[3] - piso[1],
+            Constantes.PISO_INTERNO_COR_R, Constantes.PISO_INTERNO_COR_G, Constantes.PISO_INTERNO_COR_B
+        )
+        pisoInterno = ModelInstance(modeloPisoInterno)
+        pisoInterno.transform.setToTranslation(
+            (piso[0] + piso[2]) * 0.5f,
+            Constantes.PISO_INTERNO_ESPESSURA * 0.5f,
+            (piso[1] + piso[3]) * 0.5f
+        )
+
+        val totalItens = minOf(Constantes.ITENS_XZ.size / 2, Constantes.ITENS_TIPO.size)
+        itens = Array(totalItens) { i ->
+            val ehCura = Constantes.ITENS_TIPO[i] == Constantes.ITEM_TIPO_CURA
+            ItemMundo(
+                if (ehCura) modeloItemCura else modeloItemMunicao,
+                if (ehCura) TipoItem.CURA else TipoItem.MUNICAO,
+                if (ehCura) Constantes.ITEM_CURA_QUANTIDADE else Constantes.ITEM_MUNICAO_QUANTIDADE,
+                Constantes.ITENS_XZ[i * 2],
+                Constantes.ITENS_XZ[i * 2 + 1]
+            )
+        }
     }
 
     /** Atualiza a IA dos inimigos. Chamar uma vez por frame (jogo rodando). */
@@ -68,11 +131,32 @@ class Mundo : Disposable {
         }
     }
 
-    /** Coloca todos os inimigos de volta no início (vivos e parados). */
+    /** Coloca todos os inimigos de volta no início (vivos e parados) e devolve os itens ao chão. */
     fun reiniciar() {
         for (i in inimigos.indices) {
             inimigos[i].reiniciar()
         }
+        for (i in itens.indices) {
+            itens[i].coletado = false
+        }
+    }
+
+    /** Item no chão mais perto de (x, z) dentro de `raio` metros (plano XZ), ou null. Sem alocação. */
+    fun itemMaisProximo(x: Float, z: Float, raio: Float): ItemMundo? {
+        var melhor: ItemMundo? = null
+        var melhorQuadrado = raio * raio
+        for (i in itens.indices) {
+            val item = itens[i]
+            if (item.coletado) continue
+            val dx = item.x - x
+            val dz = item.z - z
+            val quadrado = dx * dx + dz * dz
+            if (quadrado <= melhorQuadrado) {
+                melhorQuadrado = quadrado
+                melhor = item
+            }
+        }
+        return melhor
     }
 
     fun contarInimigosVivos(): Int {
@@ -91,6 +175,13 @@ class Mundo : Disposable {
         raio.set(origem, direcao)
         var melhor: Inimigo? = null
         var melhorDistancia = alcance
+        // Vale o primeiro acerto: uma parede mais perto que o inimigo bloqueia o tiro.
+        for (i in caixasParedes.indices) {
+            if (Intersector.intersectRayBounds(raio, caixasParedes[i], ponto)) {
+                val distanciaParede = ponto.dst(origem)
+                if (distanciaParede < melhorDistancia) melhorDistancia = distanciaParede
+            }
+        }
         for (i in inimigos.indices) {
             val inimigo = inimigos[i]
             if (!inimigo.vivo) continue
@@ -128,6 +219,29 @@ class Mundo : Disposable {
                     1f
                 )
             ),
+            atributos
+        )
+    }
+
+    private fun criarModeloCaixa(
+        largura: Float, altura: Float, profundidade: Float,
+        r: Float, g: Float, b: Float
+    ): Model {
+        val atributos = (Usage.Position or Usage.Normal).toLong()
+        return ModelBuilder().createBox(
+            largura, altura, profundidade,
+            Material(ColorAttribute.createDiffuse(r, g, b, 1f)),
+            atributos
+        )
+    }
+
+    private fun criarModeloItem(r: Float, g: Float, b: Float): Model {
+        val atributos = (Usage.Position or Usage.Normal).toLong()
+        return ModelBuilder().createBox(
+            Constantes.ITEM_LADO,
+            Constantes.ITEM_LADO,
+            Constantes.ITEM_LADO,
+            Material(ColorAttribute.createDiffuse(r, g, b, 1f)),
             atributos
         )
     }
@@ -188,5 +302,9 @@ class Mundo : Disposable {
     override fun dispose() {
         modeloChao.dispose()
         modeloInimigo.dispose()
+        modeloItemCura.dispose()
+        modeloItemMunicao.dispose()
+        for (i in modelosParedes.indices) modelosParedes[i].dispose()
+        modeloPisoInterno.dispose()
     }
 }
