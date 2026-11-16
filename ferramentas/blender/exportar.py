@@ -6,6 +6,9 @@ import os
 import animacao as an
 
 CASAS = 5  # casas decimais gravadas no JSON
+# O G3dModelLoader/Model do LibGDX guarda em "bones" a pose de REPOUSO do osso (T(+pivo)) e inverte ao carregar.
+# (A v1 gravava T(-pivo) e o modelo explodiu no jogo.) NAO TENHO CERTEZA: se o corpo ainda sair errado, troque para True.
+GRAVAR_POSE_INVERSA = False
 
 
 def ler_obj(caminho):
@@ -137,9 +140,10 @@ def montar_g3dj(id_modelo, tris, textura, estilo, passo_chaves=1):
                        "textures": [{"id": "textura", "filename": textura, "type": "DIFFUSE"}]}],
     }
     bones = []
-    for nome in an.NOMES_OSSOS:  # pose inversa de repouso = T(-pivo)
+    for nome in an.NOMES_OSSOS:  # pose de repouso T(+pivo); o LibGDX inverte ao carregar
         px, py, pz = an.PIVO[nome]
-        bones.append({"node": nome, "translation": [_r(-px), _r(-py), _r(-pz)],
+        sinal = -1.0 if GRAVAR_POSE_INVERSA else 1.0
+        bones.append({"node": nome, "translation": [_r(sinal * px), _r(sinal * py), _r(sinal * pz)],
                       "rotation": [0.0, 0.0, 0.0, 1.0], "scale": [1.0, 1.0, 1.0]})
     no_malha = {"id": "malha", "parts": [{"meshpartid": "malha_parte", "materialid": "material", "bones": bones}]}
     modelo["nodes"] = [_nos_do_esqueleto(), no_malha]

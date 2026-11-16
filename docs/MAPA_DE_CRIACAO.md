@@ -11,6 +11,7 @@
 - **Decidido pelo dono:** formato de exportação **`.g3dj`** (carregado com `G3dModelLoader`, sem dependência extra).
 - **F3 entregue (em teste):** `jogador.g3dj` e `zumbi.g3dj` (+ texturas) em `android/assets/modelos/`; jogador e zumbi usam o modelo animado no lugar das cápsulas, com a animação trocando conforme o estado. Se o arquivo faltar ou falhar ao carregar, o jogo **volta sozinho para a cápsula**. Alterados: `Constantes.kt`, `Jogador.kt`, `Inimigo.kt`, `Mundo.kt`, `TelaJogo.kt`. Novo: `mundo/ModeloAnimado.kt` (fora da seção 9, a confirmar).
 - Escolhas do F3 (a confirmar): jogador usa `correr` com o joystick ≥ 60% e `andar` abaixo; `atirar` reinicia a cada tiro; zumbi persegue com `correr` a 0,55× e ataca com `atacar`; o corpo do zumbi fica 5 s no chão e some; o zumbi tem tinta (laranja ao perseguir, vermelho ao atacar) e pisca claro ao levar tiro; clarão no cano mais perto das mãos.
+- **Correção no `.g3dj` (1º teste no aparelho):** o corpo saiu esticado/quebrado porque `bones` do `.g3dj` deve levar a pose de repouso (`T(+pivô)`), que o LibGDX inverte ao carregar; a v1 gravava a inversa. Constante `GRAVAR_POSE_INVERSA` em `exportar.py` (NÃO TENHO CERTEZA da correção; se ainda sair errado, inverter a constante).
 - `DefaultShader` configurado com 16 ossos (`numBones`), pois o boneco tem 13.
 
 ### Mudanças da v2.12 para a v2.13
