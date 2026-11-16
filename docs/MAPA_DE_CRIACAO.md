@@ -1,10 +1,22 @@
-# MAPA DE CRIAÇÃO v2.11 — Jogo 3D de Sobrevivência (Kotlin + Python de bastidor / Android)
+# MAPA DE CRIAÇÃO v2.13 — Jogo 3D de Sobrevivência (Kotlin + Python de bastidor / Android)
 
-**Versão do documento:** 2.11 | **Data:** 15/11/2026 | **Substitui:** v2.10
+**Versão do documento:** 2.13 | **Data:** 16/11/2026 | **Substitui:** v2.12
 **Nome provisório:** PROJETO_SOBREVIVENTE (nome final: em aberto)
 
 > Cole este arquivo inteiro no início de qualquer conversa com uma IA.
 > Ele é a **fonte única da verdade**. O que não estiver aqui, a IA **pergunta**; ela não decide.
+
+### Mudanças da v2.12 para a v2.13
+- **F2 entregue (em teste):** esqueleto de 13 ossos, pesos de pele (no máximo 2 ossos por vértice), 5 animações por personagem e exportação em `.g3dj`. Novos arquivos em `ferramentas/blender/`: `animacao.py`, `exportar.py`, `gerar_boneco.py`, `previa_python.py`, `LEIAME.md`. Alterado: `.github/workflows/gerar-modelo.yml` (etapa `f2`).
+- **Arquivos fora da estrutura da seção 9 (a confirmar):** `animacao.py` e `previa_python.py` (a seção 9 só previa `gerar_boneco.py`, `exportar.py` e `LEIAME.md`). Motivo: a matemática em Python puro é testável sem Blender.
+- **Correção no F0:** as faces de braços e pernas saíam viradas para dentro (ordem dos anéis descendente). Corrigido em `Geometria.kt` (o sentido dos triângulos agora depende de o loft subir ou descer). Sem mudança de dimensões nem de UV.
+- O zumbi tem `atacar` (loop) no lugar de `atirar`, pedido para o F3 (a confirmar).
+- Formato de exportação: **proposta g3dj** (JSON nativo do LibGDX, sem dependência extra). A seção 19 continua com a decisão a confirmar.
+
+### Mudanças da v2.11 para a v2.12
+- Nova **seção 25**: caminhos, nomes e comandos **reais e já testados** para enviar arquivos ao GitHub pelo Termux (repositório, pasta local, pasta de downloads, sequência de comandos, erros já vistos, o que a IA não deve inventar).
+- Nova regra 20 na seção 2: comandos de envio ao GitHub saem **somente** da seção 25.
+- Sem mudança de código nem de marco.
 
 ### Mudanças da v2.10 para a v2.11
 - **F0 enviado ao GitHub** (commit `ebb5ef4`); o workflow "Gerar modelo" ainda **não foi rodado/confirmado** pelo dono.
@@ -112,6 +124,7 @@
 22. Estado atual
 23. Registro de licenças de assets
 24. Pipeline de ativos (Kotlin + Python/Blender)
+25. Ambiente do dono: Termux, GitHub e caminhos reais
 
 ---
 
@@ -160,6 +173,7 @@
 17. Português do Brasil. Passos curtos, comandos prontos para colar. Comentários no código em PT-BR.
 18. Termine **toda** resposta com o RELATÓRIO (seção 21).
 19. Se algo falhar, peça o **log completo** (começo do erro, não só a última linha). Não reescreva o projeto para corrigir uma linha.
+20. **Envio ao GitHub:** use **somente** os caminhos, nomes e comandos da **seção 25**. Não invente pasta, usuário, remoto, token, SSH, `gh` nem outro jeito de enviar. Se faltar um dado, pergunte.
 
 ---
 
@@ -369,6 +383,8 @@ projeto/
 │   └── blender/
 │       ├── gerar_boneco.py        (Python/bpy; marco F2)
 │       ├── exportar.py
+│       ├── animacao.py            (fora do plano original; Python puro; marco F2)
+│       ├── previa_python.py       (fora do plano original; Pillow + numpy; marco F2)
 │       └── LEIAME.md
 └── docs/
     └── MAPA_DE_CRIACAO.md             (este arquivo)
@@ -665,10 +681,11 @@ Não implementar nem detalhar agora. Quando o dono liberar, esta seção será p
 - Detalhes do zumbi (ferimentos, roupa rasgada, pele) e do jogador (aparência, roupa): a IA PERGUNTA antes de gerar.
 - Armas e inimigos além da pistola e do inimigo básico.
 - Enredo e personagens.
-- (Resolvido) Ambiente de trabalho do dono: Termux no celular (colar comandos e `git push`) e GitHub Actions para compilar.
+- (Resolvido) Ambiente de trabalho do dono: Termux no celular (colar comandos e `git push`) e GitHub Actions para compilar. Caminhos e comandos reais: **seção 25**.
 - (Resolvido em 15/11/2026) Gradle instalado pelo CI, sem wrapper: ver seção 20.
 - Sons/música (por padrão: nenhum na Fase 1).
-- **Como carregar modelo com esqueleto no LibGDX:** gdx-gltf (dependência extra; versão compatível com LibGDX 1.12.1 a confirmar) ou outra via. Sem decisão, o jogo segue com cápsula/OBJ.
+- **Como carregar modelo com esqueleto no LibGDX:** **proposta (F2): `.g3dj` carregado com `G3dModelLoader` (sem dependência extra)**; alternativa: gdx-gltf (dependência extra; versão compatível com LibGDX 1.12.1 a confirmar). A confirmar pelo dono; o F3 só começa com a decisão. O `.g3dj` do F2 **não foi carregado no LibGDX pela IA** (sem LibGDX no ambiente): a prova será o F3.
+- Boneco com 13 ossos × `numBones` padrão 12 do `DefaultShader`: no F3 usar `numBones` ≥ 16 (a confirmar no aparelho; limite de uniformes do GLES2).
 - Versão do Blender e método de instalação no CI: **proposta 4.5.11 LTS, tarball oficial** (a confirmar pelo resultado do F1).
 - Convenção de **frente do modelo**: proposta no F0 = **-Z** (a confirmar pelo dono ao ver o preview).
 - (Resolvido em 15/11/2026) Marcos F0 a F3 correm agora, em paralelo aos 1.x.
@@ -689,6 +706,7 @@ Não implementar nem detalhar agora. Quando o dono liberar, esta seção será p
 | 15/11/2026 | Boneco com textura simples de roupa 512x512 (gerada por código) | Dono | Escolha do dono |
 | 15/11/2026 | Marcos F0 a F3 liberados agora, em paralelo aos 1.x | Dono (pedido de foco na estética) | Prioridade do dono |
 | 15/11/2026 | Blender 4.5.11 LTS (tarball oficial) para o F1 | Proposta da IA (a confirmar) | 4.2 LTS fora de suporte; 4.5 LTS ativo até 07/2027 |
+| 16/11/2026 | Esqueleto de 13 ossos, pele com ≤ 2 ossos por vértice, animações a 30 fps; exportar em `.g3dj` | Proposta da IA (a confirmar) | Sem dependência extra; atende ao orçamento da seção 24.3 |
 | 15/11/2026 | Gradle 8.5 instalado pelo CI (sem wrapper); versões da seção 6 congeladas | Dono (validou no teste) | Build verde e app rodando no aparelho alvo |
 
 ---
@@ -724,13 +742,15 @@ RELATÓRIO
 
 ## 22. ESTADO ATUAL (atualizar ao fim de cada sessão)
 
-- Marco atual: **1.8 (dono informou "deu certo"; caixas a marcar por ele)**; trilha ativa de ferramentas: **F0 (em teste) e F1 (em teste)**
+- Marco atual: **1.8 (dono informou "deu certo"; caixas a marcar por ele)**; trilha ativa de ferramentas: **F0 (em teste, com correção de faces), F1 (em teste) e F2 (entregue, em teste)**
 - Último build verde confirmado: run #9 (código dos Marcos 1.7 e 1.8). F0 enviado (`ebb5ef4`); "Gerar modelo" ainda não rodado
 - Versões congeladas: **sim** (seção 6)
 - Arquivos existentes no repositório: tudo até o Marco 1.7 + 1 novo no 1.8 (`mundo/Colisao.kt`) e 8 alterados (depois do push)
 - Problemas conhecidos: faixa preta lateral (recorte da câmera) ainda a confirmar na tela cheia; os Marcos 1.7 e 1.8 não foram compilados pela IA (sem compilador no ambiente da conversa)
 - Observações: HUD sem Scene2D (ver v2.4); Voltar do Android vira pausa (ou fecha a maleta, se aberta); acentos na fonte padrão não verificados (textos do 1.7 sem acento); inimigos sem linha de visão nem pathfinding
-- Marcos de ferramentas (seção 24): **F0 em teste** (enviado, ainda não rodado no CI); **F1 em teste** (código entregue, não executado)
+- Marcos de ferramentas (seção 24): **F0 em teste** (enviado, ainda não rodado no CI; correção de faces entregue com o F2); **F1 em teste** (código entregue, não executado); **F2 em teste** (código entregue; matemática e `.g3dj` verificados em Python; o script do Blender **não foi executado pela IA**)
+
+- Envio ao GitHub: caminhos e comandos verificados em 15/11/2026 estão na seção 25.
 
 ---
 
@@ -764,12 +784,13 @@ RELATÓRIO
 - [ ] Script Python mínimo cria um cubo e renderiza `preview.png`
 - [ ] **Teste:** rodar "Gerar modelo" com etapa `f1`; baixar o artefato `blender-f1` (PNG + `versao_blender.txt`); o log mostra a versão do Blender
 
-**F2: Boneco com esqueleto e animações**
+**F2: Boneco com esqueleto e animações (EM TESTE)**
 - [ ] `gerar_boneco.py` cria malha low-poly, esqueleto e vínculo malha-ossos
 - [ ] 5 animações: `parado`, `andar`, `correr`, `atirar`, `morrer`
 - [ ] Exporta no formato decidido (seção 19)
 - [ ] Folha de preview com 1 quadro por animação
-- [ ] **Teste:** abrir a folha no celular; poses reconhecíveis; orçamento da seção 24.3 respeitado
+- [ ] **Teste:** rodar "Gerar modelo" com etapa `f2`; baixar o artefato `boneco-f2`; abrir `previa_python.png` no celular (poses reconhecíveis); `f2_relatorio.txt` sem "ESTOUROU", "FORA" ou "DIVERGE"
+- [ ] (proposta, a confirmar) Zumbi com `atacar` no lugar de `atirar`; atenção: o script do Blender não foi executado pela IA, verificar o log do passo "Gerar esqueleto e animações"
 
 **F3: Integração no jogo**
 - [ ] Decisão sobre a dependência de carga do modelo registrada (seção 19)
@@ -804,3 +825,72 @@ Nomes de ossos e animações em **ASCII, português, sem acento** (ex.: `quadril
 - O resultado é **low-poly procedural**: sem escultura detalhada, rosto simples, sem textura pintada à mão.
 - A qualidade artística melhora por **iterações** (ajustar proporções, cores, poses), não de uma vez.
 - 100% procedural: a seção 23 continua sem entradas de licença.
+
+---
+
+## 25. AMBIENTE DO DONO: TERMUX, GITHUB E CAMINHOS REAIS
+
+> **Regra para a IA:** esta seção é a única fonte para enviar arquivos ao GitHub. Tudo marcado como **VERIFICADO** apareceu em captura de tela do Termux ou em página pública do GitHub em 15/11/2026. O que **não** está aqui, a IA **pergunta**; não inventa.
+
+### 25.1 Dados verificados
+
+| Item | Valor |
+|---|---|
+| Usuário no GitHub | `matheusalmeidaeca` |
+| Repositório | `https://github.com/matheusalmeidaeca/sobrevivente` (público) |
+| Remoto Git (`origin`) | `https://github.com/matheusalmeidaeca/sobrevivente.git` |
+| Branch | `main` (única usada) |
+| Página das Actions | `https://github.com/matheusalmeidaeca/sobrevivente/actions` |
+| Pasta do repositório no Termux | `~/estoque-v2/projeto_sobrevivente` (= `/data/data/com.termux/files/home/estoque-v2/projeto_sobrevivente`) |
+| Pasta de downloads vista pelo Termux | `~/storage/downloads/` |
+| Autenticação | já funciona; o `git push` **não pediu** senha nem token |
+| `unzip` | já instalado no Termux |
+| Workflows existentes no repositório | `build-apk.yml` ("Build APK debug", roda sozinho a cada push na `main`) e `gerar-modelo.yml` ("Gerar modelo", manual) |
+
+**NÃO existe** `~/sobrevivente` (dá "No such file or directory"). **Não usar.**
+
+### 25.2 Como os arquivos chegam ao Termux
+1. A IA entrega um `.zip` (cartão de arquivo na conversa). O dono baixa pelo celular; ele vai para **Downloads**.
+2. O conteúdo do zip tem **caminhos relativos à raiz do repositório** (ex.: `ferramentas/...`, `.github/workflows/...`, `docs/MAPA_DE_CRIACAO.md`), **sem pasta raiz extra**. A IA deve sempre montar o zip assim.
+3. `unzip -o` **sobrescreve** arquivos que já existem (é o desejado).
+
+### 25.3 Sequência de envio (VERIFICADA)
+Trocar `NOME.zip` pelo nome do zip entregue e `MENSAGEM` pela mensagem do commit:
+
+```
+cd ~/estoque-v2/projeto_sobrevivente
+unzip -o ~/storage/downloads/NOME.zip
+git add -A
+git commit -m "MENSAGEM"
+git pull --rebase origin main
+git push origin main
+```
+
+- Mensagens de commit seguem o padrão já usado: `Marco 1.8: mapa de teste, colisao e minimapa`, `F0: gerador do boneco e workflow gerar-modelo`. Sem acento, curtas.
+- Depois do `push`, o **Build APK debug** roda sozinho. Os arquivos em `ferramentas/` não entram no APK.
+
+### 25.4 Rodar o workflow manual "Gerar modelo" (pelo navegador do celular)
+1. Abrir a página das Actions (seção 25.1).
+2. Tocar em **Gerar modelo** → **Run workflow**.
+3. Escolher a etapa: `f0` (gerador Kotlin do boneco) ou `f1` (Blender sem tela). Confirmar em **Run workflow**.
+4. Esperar ficar verde; abrir a execução; baixar o artefato em **Artifacts**: `boneco-f0` ou `blender-f1`.
+5. Se não aparecer o botão **Run workflow**, ativar "Site para computador" no navegador.
+6. Se falhar, abrir o passo que falhou e colar o **log completo** (começo do erro) para a IA.
+
+Estado em 15/11/2026: o `gerar-modelo.yml` já está no repositório com a etapa F0; a etapa **f1** só existe depois do push do zip do F1. O workflow ainda **não foi executado/confirmado** pelo dono.
+
+### 25.5 Erros já vistos (não repetir)
+| Erro no Termux | Causa | Correção |
+|---|---|---|
+| `cd: ~/sobrevivente: No such file or directory` | pasta errada | usar `~/estoque-v2/projeto_sobrevivente` |
+| `unzip: cannot find or open NOME.zip` | o zip está em Downloads, não na pasta do repositório | usar o caminho `~/storage/downloads/NOME.zip` |
+| `nothing to commit, working tree clean` | os arquivos ainda não tinham sido descompactados | rodar o `unzip` antes do `git add` |
+| `termux-setup-storage` pergunta "Do you want to continue? (y/n)" | `~/storage` já existe | **não rodar de novo**; se aparecer, responder `n` |
+| `ferramentas: command not found` | nome de pasta digitado sem o comando | para listar, usar `ls ferramentas .github/workflows` |
+
+### 25.6 O que a IA pode e não pode fazer (VERIFICADO)
+- A IA **não faz push** nem roda workflow: quem faz é o dono, pelos comandos acima.
+- A IA consegue abrir páginas **públicas** do GitHub (repositório e Actions). A pasta `.github/workflows` do GitHub **bloqueia acesso automatizado**: para ver o conteúdo de um workflow, pedir ao dono para colar o arquivo.
+- O conteúdo do `build-apk.yml` **não foi visto** pela IA (não afirmar como o Gradle é instalado nele sem o dono colar).
+- A IA não tem compilador Kotlin nem Blender na conversa: tudo é testado pelo CI do dono.
+

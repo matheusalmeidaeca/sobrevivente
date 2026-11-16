@@ -2,6 +2,7 @@
 # Manual (workflow_dispatch). Escolha a etapa ao rodar:
 #   f0 = gerador Kotlin do boneco (OBJ + texturas + preview)
 #   f1 = Blender sem tela roda no CI (cubo + preview + versao)
+#   f2 = boneco com esqueleto e animacoes (g3dj + quadros + folha de previa)
 name: Gerar modelo
 
 on:
@@ -13,6 +14,7 @@ on:
         options:
           - f0
           - f1
+          - f2
         default: f0
 
 jobs:
@@ -70,5 +72,55 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: blender-f1
+          path: ferramentas/blender/saida
+          retention-days: 14
+
+  f2:
+    if: ${{ inputs.etapa == 'f2' }}
+    runs-on: ubuntu-latest
+    env:
+      BLENDER_SERIE: '4.5'
+      BLENDER_VERSAO: '4.5.11'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '8.5'
+
+      - name: Gerar o boneco e o zumbi parados (F0)
+        working-directory: ferramentas/gerador-boneco-kotlin
+        run: gradle run --stacktrace
+
+      - name: Bibliotecas do sistema que o Blender carrega
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libxi6 libxxf86vm1 libxfixes3 libxrender1 libgl1 libegl1 libxkbcommon0 libsm6 libice6
+
+      - name: Baixar e extrair o Blender
+        run: |
+          curl -fL --retry 3 -o blender.tar.xz "https://download.blender.org/release/Blender${BLENDER_SERIE}/blender-${BLENDER_VERSAO}-linux-x64.tar.xz"
+          mkdir -p "$HOME/blender"
+          tar -xf blender.tar.xz -C "$HOME/blender" --strip-components=1
+          "$HOME/blender/blender" --version
+
+      - name: Gerar esqueleto e animacoes (F2)
+        run: |
+          "$HOME/blender/blender" --background --factory-startup --python ferramentas/blender/gerar_boneco.py -- ferramentas/gerador-boneco-kotlin/saida ferramentas/blender/saida
+
+      - name: Folha de previa (Python + Pillow + numpy)
+        working-directory: ferramentas/blender
+        run: |
+          python3 -m pip install --quiet pillow numpy
+          python3 previa_python.py ../gerador-boneco-kotlin/saida saida
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: boneco-f2
           path: ferramentas/blender/saida
           retention-days: 14

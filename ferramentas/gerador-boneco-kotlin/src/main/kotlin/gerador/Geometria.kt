@@ -52,11 +52,14 @@ object Geometria {
      * Peca em "loft": aneis empilhados em Y, LADOS vertices por anel.
      * Vertice 0 fica atras (+Z); u = k / LADOS, entao a frente (-Z) cai em u = 0,5.
      * A emenda da textura fica nas costas.
+     * Os aneis podem vir de baixo para cima (cabeca, tronco) ou de cima para baixo (bracos, pernas):
+     * nos dois casos os triangulos saem com a face para FORA (necessario para o descarte de faces do LibGDX).
      */
     fun loft(nome: String, aneis: List<Anel>): Malha {
         val m = Malha(nome)
         val n = Parametros.LADOS
         val indices = ArrayList<IntArray>()
+        val subindo = aneis.last().y > aneis.first().y
         for (anel in aneis) {
             val linha = IntArray(n + 1)
             for (k in 0..n) {
@@ -74,12 +77,18 @@ object Geometria {
                 val b = indices[i][k + 1]
                 val c = indices[i + 1][k + 1]
                 val d = indices[i + 1][k]
-                m.adicionarTriangulo(a, b, c)
-                m.adicionarTriangulo(a, c, d)
+                if (subindo) {
+                    m.adicionarTriangulo(a, b, c)
+                    m.adicionarTriangulo(a, c, d)
+                } else {
+                    m.adicionarTriangulo(a, c, b)
+                    m.adicionarTriangulo(a, d, c)
+                }
             }
         }
-        tampa(m, aneis, indices, 0, false)
-        tampa(m, aneis, indices, aneis.size - 1, true)
+        // O primeiro anel e a base quando os aneis sobem e o topo quando descem.
+        tampa(m, aneis, indices, 0, !subindo)
+        tampa(m, aneis, indices, aneis.size - 1, subindo)
         return m
     }
 
