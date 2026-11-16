@@ -1,8 +1,15 @@
 // core/src/main/kotlin/com/sobrevivente/jogo/inventario/Item.kt
 package com.sobrevivente.jogo.inventario
 
-/** Tipos de item da Fase 1 (seção 14 do mapa). */
-enum class TipoItem { MUNICAO, CURA }
+import com.sobrevivente.jogo.mundo.TipoArma
 
-/** Uma pilha de itens dentro da maleta: tipo + quantidade. Só dados; sem desenho. */
-class Item(val tipo: TipoItem, var quantidade: Int)
+/** Tipos de item da maleta: municao e cura empilham; ARMA e FACA ocupam varias celulas (estilo Resident Evil). */
+enum class TipoItem { MUNICAO, CURA, ARMA, FACA }
+
+/** Uma peca dentro da maleta: tipo + quantidade + posicao/tamanho na grade (col, lin, larg, alt em celulas). */
+class Item(val tipo: TipoItem, var quantidade: Int, val arma: TipoArma? = null) {
+    var col = 0
+    var lin = 0
+    var larg = 1
+    var alt = 1
+}

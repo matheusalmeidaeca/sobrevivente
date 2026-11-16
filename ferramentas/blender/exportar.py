@@ -6,7 +6,8 @@ import os
 import animacao as an
 
 CASAS = 5  # casas decimais gravadas no JSON
-CASAS_MALHA = 4  # vertices/normais/UV (F8: malha HD, arquivo menor)
+CASAS_MALHA = 4
+LIMITE_VERTICES = 60000  # vertices/normais/UV (F8: malha HD, arquivo menor)
 PASSO_PONTOS = 6  # F8: so 1 a cada N vertices entra no ajuste de altura do pe (aterrar); basta e e rapido
 # O G3dModelLoader/Model do LibGDX guarda em "bones" a pose de REPOUSO do osso (T(+pivo)) e inverte ao carregar.
 # (A v1 gravava T(-pivo) e o modelo explodiu no jogo.) NAO TENHO CERTEZA: se o corpo ainda sair errado, troque para True.
@@ -123,25 +124,45 @@ def montar_g3dj(id_modelo, tris, textura, estilo, passo_chaves=1):
     """Dicionario g3dj completo (malha + material + esqueleto + animacoes)."""
     vertices, indices = montar_vertices(tris)
     indice_osso = {n: i for i, n in enumerate(an.NOMES_OSSOS)}
-    dados = []
-    for vtx in vertices:
+
+    def linha(vtx):
         pes = sorted(vtx["pesos"], key=lambda a: -a[1])
         if len(pes) > 2:
             raise ValueError("vertice com mais de 2 influencias")
         while len(pes) < 2:
             pes.append((pes[0][0], 0.0))
-        dados += [_rm(vtx["p"][0]), _rm(vtx["p"][1]), _rm(vtx["p"][2]),
-                  _rm(vtx["n"][0]), _rm(vtx["n"][1]), _rm(vtx["n"][2]),
-                  _rm(vtx["uv"][0]), _rm(1.0 - vtx["uv"][1]),  # LibGDX: origem da textura no topo
-                  float(indice_osso[pes[0][0]]), _rm(pes[0][1]),
-                  float(indice_osso[pes[1][0]]), _rm(pes[1][1])]
+        return [_rm(vtx["p"][0]), _rm(vtx["p"][1]), _rm(vtx["p"][2]),
+                _rm(vtx["n"][0]), _rm(vtx["n"][1]), _rm(vtx["n"][2]),
+                _rm(vtx["uv"][0]), _rm(1.0 - vtx["uv"][1]),  # LibGDX: origem da textura no topo
+                float(indice_osso[pes[0][0]]), _rm(pes[0][1]),
+                float(indice_osso[pes[1][0]]), _rm(pes[1][1])]
+
+    # Malhas de ate LIMITE_VERTICES vertices (indices de 16 bits): modelos grandes viram varias malhas/partes.
+    meshes, partes_no = [], []
+    local, dados, idx_local = {}, [], []
+
+    def fechar():
+        i = len(meshes)
+        pid = "malha_parte" if i == 0 else "malha_parte_%d" % i
+        meshes.append({"attributes": ["POSITION", "NORMAL", "TEXCOORD0", "BLENDWEIGHT0", "BLENDWEIGHT1"],
+                       "vertices": dados[:], "parts": [{"id": pid, "type": "TRIANGLES", "indices": idx_local[:]}]})
+        partes_no.append(pid)
+
+    for t in range(0, len(indices), 3):
+        tri = indices[t:t + 3]
+        novos = len({g for g in tri if g not in local})
+        if len(local) + novos > LIMITE_VERTICES:
+            fechar()
+            local, dados, idx_local = {}, [], []
+        for g in tri:
+            if g not in local:
+                local[g] = len(local)
+                dados += linha(vertices[g])
+            idx_local.append(local[g])
+    fechar()
     modelo = {
         "version": [0, 1], "id": id_modelo,
-        "meshes": [{
-            "attributes": ["POSITION", "NORMAL", "TEXCOORD0", "BLENDWEIGHT0", "BLENDWEIGHT1"],
-            "vertices": dados,
-            "parts": [{"id": "malha_parte", "type": "TRIANGLES", "indices": indices}],
-        }],
+        "meshes": meshes,
         "materials": [{"id": "material", "diffuse": [1.0, 1.0, 1.0],
                        "textures": [{"id": "textura", "filename": textura, "type": "DIFFUSE"}]}],
     }
@@ -151,7 +172,7 @@ def montar_g3dj(id_modelo, tris, textura, estilo, passo_chaves=1):
         sinal = -1.0 if GRAVAR_POSE_INVERSA else 1.0
         bones.append({"node": nome, "translation": [_r(sinal * px), _r(sinal * py), _r(sinal * pz)],
                       "rotation": [0.0, 0.0, 0.0, 1.0], "scale": [1.0, 1.0, 1.0]})
-    no_malha = {"id": "malha", "parts": [{"meshpartid": "malha_parte", "materialid": "material", "bones": bones}]}
+    no_malha = {"id": "malha", "parts": [{"meshpartid": pid, "materialid": "material", "bones": bones} for pid in partes_no]}
     modelo["nodes"] = [_nos_do_esqueleto(), no_malha]
 
     pontos = [(v["p"][0], v["p"][1], v["p"][2], v["pesos"]) for v in vertices][::PASSO_PONTOS]

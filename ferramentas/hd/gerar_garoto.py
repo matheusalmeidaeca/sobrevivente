@@ -46,7 +46,8 @@ if __name__ == "__main__":
     t0 = time.time()
     # ---- BAIXA (vai para o jogo)
     kit.FINO = False
-    g = garoto.Garoto(False).tudo()
+    # perfil do jogo: --leve (~24k tris, celular fraco) ou o padrao (~150k tris, SEM micro-relevo; malha dividida em partes)
+    g = (garoto.Garoto(False) if "--leve" in sys.argv else garoto.Garoto(False, lod=2.0, cabelo=170)).tudo()
     tris = g.m.triangulos()
     print("BAIXA:", len(tris), "triangulos (%.0fs)" % (time.time() - t0))
     # ---- difusa (relevo/AO/sujeira da ALTA assados) + mapas
@@ -58,10 +59,9 @@ if __name__ == "__main__":
     salvar_png(CV, os.path.join(saida, "curv_jogador.png"))
     print("bake ok (%.0fs)" % (time.time() - t0))
     modelo = ex.montar_g3dj("jogador", tris, "textura_jogador.png", "jogador")
-    nv = len(modelo["meshes"][0]["vertices"]) // 12
-    assert nv < 65000, "vertices demais: %d" % nv
+    nv = sum(len(mm["vertices"]) // 12 for mm in modelo["meshes"])
     tam = ex.escrever_g3dj(os.path.join(saida, "jogador.g3dj"), modelo)
-    print("jogador.g3dj:", nv, "vertices,", len(modelo["animations"]), "animacoes,", tam // 1024, "KB (%.0fs)" % (time.time() - t0))
+    print("jogador.g3dj:", len(modelo["meshes"]), "malhas,", nv, "vertices,", len(modelo["animations"]), "animacoes,", tam // 1024, "KB (%.0fs)" % (time.time() - t0))
     if "--alta" in sys.argv:
         kit.FINO = True
         h = garoto.Garoto(True).tudo()

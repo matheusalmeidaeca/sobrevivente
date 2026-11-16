@@ -132,7 +132,7 @@ object Constantes {
     const val BARRA_VIDA_FUNDO_ALFA = 0.65f
 
     // Minimapa placeholder (seção 10.6; funcional no Marco 1.8)
-    const val MINIMAPA_LADO_DP = 120f
+    const val MINIMAPA_LADO_DP = 104f
     const val MINIMAPA_BORDA_DP = 2f
     const val MINIMAPA_PONTO_DP = 4f
     const val MINIMAPA_FUNDO_COR = 0.05f
@@ -268,8 +268,8 @@ object Constantes {
     const val REINICIAR_COR_B = 0.90f
 
     // ---------------- Marco 1.7: Maleta (seção 14 do mapa) ----------------
-    const val MALETA_COLUNAS = 4
-    const val MALETA_LINHAS = 2
+    const val MALETA_COLUNAS = 8
+    const val MALETA_LINHAS = 5
     const val MALETA_SLOTS = MALETA_COLUNAS * MALETA_LINHAS
     const val MALETA_MUNICAO_POR_SLOT = 36
     const val MALETA_CURA_POR_SLOT = 1
@@ -283,8 +283,8 @@ object Constantes {
     const val INTERAGIR_RAIO = 1.5f // metros, no plano XZ
 
     // Desenho da grade
-    const val MALETA_SLOT_LADO_DP = 72f
-    const val MALETA_SLOT_ESPACO_DP = 8f
+    const val MALETA_SLOT_LADO_DP = 40f
+    const val MALETA_SLOT_ESPACO_DP = 2f
     const val MALETA_CENTRO_ALTURA = 0.52f // fração da altura da tela onde fica o centro da grade
     const val MALETA_FUNDO_ALFA = 0.50f
     const val MALETA_SLOT_BORDA_DP = 2f
@@ -295,7 +295,7 @@ object Constantes {
     const val MALETA_TITULO_ESPACO_DP = 14f
     const val MALETA_DICA_ESPACO_DP = 12f
     const val TEXTO_MALETA = "MALETA"
-    const val TEXTO_MALETA_DICA = "Toque no item para usar. Botao central ou VOLTAR fecha."
+    const val TEXTO_MALETA_DICA = "Toque: usar/equipar. Botao central ou VOLTAR fecha."
     const val ROTULO_CURA = "CURA"
     const val ROTULO_MUNICAO = "MUN"
 
@@ -669,4 +669,51 @@ object Constantes {
     const val SOMBRA_AREA_M = 56f // lado da area (em metros) em volta do jogador que recebe sombra
     const val SOMBRA_PROFUNDIDADE_M = 120f
     const val PARTICULAS_MAX = 600
+
+    // ---- F10: reacoes de impacto, tipos de zumbi, atropelo e loot ----
+    const val IMPACTO_TEMPO_S = 1.1f          // duracao do desequilibrio/dor (o jogador continua andando)
+    const val IMPACTO_INCLINA_GRAUS = 16f     // inclinacao maxima do tronco por golpe (forca 1)
+    const val IMPACTO_FATOR_VEL = 0.78f       // andar com dor: um pouco mais lento
+    const val IMPACTO_EMPURRAO_MS = 2.2f      // velocidade do empurrao no golpe (m/s, decai rapido)
+    const val IMPACTO_GOLPE_FORCA = 1.0f      // golpe de zumbi no jogador
+    const val IMPACTO_TIRO_JOGADOR = 0.20f    // recuo leve ao atirar (pistola/fuzil)
+    const val IMPACTO_TIRO_ESCOPETA = 0.55f   // recuo da escopeta
+    const val IMPACTO_TIRO_ZUMBI = 0.35f      // zumbi leva tiro: balanca
+    const val PERNA_ALTURA_FRACAO = 0.45f     // tiro abaixo de 45% da altura = tiro na perna
+    const val ZUMBI_QUEDA_S = 2.4f            // tempo caido (inclui levantar)
+    const val ZUMBI_CAMBALEIO_S = 1.3f
+    const val ZUMBI_CAMBALEIO_VEL = 0.40f     // velocidade cambaleando (fator)
+    const val ZUMBI_QUEDA_CHANCE_PERNA = 0.55f // senao so cambaleia
+    const val ZUMBI_IMUNE_QUEDA_S = 1.5f      // depois de levantar, nao cai de novo de imediato
+    const val ATROPELO_RAIO = 0.80f           // distancia para o zumbi rapido atropelar um mais lento
+    const val ATROPELO_RAZAO_VEL = 1.25f      // so atropela quem e pelo menos 25% mais lento
+    const val LOOT_CHANCE = 0.55f             // chance de um zumbi nascer carregando loot
+    const val LOOT_CHANCE_CURA = 0.35f        // dos que carregam: 35% cura, 65% municao
+    const val LOOT_MUNICAO_MIN = 6
+    const val LOOT_MUNICAO_MAX = 18
+    const val LOOT_MAX_NO_CHAO = 24
+
+    // ===== F10 onda B: botoes estilo PS2, HUD estilo Free Fire, maleta estilo Resident Evil, faca =====
+    const val PS2_PASSO_DP = 64f            // distancia do centro do losango a cada botao (X, O, quadrado, triangulo)
+    const val ATIRAR_ESQ_DIAMETRO_DP = 72f  // segundo botao de tiro (polegar esquerdo)
+    const val SLOT_ARMA_LADO_DP = 52f
+    const val SLOT_ARMA_ESPACO_DP = 10f
+    const val SLOT_ARMA_BASE_DP = 14f
+    const val CURAR_RAPIDO_DIAMETRO_DP = 52f
+    const val FACA_DANO = 45
+    const val FACA_ALCANCE = 1.7f
+    const val FACA_ARCO_COS = 0.30f         // cos do meio-angulo do golpe (~72 graus)
+    const val FACA_CADENCIA = 2.2f
+    const val FACA_GOLPE_S = 0.30f
+    const val HUD_AVATAR_DP = 44f
+    const val HUD_PILULA_LARGURA_DP = 118f
+    const val HUD_PILULA_ALTURA_DP = 22f
+    const val DOR_VINHETA_S = 0.9f
+    const val ROTULO_FACA = "FACA"
+    const val MALETA_ARMA_PISTOLA_L = 2
+    const val MALETA_ARMA_PISTOLA_A = 2
+    const val MALETA_ARMA_LONGA_L = 4
+    const val MALETA_ARMA_LONGA_A = 2
+    const val MALETA_FACA_L = 1
+    const val MALETA_FACA_A = 2
 }

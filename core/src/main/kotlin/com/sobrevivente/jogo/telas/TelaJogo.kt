@@ -86,6 +86,7 @@ class TelaJogo : ScreenAdapter() {
         }
         loteSombra.render(jogador.corpo)
         jogador.armaVisivel?.let { loteSombra.render(it) }
+        jogador.facaCabo?.let { loteSombra.render(it) }
         for (i in mundo.inimigos.indices) {
             val inimigo = mundo.inimigos[i]
             if (inimigo.visivel) loteSombra.render(inimigo.instancia)
@@ -125,11 +126,9 @@ class TelaJogo : ScreenAdapter() {
         cameraJogo.seguir(jogador.posicao)
 
         // Tiro: o raio sai da câmera, atravessa o centro da tela (onde fica a mira)
-        val atirou = arma.atualizar(
-            dt,
-            controles.acaoPressionada(ControlesToque.ACAO_ATIRAR),
-            controles.consumirPressao(ControlesToque.ACAO_RECARREGAR)
-        )
+        val atirando = controles.acaoPressionada(ControlesToque.ACAO_ATIRAR) ||
+            controles.acaoPressionada(ControlesToque.ACAO_ATIRAR_ESQ)
+        val atirou = arma.atualizar(dt, atirando, controles.consumirPressao(ControlesToque.ACAO_RECARREGAR))
         if (atirou) {
             val tipo = arma.tipo
             var acertou = false
@@ -142,18 +141,71 @@ class TelaJogo : ScreenAdapter() {
                 if (mundo.atirar(cameraJogo.camera.position, direcaoTiro, tipo.alcance, tipo.dano)) acertou = true
             }
             if (acertou) hud.mostrarAcerto()
+            // recuo: o tiro desequilibra um pouco o personagem para tras (escopeta bem mais)
+            val cx = cameraJogo.camera.direction.x
+            val cz = cameraJogo.camera.direction.z
+            val cl = kotlin.math.sqrt(cx * cx + cz * cz)
+            if (cl > 0.001f) {
+                jogador.receberRecuo(-cx / cl, -cz / cl, if (tipo.projeteis > 1) Constantes.IMPACTO_TIRO_ESCOPETA else Constantes.IMPACTO_TIRO_JOGADOR)
+            }
             efeitosDoTiro(tipo)
         }
+        controles.consumirPressao(ControlesToque.ACAO_ATIRAR_ESQ)
+        if (arma.golpeFaca) golpearComFaca()
         if (controles.consumirPressao(ControlesToque.ACAO_TROCAR)) {
-            if (arma.trocar()) hud.mostrarMensagem(arma.tipo.nome)
+            if (arma.trocar()) hud.mostrarMensagem(nomeEquipado())
             else hud.mostrarMensagem("Sem outra arma")
         }
+        for (k in 0..3) {
+            if (controles.consumirPressao(ControlesToque.ACAO_ARMA0 + k)) escolherSlotArma(k)
+        }
+        if (controles.consumirPressao(ControlesToque.ACAO_CURAR)) usarCuraRapida()
         if (controles.consumirPressao(ControlesToque.ACAO_PULAR)) jogador.pular()
         if (controles.consumirPressao(ControlesToque.ACAO_AGACHAR)) jogador.alternarAgachar()
         jogador.definirArma(arma.tipo)
+        jogador.definirFaca(arma.faca)
         jogador.definirRecarga(arma.recarregando)
         if (controles.consumirPressao(ControlesToque.ACAO_INTERAGIR)) interagir()
-        jogador.atualizarTiro(dt, cameraJogo.yaw, atirou)
+        jogador.atualizarTiro(dt, cameraJogo.yaw, atirou || arma.golpeFaca)
+    }
+
+    private fun nomeEquipado(): String = if (arma.faca) "Faca" else arma.tipo.nome
+
+    /** Toque num dos 4 slots do HUD (3 armas + faca). */
+    private fun escolherSlotArma(k: Int) {
+        if (!arma.slotDisponivel(k)) {
+            hud.mostrarMensagem("Arma nao encontrada")
+        } else if (arma.selecionarSlot(k)) {
+            hud.mostrarMensagem(nomeEquipado())
+        }
+    }
+
+    /** Botao CURAR: usa a primeira cura da maleta sem abrir a maleta. */
+    private fun usarCuraRapida() {
+        val item = maleta.primeiro(TipoItem.CURA)
+        if (item == null) {
+            hud.mostrarMensagem("Sem cura")
+            return
+        }
+        usarItem(item)
+    }
+
+    /** Golpe de faca a frente da camera: acerta todos no arco (alcance curto), com sangue e recuo/avanco do corpo. */
+    private fun golpearComFaca() {
+        var fx = cameraJogo.camera.direction.x
+        var fz = cameraJogo.camera.direction.z
+        val fl = kotlin.math.sqrt(fx * fx + fz * fz)
+        if (fl < 0.001f) return
+        fx /= fl
+        fz /= fl
+        jogador.golpearFaca(fx, fz)
+        if (mundo.golpeFaca(jogador.posicao.x, jogador.posicao.z, jogador.posicao.y, fx, fz)) {
+            hud.mostrarAcerto()
+            particulas.sangue(
+                mundo.impacto.x, mundo.impacto.y, mundo.impacto.z,
+                fx, 0f, fz, mundo.impactoMorreu
+            )
+        }
     }
 
     /** Fumaca/faiscas no cano, capsula ejetada e o que o ultimo raio acertou (sangue ou faiscas). */
@@ -196,7 +248,11 @@ class TelaJogo : ScreenAdapter() {
             Constantes.INTERAGIR_RAIO
         ) ?: return
         val armaChao = item.arma
-        if (armaChao != null) { // arma no chao: pega direto, nao vai para a maleta
+        if (armaChao != null) { // arma no chao: ocupa espaco na maleta (estilo Resident Evil) e ja equipa
+            if (!maleta.adicionarArma(armaChao)) {
+                hud.mostrarMensagem(Constantes.MSG_MALETA_CHEIA)
+                return
+            }
             item.coletado = true
             arma.liberar(armaChao)
             hud.mostrarMensagem("Pegou: " + armaChao.nome)
@@ -212,9 +268,13 @@ class TelaJogo : ScreenAdapter() {
         }
     }
 
-    /** Toque num slot da maleta: cura +30 de vida (consome 1); munição vai toda para a reserva da arma. */
-    private fun usarSlot(indice: Int) {
-        val item = maleta.item(indice) ?: return
+    /** Toque numa peca da maleta (indice = celula tocada): arma/faca equipa; cura +30 de vida; municao vai para a reserva. */
+    private fun usarSlot(celula: Int) {
+        val item = maleta.itemNaCelula(celula) ?: return
+        usarItem(item)
+    }
+
+    private fun usarItem(item: com.sobrevivente.jogo.inventario.Item) {
         when (item.tipo) {
             TipoItem.CURA -> {
                 if (jogador.vida >= Constantes.JOGADOR_VIDA_MAXIMA) {
@@ -222,14 +282,23 @@ class TelaJogo : ScreenAdapter() {
                     return
                 }
                 jogador.curar(Constantes.CURA_VALOR)
-                maleta.remover(indice, 1)
+                maleta.remover(item, 1)
                 hud.mostrarMensagem(Constantes.MSG_USOU_CURA)
             }
             TipoItem.MUNICAO -> {
                 val quantidade = item.quantidade
                 arma.adicionarReserva(quantidade)
-                maleta.remover(indice, quantidade)
+                maleta.remover(item, quantidade)
                 hud.mostrarMensagem(Constantes.MSG_USOU_MUNICAO)
+            }
+            TipoItem.ARMA -> {
+                val t = item.arma ?: return
+                if (arma.selecionarSlot(t.ordinal)) hud.mostrarMensagem("Equipou: " + t.nome)
+                else hud.mostrarMensagem(if (arma.recarregando) "Recarregando..." else "Ja equipada")
+            }
+            TipoItem.FACA -> {
+                if (arma.selecionarSlot(3)) hud.mostrarMensagem("Equipou: Faca")
+                else hud.mostrarMensagem(if (arma.recarregando) "Recarregando..." else "Ja equipada")
             }
         }
     }
@@ -302,7 +371,12 @@ class TelaJogo : ScreenAdapter() {
             hud.atualizar(dt) // o tempo das mensagens corre também com a maleta aberta
             if (!morto && jogador.vida <= 0) morrer()
         }
-        hud.definirMunicao(arma.tipo.nome, arma.carregador, arma.reserva, arma.recarregando)
+        if (arma.faca) hud.definirMunicao("FACA", -1, 0, false)
+        else hud.definirMunicao(arma.tipo.nome, arma.carregador, arma.reserva, arma.recarregando)
+        hud.definirArmas(arma.slotAtivo, arma.estaLiberada(com.sobrevivente.jogo.mundo.TipoArma.FUZIL), arma.estaLiberada(com.sobrevivente.jogo.mundo.TipoArma.ESCOPETA))
+        hud.definirAbates(mundo.abates)
+        hud.definirCuras(maleta.total(TipoItem.CURA))
+        hud.definirDor(jogador.dor)
         hud.definirVida(maxOf(jogador.vida, 0), Constantes.JOGADOR_VIDA_MAXIMA)
         hud.inimigosVivos = mundo.contarInimigosVivos()
         hud.definirJogador(jogador.posicao.x, jogador.posicao.z)
@@ -341,13 +415,19 @@ class TelaJogo : ScreenAdapter() {
         loteModelos.render(jogador.corpo, mundo.ambiente)
         if (!jogador.animado) loteModelos.render(jogador.nariz, mundo.ambiente)
         jogador.armaVisivel?.let { loteModelos.render(it, mundo.ambiente) }
+        jogador.facaCabo?.let { loteModelos.render(it, mundo.ambiente) }
         if (jogador.claraoVisivel) loteModelos.render(jogador.clarao, mundo.ambiente)
         for (i in mundo.inimigos.indices) {
             val inimigo = mundo.inimigos[i]
             if (inimigo.visivel) loteModelos.render(inimigo.instancia, mundo.ambiente)
+            mundo.marcadorLoot(i)?.let { loteModelos.render(it, mundo.ambiente) }
         }
         for (i in mundo.itens.indices) {
             val item = mundo.itens[i]
+            if (!item.coletado) loteModelos.render(item.instancia, mundo.ambiente)
+        }
+        for (i in mundo.drops.indices) {
+            val item = mundo.drops[i]
             if (!item.coletado) loteModelos.render(item.instancia, mundo.ambiente)
         }
         loteModelos.end()

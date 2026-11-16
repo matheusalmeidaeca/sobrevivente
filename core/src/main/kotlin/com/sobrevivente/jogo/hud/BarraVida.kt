@@ -27,8 +27,8 @@ class BarraVida {
         borda = Constantes.BARRA_VIDA_BORDA_DP * densidade
         espacoTexto = Constantes.BARRA_VIDA_ESPACO_TEXTO_DP * densidade
         val margem = Constantes.MARGEM_SEGURA_DP * densidade
-        x = margem
-        y = alturaTela - margem - altura
+        x = margem + Constantes.HUD_AVATAR_DP * densidade // ao lado do medalhao do personagem (Free Fire)
+        y = alturaTela - margem - Constantes.HUD_AVATAR_DP * densidade * 0.5f - altura * 0.5f
     }
 
     /** Y da base da barra, para posicionar o overlay de debug logo abaixo. */

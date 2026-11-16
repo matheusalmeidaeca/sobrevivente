@@ -139,55 +139,45 @@ class ControlesToque : InputAdapter() {
         liberarTudo()
     }
 
-    /** Posição dos 3 botões (seção 10.5): ATIRAR no canto, RECARREGAR à esquerda, INTERAGIR acima. */
+    /**
+     * Layout estilo controle de PS2 (F10): losango de 4 botoes a direita (triangulo cima = INTERAGIR, circulo direita = AGACHAR,
+     * X baixo = PULAR, quadrado esquerda = RECARREGAR), ATIRAR grande ao lado do losango (R1), um segundo ATIRAR e TROCAR
+     * acima do joystick (L2/L1), CURAR rapido e os 4 slots de arma (3 armas + faca) embaixo, no centro.
+     */
     private fun calcularAcoes(densidade: Float) {
         val margem = Constantes.MARGEM_SEGURA_DP * densidade
         val raioAtirar = Constantes.BOTAO_ATIRAR_DIAMETRO_DP * 0.5f * densidade
         val raioPequeno = Constantes.BOTAO_PEQUENO_DIAMETRO_DP * 0.5f * densidade
         val folga = Constantes.BOTAO_FOLGA_DP * densidade
         val alvoMinimo = Constantes.BOTAO_ALVO_MINIMO_DP * 0.5f * densidade
+        val passo = Constantes.PS2_PASSO_DP * densidade
 
-        val atirarX = largura - margem - raioAtirar
-        val atirarY = margem + raioAtirar
+        // losango (centro fx, fy)
+        val fx = largura - margem - passo - raioPequeno
+        val fy = margem + passo + raioPequeno
+        definirAcao(ACAO_PULAR, fx, fy - passo, raioPequeno, alvoMinimo)       // X
+        definirAcao(ACAO_AGACHAR, fx + passo, fy, raioPequeno, alvoMinimo)     // O
+        definirAcao(ACAO_RECARREGAR, fx - passo, fy, raioPequeno, alvoMinimo)  // quadrado
+        definirAcao(ACAO_INTERAGIR, fx, fy + passo, raioPequeno, alvoMinimo)   // triangulo
+        // R1: ATIRAR grande, a esquerda do losango e um pouco acima
+        definirAcao(ACAO_ATIRAR, fx - passo - raioPequeno - folga - raioAtirar, fy + passo * 0.55f, raioAtirar, alvoMinimo)
 
-        definirAcao(ACAO_ATIRAR, atirarX, atirarY, raioAtirar, alvoMinimo)
-        definirAcao(
-            ACAO_RECARREGAR,
-            atirarX - raioAtirar - folga - raioPequeno,
-            atirarY,
-            raioPequeno,
-            alvoMinimo
-        )
-        definirAcao(
-            ACAO_INTERAGIR,
-            atirarX,
-            atirarY + raioAtirar + folga + raioPequeno,
-            raioPequeno,
-            alvoMinimo
-        )
-        // TROCAR (arma): na diagonal, acima do RECARREGAR e ao lado do INTERAGIR
-        definirAcao(
-            ACAO_TROCAR,
-            atirarX - raioAtirar - folga - raioPequeno,
-            atirarY + raioAtirar + folga + raioPequeno,
-            raioPequeno,
-            alvoMinimo
-        )
-        // PULAR: a esquerda do RECARREGAR; AGACHAR: a esquerda do TROCAR
-        definirAcao(
-            ACAO_PULAR,
-            atirarX - raioAtirar - folga - raioPequeno - 2f * raioPequeno - folga,
-            atirarY,
-            raioPequeno,
-            alvoMinimo
-        )
-        definirAcao(
-            ACAO_AGACHAR,
-            atirarX - raioAtirar - folga - raioPequeno - 2f * raioPequeno - folga,
-            atirarY + raioAtirar + folga + raioPequeno,
-            raioPequeno,
-            alvoMinimo
-        )
+        // lado esquerdo, acima do joystick: segundo ATIRAR (L2) e TROCAR (L1)
+        val raioEsq = Constantes.ATIRAR_ESQ_DIAMETRO_DP * 0.5f * densidade
+        val topoMax = altura - margem - Constantes.HUD_AVATAR_DP * densidade - 12f * densidade - raioEsq
+        val yEsq = minOf(centroY + raioBase + 14f * densidade + raioEsq, topoMax)
+        definirAcao(ACAO_ATIRAR_ESQ, margem + raioEsq, yEsq, raioEsq, alvoMinimo)
+        definirAcao(ACAO_TROCAR, margem + 2f * raioEsq + folga + raioPequeno, yEsq, raioPequeno, alvoMinimo)
+
+        // slots de arma (3 armas + faca) e CURAR rapido: fileira embaixo, centrada
+        val raioSlot = Constantes.SLOT_ARMA_LADO_DP * 0.5f * densidade
+        val passoSlot = 2f * raioSlot + Constantes.SLOT_ARMA_ESPACO_DP * densidade
+        val ySlot = Constantes.SLOT_ARMA_BASE_DP * densidade + raioSlot
+        for (k in 0..3) {
+            definirAcao(ACAO_ARMA0 + k, largura * 0.5f + (k - 1.5f) * passoSlot, ySlot, raioSlot, raioSlot)
+        }
+        val raioCura = Constantes.CURAR_RAPIDO_DIAMETRO_DP * 0.5f * densidade
+        definirAcao(ACAO_CURAR, largura * 0.5f - 2.5f * passoSlot, ySlot, raioCura, alvoMinimo)
     }
 
     /** Botão REINICIAR: centrado na largura, logo abaixo do meio da tela (o título fica acima). */
@@ -203,7 +193,7 @@ class ControlesToque : InputAdapter() {
             y >= reiniciarBase && y <= reiniciarBase + reiniciarAltura
     }
 
-    /** Grade 2 x 4 centrada na tela; a linha 0 fica em cima. */
+    /** Grade da maleta (8 x 5) centrada na tela; a linha 0 fica em cima. */
     private fun calcularMaleta(densidade: Float) {
         slotLado = Constantes.MALETA_SLOT_LADO_DP * densidade
         val espaco = Constantes.MALETA_SLOT_ESPACO_DP * densidade
@@ -590,7 +580,11 @@ class ControlesToque : InputAdapter() {
         const val ACAO_TROCAR = 3
         const val ACAO_PULAR = 4
         const val ACAO_AGACHAR = 5
-        const val NUM_ACOES = 6
+        const val ACAO_CURAR = 6
+        const val ACAO_ATIRAR_ESQ = 7
+        const val ACAO_ARMA0 = 8 // 8..11 = slots de arma (pistola, fuzil, escopeta, faca)
+        const val NUM_BOTOES_CIRCULARES = 8 // 0..7 sao desenhados por BotoesAcao; 8..11 pelo Hud
+        const val NUM_ACOES = 12
         private const val SEM_PONTEIRO = -1
         private const val SEM_SLOT = -1
     }

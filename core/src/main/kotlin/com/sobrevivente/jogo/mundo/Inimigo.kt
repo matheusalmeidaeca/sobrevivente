@@ -4,12 +4,37 @@ package com.sobrevivente.jogo.mundo
 import com.badlogic.gdx.graphics.g3d.Model
 import com.badlogic.gdx.graphics.g3d.ModelInstance
 import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute
+import com.badlogic.gdx.math.Interpolation
 import com.badlogic.gdx.math.MathUtils
 import com.badlogic.gdx.math.Vector3
 import com.badlogic.gdx.math.collision.BoundingBox
 import com.sobrevivente.jogo.Constantes
 import kotlin.math.abs
 import kotlin.math.sqrt
+
+/** F10: tipos de zumbi (velocidade relativa, dano, vida, tamanho e tom de cor proprios). `peso` = chance relativa de nascer. */
+enum class TipoZumbi(
+    val nome: String, val velocidade: Float, val dano: Int, val vida: Int,
+    val altura: Float, val largura: Float, val r: Float, val g: Float, val b: Float, val peso: Int
+) {
+    NORMAL("Zumbi", 1.00f, 10, 100, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 40),
+    RAPIDO("Corredor", 1.75f, 6, 55, 0.96f, 0.82f, 0.88f, 0.96f, 1.05f, 22),
+    LENTO("Bruto", 0.60f, 24, 240, 1.10f, 1.32f, 0.88f, 0.66f, 0.60f, 16),
+    FORTE("Mutante", 1.10f, 16, 150, 1.06f, 1.10f, 0.82f, 0.98f, 0.72f, 22);
+
+    companion object {
+        fun sortear(): TipoZumbi {
+            var total = 0
+            for (t in values()) total += t.peso
+            var n = MathUtils.random(0, total - 1)
+            for (t in values()) {
+                if (n < t.peso) return t
+                n -= t.peso
+            }
+            return NORMAL
+        }
+    }
+}
 
 /**
  * Inimigo básico (seção 13 do mapa). Lógica no plano XZ.
@@ -27,6 +52,8 @@ class Inimigo(modelo: Model, x: Float, z: Float, private val animado: Boolean = 
     private var inicioX = x
     private var inicioZ = z
 
+    var tipo = TipoZumbi.NORMAL
+        private set
     var vida = Constantes.ENIMIGO_VIDA
         private set
     var estado = Estado.PARADO
@@ -50,6 +77,24 @@ class Inimigo(modelo: Model, x: Float, z: Float, private val animado: Boolean = 
     private var tintaR = 1f
     private var tintaG = 1f
     private var tintaB = 1f
+
+    // F10: reacao a impactos, queda/cambaleio e loot
+    private val reacao = ReacaoImpacto()
+    private var tempoQueda = 0f
+    private var duracaoQueda = 1f
+    private var tempoCambaleio = 0f
+    private var duracaoCambaleio = 1f
+    private var tempoImune = 0f
+    private var tempoGeral = 0f
+    /** 0 = nada, 1 = municao, 2 = cura (solto quando o zumbi morre). */
+    var loot = 0
+        private set
+    val caido: Boolean
+        get() = tempoQueda > 0f
+    val imune: Boolean
+        get() = tempoImune > 0f || tempoQueda > 0f
+    val emMovimento: Boolean
+        get() = estado == Estado.PERSEGUINDO || estado == Estado.CACANDO
 
     private val cor: ColorAttribute?
     private val animador = Animador(instancia)
@@ -75,9 +120,18 @@ class Inimigo(modelo: Model, x: Float, z: Float, private val animado: Boolean = 
 
     /** Sorteia aparencia: magro/gordo, alto/baixo e um tom de pele (so com o modelo animado). */
     private fun sortearAparencia() {
+        tipo = TipoZumbi.sortear()
+        vida = tipo.vida
+        loot = if (MathUtils.randomBoolean(Constantes.LOOT_CHANCE)) {
+            if (MathUtils.randomBoolean(Constantes.LOOT_CHANCE_CURA)) 2 else 1
+        } else 0
+        tempoQueda = 0f
+        tempoCambaleio = 0f
+        tempoImune = 0f
+        reacao.limpar()
         if (!animado) return
-        escalaAltura = MathUtils.random(Constantes.ZUMBI_ESCALA_ALTURA_MIN, Constantes.ZUMBI_ESCALA_ALTURA_MAX)
-        escalaLargura = MathUtils.random(Constantes.ZUMBI_ESCALA_LARGURA_MIN, Constantes.ZUMBI_ESCALA_LARGURA_MAX)
+        escalaAltura = MathUtils.random(Constantes.ZUMBI_ESCALA_ALTURA_MIN, Constantes.ZUMBI_ESCALA_ALTURA_MAX) * tipo.altura
+        escalaLargura = MathUtils.random(Constantes.ZUMBI_ESCALA_LARGURA_MIN, Constantes.ZUMBI_ESCALA_LARGURA_MAX) * tipo.largura
         when (MathUtils.random(0, 4)) {
             0 -> { tintaR = 1f; tintaG = 1f; tintaB = 1f }
             1 -> { tintaR = 0.88f; tintaG = 1.0f; tintaB = 0.84f }   // esverdeado
@@ -85,7 +139,14 @@ class Inimigo(modelo: Model, x: Float, z: Float, private val animado: Boolean = 
             3 -> { tintaR = 0.82f; tintaG = 0.86f; tintaB = 0.96f }   // azulado / frio
             else -> { tintaR = 0.74f; tintaG = 0.74f; tintaB = 0.72f } // sujo, escuro
         }
+        tintaR *= tipo.r
+        tintaG *= tipo.g
+        tintaB *= tipo.b
     }
+
+    /** Fator de velocidade do tipo; cambaleando anda bem mais devagar. */
+    private fun fatorVel(): Float =
+        tipo.velocidade * (if (tempoCambaleio > 0f) Constantes.ZUMBI_CAMBALEIO_VEL else 1f)
 
     init {
         sortearAparencia()
@@ -112,10 +173,33 @@ class Inimigo(modelo: Model, x: Float, z: Float, private val animado: Boolean = 
             return
         }
         if (animado) animador.atualizar(dt)
+        tempoGeral += dt
+        reacao.atualizar(dt)
+        if (tempoImune > 0f) tempoImune -= dt
+        if (tempoCambaleio > 0f) tempoCambaleio -= dt
 
         if (tempoFlash > 0f) {
             tempoFlash -= dt
             if (tempoFlash <= 0f) aplicarCor()
+        }
+
+        // Caido (tiro na perna / atropelado): fica no chao, levanta e volta a perseguir.
+        if (tempoQueda > 0f) {
+            tempoQueda -= dt
+            if (tempoQueda <= 0f) {
+                tempoQueda = 0f
+                tempoImune = Constantes.ZUMBI_IMUNE_QUEDA_S
+                if (jogador.vida > 0) {
+                    mudarEstado(Estado.PERSEGUINDO) // religa a animacao de correr (derrubar tocou "parado")
+                    tempoReplano = 0f
+                    trajetoN = 0
+                    trajetoI = 0
+                } else {
+                    mudarEstado(Estado.PARADO)
+                }
+            }
+            if (animado) atualizarTransformacao()
+            return
         }
 
         // Jogador sem vida: os inimigos ficam parados (a morte em si é do Marco 1.6).
@@ -140,7 +224,7 @@ class Inimigo(modelo: Model, x: Float, z: Float, private val animado: Boolean = 
             Estado.VAGANDO -> {
                 if (distancia <= Constantes.ENIMIGO_VISAO) {
                     iniciarPerseguicao()
-                } else if (!seguirTrajeto(dt, Constantes.ENIMIGO_VELOCIDADE_VAGAR)) {
+                } else if (!seguirTrajeto(dt, Constantes.ENIMIGO_VELOCIDADE_VAGAR * fatorVel())) {
                     mudarEstado(Estado.PARADO)
                     tempoEspera = MathUtils.random(Constantes.ENIMIGO_ESPERA_MIN_S, Constantes.ENIMIGO_ESPERA_MAX_S)
                 }
@@ -154,7 +238,7 @@ class Inimigo(modelo: Model, x: Float, z: Float, private val animado: Boolean = 
                         tempoReplano = Constantes.ENIMIGO_CACA_REPLANO_S + MathUtils.random(0f, 0.3f)
                         planejar(jogador.posicao.x, jogador.posicao.z)
                     }
-                    if (!seguirTrajeto(dt, Constantes.ENIMIGO_VELOCIDADE_CACA)) tempoReplano = 0f
+                    if (!seguirTrajeto(dt, Constantes.ENIMIGO_VELOCIDADE_CACA * fatorVel())) tempoReplano = 0f
                 }
             }
             Estado.PERSEGUINDO -> {
@@ -178,7 +262,7 @@ class Inimigo(modelo: Model, x: Float, z: Float, private val animado: Boolean = 
                         tempoReplano = Constantes.ENIMIGO_REPLANEJAR_S + MathUtils.random(0f, 0.1f)
                         planejar(jogador.posicao.x, jogador.posicao.z)
                     }
-                    if (!seguirTrajeto(dt, Constantes.ENIMIGO_VELOCIDADE)) {
+                    if (!seguirTrajeto(dt, Constantes.ENIMIGO_VELOCIDADE * fatorVel())) {
                         // sem caminho (ou chegou ao fim): encara o jogador e tenta de novo no proximo replano
                         rumoYaw = MathUtils.atan2(-dx, -dz) * MathUtils.radiansToDegrees
                         tempoReplano = 0f
@@ -195,7 +279,11 @@ class Inimigo(modelo: Model, x: Float, z: Float, private val animado: Boolean = 
                 } else {
                     tempoAtaque -= dt
                     if (tempoAtaque <= 0f) {
-                        jogador.receberDano(Constantes.ENIMIGO_DANO)
+                        jogador.receberDano(tipo.dano)
+                        // o golpe EMPURRA o jogador na direcao zumbi -> jogador (ele se desequilibra para la)
+                        if (distancia > 0.01f) {
+                            jogador.receberImpacto(dx / distancia, dz / distancia, Constantes.IMPACTO_GOLPE_FORCA * (0.6f + tipo.dano / 25f))
+                        }
                         tempoAtaque = Constantes.ENIMIGO_INTERVALO_ATAQUE
                     }
                 }
@@ -288,7 +376,6 @@ class Inimigo(modelo: Model, x: Float, z: Float, private val animado: Boolean = 
         cacador = true
         sortearAparencia()
         posicao.set(x, 0f, z)
-        vida = Constantes.ENIMIGO_VIDA
         tempoAtaque = 0f
         tempoFlash = 0f
         tempoMorto = 0f
@@ -311,8 +398,8 @@ class Inimigo(modelo: Model, x: Float, z: Float, private val animado: Boolean = 
     fun reiniciar() {
         desativado = false
         cacador = false
+        sortearAparencia()
         posicao.set(inicioX, 0f, inicioZ)
-        vida = Constantes.ENIMIGO_VIDA
         estado = Estado.PARADO
         tempoAtaque = 0f
         tempoFlash = 0f
@@ -337,11 +424,68 @@ class Inimigo(modelo: Model, x: Float, z: Float, private val animado: Boolean = 
         tempoFlash = Constantes.ENIMIGO_FLASH_S
         if (vida <= 0) {
             vida = 0
+            tempoQueda = 0f
+            tempoCambaleio = 0f
+            reacao.limpar()
             mudarEstado(Estado.MORTO)
             return true
         }
         aplicarCor()
         return false
+    }
+
+    /**
+     * Tiro: dano + balanco (desequilibrio leve na direcao do tiro). Tiro na PERNA (abaixo de PERNA_ALTURA_FRACAO da altura):
+     * o zumbi cai ou cambaleia. `yRelativo` = altura do impacto acima dos pes. Devolve true se matou.
+     */
+    fun receberTiro(dano: Int, yRelativo: Float, dx: Float, dz: Float): Boolean {
+        if (receberDano(dano)) return true
+        reacao.disparar(dx, dz, Constantes.IMPACTO_TIRO_ZUMBI, 0.6f)
+        if (yRelativo < Constantes.ENIMIGO_ALTURA * escalaAltura * Constantes.PERNA_ALTURA_FRACAO && !imune) {
+            if (MathUtils.randomBoolean(Constantes.ZUMBI_QUEDA_CHANCE_PERNA)) {
+                derrubar(Constantes.ZUMBI_QUEDA_S)
+            } else {
+                tempoCambaleio = Constantes.ZUMBI_CAMBALEIO_S
+                duracaoCambaleio = Constantes.ZUMBI_CAMBALEIO_S
+            }
+        }
+        return false
+    }
+
+    /** Cai no chao por `duracao` segundos (inclui levantar). Sem dano. Ignorado se ja esta caido/imune. */
+    fun derrubar(duracao: Float) {
+        if (estado == Estado.MORTO || desativado || imune) return
+        tempoQueda = duracao
+        duracaoQueda = duracao
+        tempoCambaleio = 0f
+        tempoAtaque = 0f
+        if (animado) animador.tocar("parado", -1, 1f, 0.12f)
+    }
+
+    /** Atropelado por um zumbi mais rapido (dx, dz = direcao do atropelo): cai sem sofrer dano. */
+    fun atropelado(dx: Float, dz: Float) {
+        if (estado == Estado.MORTO || desativado || imune) return
+        reacao.disparar(dx, dz, 0.9f, 0.7f)
+        derrubar(Constantes.ZUMBI_QUEDA_S * 0.85f)
+    }
+
+    /** Entrega (uma vez) o loot que o zumbi carregava: 0 = nada, 1 = municao, 2 = cura. */
+    fun consumirLoot(): Int {
+        val l = loot
+        loot = 0
+        return l
+    }
+
+    /** Altura do marcador de loot acima dos pes (para o desenho). */
+    val alturaMarcador: Float
+        get() = Constantes.ENIMIGO_ALTURA * escalaAltura + 0.35f
+
+    private fun faseQueda(): Float {
+        if (tempoQueda <= 0f) return 0f
+        val t = duracaoQueda - tempoQueda
+        val descer = minOf(1f, t / 0.30f)
+        val subir = minOf(1f, tempoQueda / 0.65f)
+        return Interpolation.smooth.apply(minOf(descer, subir))
     }
 
     private fun mudarEstado(novo: Estado) {
@@ -352,12 +496,14 @@ class Inimigo(modelo: Model, x: Float, z: Float, private val animado: Boolean = 
         when (novo) {
             Estado.PARADO -> animador.tocar("parado", -1, 1f, t)
             Estado.CACANDO -> animador.tocar(
-                "andar", -1, Constantes.ENIMIGO_VELOCIDADE_CACA / Constantes.ENIMIGO_VAGAR_REF, Constantes.ANIM_TRANSICAO_MARCHA_S
+                "andar", -1, Constantes.ENIMIGO_VELOCIDADE_CACA * tipo.velocidade / Constantes.ENIMIGO_VAGAR_REF, Constantes.ANIM_TRANSICAO_MARCHA_S
             )
             Estado.VAGANDO -> animador.tocar(
-                "andar", -1, Constantes.ENIMIGO_VELOCIDADE_VAGAR / Constantes.ENIMIGO_VAGAR_REF, Constantes.ANIM_TRANSICAO_MARCHA_S
+                "andar", -1, Constantes.ENIMIGO_VELOCIDADE_VAGAR * tipo.velocidade / Constantes.ENIMIGO_VAGAR_REF, Constantes.ANIM_TRANSICAO_MARCHA_S
             )
-            Estado.PERSEGUINDO -> animador.tocar("correr", -1, Constantes.ZUMBI_ANIM_VELOCIDADE, Constantes.ANIM_TRANSICAO_MARCHA_S)
+            Estado.PERSEGUINDO -> animador.tocar(
+                "correr", -1, MathUtils.clamp(Constantes.ZUMBI_ANIM_VELOCIDADE * tipo.velocidade, 0.55f, 1.9f), Constantes.ANIM_TRANSICAO_MARCHA_S
+            )
             Estado.ATACANDO -> animador.tocar("atacar", -1, Constantes.ENIMIGO_ATAQUE_ANIM_VEL, t)
             Estado.MORTO -> animador.tocar("morrer", 1, 1f, t)
         }
@@ -437,7 +583,12 @@ class Inimigo(modelo: Model, x: Float, z: Float, private val animado: Boolean = 
     private fun atualizarTransformacao() {
         if (animado) {
             // Modelo do F2: origem nos pes, frente = -Z.
-            instancia.transform.setToTranslation(posicao.x, posicao.y, posicao.z).rotate(Vector3.Y, yaw)
+            val queda = faseQueda()
+            reacao.calcular(yaw)
+            val bamba = if (tempoCambaleio > 0f) MathUtils.sin(tempoGeral * 8f) * 11f * minOf(1f, tempoCambaleio / 0.4f) else 0f
+            instancia.transform.setToTranslation(posicao.x, posicao.y + 0.18f * queda, posicao.z).rotate(Vector3.Y, yaw)
+                .rotate(Vector3.X, 90f * queda - reacao.pitch)
+                .rotate(Vector3.Z, reacao.roll + bamba)
                 .scale(escalaLargura, escalaAltura, escalaLargura)
         } else {
             instancia.transform.setToTranslation(

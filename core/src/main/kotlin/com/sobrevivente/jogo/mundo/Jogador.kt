@@ -58,6 +58,17 @@ class Jogador : Disposable {
     private var estavaNoAr = false
     private var tempoPouso = 0f
     private var yawAnterior = 0f
+    // F10: dor/desequilibrio (golpe do zumbi) e recuo leve (ao atirar). Os ossos do tronco/cabeca/ombros sao girados
+    // por cima da animacao: o personagem continua andando com dor.
+    private val reacao = ReacaoImpacto()
+    private val recuo = ReacaoImpacto()
+    private var empurraoX = 0f
+    private var empurraoZ = 0f
+    private var tempoDor = 0f
+    private val nomesReacao = arrayOf("coluna", "pescoco", "cabeca", "ombro_esq", "ombro_dir")
+    private val nosReacao = arrayOfNulls<Node>(5)
+    private val baseReacao = Array(5) { Matrix4() }
+    private var reacaoAplicada = false
     private var inclinacao = 0f
     var agachado = false
         private set
@@ -73,9 +84,25 @@ class Jogador : Disposable {
     private var noMao: Node? = null
     private val deslocamentoMao = Matrix4().setToTranslation(0f, Constantes.ARMA_PALMA_Y, 0f).rotate(Vector3.X, -90f)
 
-    /** Arma que aparece na mao (null = sem modelo; o jogo continua sem a arma desenhada). */
+    // Faca (4o slot): lamina + cabo, caixas simples presas a mao. Golpe = arco rapido da lamina + avanco do corpo.
+    private var facaAtiva = false
+    private var tempoGolpe = 0f
+    private lateinit var modeloFacaLamina: Model
+    private lateinit var modeloFacaCabo: Model
+    private lateinit var instanciaFacaLamina: ModelInstance
+    private lateinit var instanciaFacaCabo: ModelInstance
+
+    /** Arma que aparece na mao (null = sem modelo; o jogo continua sem a arma desenhada). Com a faca: a lamina. */
     val armaVisivel: ModelInstance?
-        get() = if (animado) instanciasArma[armaAtual.ordinal] else null
+        get() = if (!animado) null else if (facaAtiva) instanciaFacaLamina else instanciasArma[armaAtual.ordinal]
+
+    /** Cabo da faca (null se a faca nao esta na mao). Desenhar junto com armaVisivel. */
+    val facaCabo: ModelInstance?
+        get() = if (animado && facaAtiva) instanciaFacaCabo else null
+
+    /** 0..1: quanto o jogador esta sentindo dor agora (HUD: vinheta vermelha). */
+    val dor: Float
+        get() = minOf(1f, reacao.intensidade)
 
     init {
         val construtor = ModelBuilder()
@@ -125,12 +152,20 @@ class Jogador : Disposable {
             atributos
         )
 
+        modeloFacaLamina = construtor.createBox(0.022f, 0.012f, 0.24f,
+            Material(ColorAttribute.createDiffuse(0.72f, 0.74f, 0.78f, 1f)), atributos)
+        modeloFacaCabo = construtor.createBox(0.030f, 0.030f, 0.11f,
+            Material(ColorAttribute.createDiffuse(0.10f, 0.08f, 0.07f, 1f)), atributos)
+        instanciaFacaLamina = ModelInstance(modeloFacaLamina)
+        instanciaFacaCabo = ModelInstance(modeloFacaCabo)
+
         corpo = ModelInstance(modeloCorpo)
         nariz = ModelInstance(modeloNariz)
         clarao = ModelInstance(modeloClarao)
         animador = Animador(corpo)
         if (animado) {
             noMao = corpo.getNode("mao_dir", true)
+            for (i in nomesReacao.indices) nosReacao[i] = corpo.getNode(nomesReacao[i], true)
             for (tipo in TipoArma.values()) {
                 val m = CarregadorModelos.carregar(tipo.modelo)
                 modelosArma[tipo.ordinal] = m
@@ -148,6 +183,18 @@ class Jogador : Disposable {
         armaAtual = tipo
     }
 
+    /** Equipa/desequipa a faca (4o slot). Com a faca nao ha arma de fogo na mao nem clarao. */
+    fun definirFaca(ativa: Boolean) {
+        facaAtiva = ativa
+    }
+
+    /** Golpe de faca: arco da lamina e um avanco do corpo na direcao (dx, dz) da camera. */
+    fun golpearFaca(dx: Float, dz: Float) {
+        if (vida <= 0) return
+        tempoGolpe = Constantes.FACA_GOLPE_S
+        recuo.disparar(dx, dz, 0.55f, 0.35f)
+    }
+
     /** True enquanto a arma esta recarregando (toca recarregar_<arma>). */
     fun definirRecarga(recarregando: Boolean) {
         recarregandoArma = recarregando
@@ -155,6 +202,7 @@ class Jogador : Disposable {
 
     /** Nome da animacao desta arma (cai para a sem arma se o modelo nao tiver a versao armada). */
     private fun nomeAnim(base: String): String {
+        if (facaAtiva) return base
         val nome = base + "_" + armaAtual.sufixo
         return if (corpo.getAnimation(nome) != null) nome else base
     }
@@ -163,8 +211,61 @@ class Jogador : Disposable {
     private fun atualizarArma() {
         val instancia = armaVisivel ?: return
         val mao = noMao ?: return
+        if (facaAtiva) {
+            val t = if (tempoGolpe > 0f) 1f - tempoGolpe / Constantes.FACA_GOLPE_S else 0f
+            val arco = MathUtils.sin(MathUtils.PI * t) * 80f
+            instanciaFacaCabo.transform.set(corpo.transform).mul(mao.globalTransform).mul(deslocamentoMao)
+                .rotate(Vector3.X, arco).translate(0f, 0f, 0.02f)
+            instancia.transform.set(instanciaFacaCabo.transform).translate(0f, 0f, -0.175f)
+            return
+        }
         instancia.transform.set(corpo.transform).mul(mao.globalTransform).mul(deslocamentoMao)
         clarao.transform.set(instancia.transform).translate(armaAtual.bocaX, armaAtual.bocaY, armaAtual.bocaZ)
+    }
+
+    /**
+     * Golpe de zumbi: (dx, dz) = direcao do golpe (de quem bateu para o jogador, plano XZ). O corpo se inclina/contorce
+     * NESSA direcao, leva um empurrao e anda um pouco mais devagar por IMPACTO_TEMPO_S, mas continua controlavel.
+     */
+    fun receberImpacto(dx: Float, dz: Float, forca: Float) {
+        if (vida <= 0) return
+        reacao.disparar(dx, dz, forca)
+        val l = sqrt(dx * dx + dz * dz)
+        if (l > 1e-4f) {
+            empurraoX = MathUtils.clamp(empurraoX + dx / l * Constantes.IMPACTO_EMPURRAO_MS * forca, -4f, 4f)
+            empurraoZ = MathUtils.clamp(empurraoZ + dz / l * Constantes.IMPACTO_EMPURRAO_MS * forca, -4f, 4f)
+        }
+    }
+
+    /** Recuo leve ao atirar (sem empurrao nem lentidao): desequilibra um pouco para tras. */
+    fun receberRecuo(dx: Float, dz: Float, forca: Float) {
+        if (vida <= 0) return
+        recuo.disparar(dx, dz, forca, 0.5f)
+    }
+
+    /** Aplica dor/recuo nos ossos por cima da animacao. Chamar logo depois de `animador.atualizar`. */
+    private fun aplicarReacao(restaurou: Boolean) {
+        reacao.calcular(yaw)
+        recuo.calcular(yaw)
+        if (!reacao.ativa && !recuo.ativa) {
+            if (restaurou) corpo.calculateTransforms()
+            return
+        }
+        for (i in nosReacao.indices) {
+            val n = nosReacao[i] ?: return
+            baseReacao[i].set(n.localTransform)
+        }
+        val p = reacao.pitch + recuo.pitch
+        val r = reacao.roll + recuo.roll
+        val g = reacao.giro + recuo.giro
+        val dor = minOf(1.2f, reacao.intensidade)
+        nosReacao[0]!!.localTransform.rotate(Vector3.X, -p * 0.55f).rotate(Vector3.Z, r * 0.55f).rotate(Vector3.Y, g * 0.5f)
+        nosReacao[1]!!.localTransform.rotate(Vector3.X, -p * 0.30f + dor * 9f).rotate(Vector3.Z, r * 0.3f)
+        nosReacao[2]!!.localTransform.rotate(Vector3.Z, MathUtils.sin(tempoDor * 32f) * dor * 5f).rotate(Vector3.X, dor * 6f)
+        nosReacao[3]!!.localTransform.rotate(Vector3.X, -dor * 14f).rotate(Vector3.Z, dor * 8f)
+        nosReacao[4]!!.localTransform.rotate(Vector3.X, -dor * 14f).rotate(Vector3.Z, -dor * 8f)
+        corpo.calculateTransforms()
+        reacaoAplicada = true
     }
 
     fun receberDano(dano: Int) {
@@ -184,6 +285,7 @@ class Jogador : Disposable {
         intensidadeMovimento = minOf(1f, sqrt(entradaX * entradaX + entradaY * entradaY))
         val temEntrada = entradaX != 0f || entradaY != 0f
         val mirando = tempoEncarar > 0f || recarregandoArma
+        if (reacao.ativa) tempoDor += dt
 
         // Estilo CoD Mobile: joystick no maximo = corrida; agachado e mirando/recarregando andam mais devagar. Sem deslizar.
         fatorMov = when {
@@ -191,6 +293,21 @@ class Jogador : Disposable {
             mirando -> Constantes.JOGADOR_FATOR_ATIRANDO
             intensidadeMovimento >= Constantes.JOGADOR_SPRINT_LIMIAR -> Constantes.JOGADOR_SPRINT_FATOR
             else -> 1f
+        }
+        if (reacao.ativa) fatorMov *= Constantes.IMPACTO_FATOR_VEL
+
+        // empurrao do golpe (decai rapido); o jogador continua andando por cima dele
+        val empurrando = empurraoX != 0f || empurraoZ != 0f
+        if (empurrando) {
+            posicao.x = MathUtils.clamp(posicao.x + empurraoX * dt, -Constantes.MAPA_LIMITE, Constantes.MAPA_LIMITE)
+            posicao.z = MathUtils.clamp(posicao.z + empurraoZ * dt, -Constantes.MAPA_LIMITE, Constantes.MAPA_LIMITE)
+            val d = maxOf(0f, 1f - 7f * dt)
+            empurraoX *= d
+            empurraoZ *= d
+            if (kotlin.math.abs(empurraoX) < 0.02f && kotlin.math.abs(empurraoZ) < 0.02f) {
+                empurraoX = 0f
+                empurraoZ = 0f
+            }
         }
 
         if (temEntrada) {
@@ -231,7 +348,7 @@ class Jogador : Disposable {
             }
         }
         if (noChao && chaoY < posicao.y - 0.01f) noChao = false // saiu da borda: cai
-        if (temEntrada || !noChao) Colisao.resolver(posicao, Constantes.JOGADOR_RAIO)
+        if (temEntrada || !noChao || empurrando) Colisao.resolver(posicao, Constantes.JOGADOR_RAIO)
 
         atualizarTransformacao()
     }
@@ -269,9 +386,13 @@ class Jogador : Disposable {
 
         if (atirou) {
             tempoEncarar = armaAtual.tempoEncarar
-            tempoClarao = Constantes.CLARAO_DURACAO_S
-            claraoVisivel = true
-            if (animado && !andando && !agachado && noChao) animador.tocar(nomeAnim("atirar"), 1, 1f, Constantes.ANIM_TRANSICAO_TIRO_S)
+            if (!facaAtiva) {
+                tempoClarao = Constantes.CLARAO_DURACAO_S
+                claraoVisivel = true
+            }
+            if (animado && !andando && !agachado && noChao && corpo.getAnimation(nomeAnim("atirar")) != null) {
+                animador.tocar(nomeAnim("atirar"), 1, 1f, Constantes.ANIM_TRANSICAO_TIRO_S)
+            }
         }
         if (tempoEncarar > 0f) {
             tempoEncarar -= dt
@@ -352,12 +473,24 @@ class Jogador : Disposable {
             animador.tocarSe(nomeAnim("andar"), -1, fatorAnim, marcha)
             animador.definirVelocidade(fatorAnim)
         }
+        // desfaz a reacao do quadro anterior (a animacao reescreve os ossos; se ela terminou, volta a pose base)
+        var restaurou = false
+        if (reacaoAplicada) {
+            for (i in nosReacao.indices) nosReacao[i]?.localTransform?.set(baseReacao[i])
+            reacaoAplicada = false
+            restaurou = true
+        }
+        if (tempoGolpe > 0f) tempoGolpe -= dt
+        reacao.atualizar(dt)
+        recuo.atualizar(dt)
         animador.atualizar(dt)
+        if (animado) aplicarReacao(restaurou)
         atualizarArma()
     }
 
     /** Como nomeAnim, mas se a versao armada de `base` nao existir usa a de `alternativa`. */
     private fun nomeAnimOu(base: String, alternativa: String): String {
+        if (facaAtiva) return nomeAnim(alternativa)
         val nome = base + "_" + armaAtual.sufixo
         return if (corpo.getAnimation(nome) != null) nome else nomeAnim(alternativa)
     }
@@ -366,7 +499,8 @@ class Jogador : Disposable {
     fun atualizarTransformacao() {
         if (animado) {
             // Modelo do F2: origem nos pes, frente = -Z.
-            corpo.transform.setToTranslation(posicao.x, posicao.y, posicao.z).rotate(Vector3.Y, yaw).rotate(Vector3.Z, inclinacao)
+            corpo.transform.setToTranslation(posicao.x, posicao.y, posicao.z).rotate(Vector3.Y, yaw)
+                .rotate(Vector3.X, -(reacao.pitch + recuo.pitch) * 0.4f).rotate(Vector3.Z, inclinacao + (reacao.roll + recuo.roll) * 0.4f)
         } else {
             corpo.transform.setToTranslation(
                 posicao.x,
@@ -395,5 +529,7 @@ class Jogador : Disposable {
         modeloNariz.dispose()
         modeloClarao.dispose()
         for (m in modelosArma) m?.dispose()
+        modeloFacaLamina.dispose()
+        modeloFacaCabo.dispose()
     }
 }

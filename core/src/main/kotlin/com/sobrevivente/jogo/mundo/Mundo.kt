@@ -40,6 +40,11 @@ class Mundo : Disposable {
     private val modeloArmaFuzil: Model? = CarregadorModelos.carregar(Constantes.MODELO_ARMA_FUZIL)
     private val modeloArmaEscopeta: Model? = CarregadorModelos.carregar(Constantes.MODELO_ARMA_ESCOPETA)
     val itens: Array<ItemMundo>
+    /** Loot largado pelos zumbis mortos (F10). */
+    val drops = ArrayList<ItemMundo>()
+    private val marcadoresMunicao: Array<ModelInstance>
+    private val marcadoresCura: Array<ModelInstance>
+    private var tempoGlobal = 0f
     private val modelosParedes: Array<Model>
     val paredes: Array<ModelInstance>
     private val caixasParedes: Array<BoundingBox> // para o tiro (hitscan) não atravessar paredes
@@ -125,6 +130,8 @@ class Mundo : Disposable {
         modeloItemMunicao = criarModeloItem(
             Constantes.ITEM_COR_MUNICAO_R, Constantes.ITEM_COR_MUNICAO_G, Constantes.ITEM_COR_MUNICAO_B
         )
+        marcadoresMunicao = Array(inimigos.size) { ModelInstance(modeloItemMunicao) }
+        marcadoresCura = Array(inimigos.size) { ModelInstance(modeloItemCura) }
         val totalParedes = Constantes.PAREDES.size / 4
         modelosParedes = Array(totalParedes) { i ->
             val largura = Constantes.PAREDES[i * 4 + 2] - Constantes.PAREDES[i * 4]
@@ -254,6 +261,8 @@ class Mundo : Disposable {
         for (i in inimigos.indices) {
             inimigos[i].atualizar(dt, jogador)
         }
+        atropelos()
+        atualizarMarcadores(dt)
         cenario.atualizar(jogador.posicao.x, jogador.posicao.y, jogador.posicao.z)
         atualizarSombras(jogador)
         if (jogador.vida <= 0) return
@@ -262,6 +271,105 @@ class Mundo : Disposable {
             tempoSpawn = Constantes.SPAWN_INTERVALO_S
             tentarNascer(jogador, dirX, dirZ)
         }
+    }
+
+    /** Zumbis mais rapidos atropelam os mais lentos: o lento cai (sem dano) e o rapido segue. */
+    private fun atropelos() {
+        val r2 = Constantes.ATROPELO_RAIO * Constantes.ATROPELO_RAIO
+        for (i in inimigos.indices) {
+            val a = inimigos[i]
+            if (!a.vivo || a.caido || !a.emMovimento) continue
+            for (j in inimigos.indices) {
+                if (i == j) continue
+                val b = inimigos[j]
+                if (!b.vivo || b.imune) continue
+                if (a.tipo.velocidade < b.tipo.velocidade * Constantes.ATROPELO_RAZAO_VEL) continue
+                val dx = b.posicao.x - a.posicao.x
+                val dz = b.posicao.z - a.posicao.z
+                if (kotlin.math.abs(a.posicao.y - b.posicao.y) > 1f) continue
+                val d2 = dx * dx + dz * dz
+                if (d2 > r2 || d2 < 1e-6f) continue
+                val d = kotlin.math.sqrt(d2)
+                b.atropelado(dx / d, dz / d)
+            }
+        }
+    }
+
+    /** Cubinho girando sobre a cabeca dos zumbis que carregam loot (azul = municao, verde = cura). */
+    private fun atualizarMarcadores(dt: Float) {
+        tempoGlobal += dt
+        for (i in inimigos.indices) {
+            val z = inimigos[i]
+            val l = z.loot
+            if (!z.vivo || l == 0) continue
+            val m = if (l == 2) marcadoresCura[i] else marcadoresMunicao[i]
+            m.transform.setToTranslation(z.posicao.x, z.posicao.y + z.alturaMarcador + kotlin.math.sin(tempoGlobal * 3f) * 0.05f, z.posicao.z)
+                .rotate(Vector3.Y, tempoGlobal * 90f).scale(0.55f, 0.55f, 0.55f)
+        }
+    }
+
+    /** Marcador de loot do zumbi `i` (null se ele nao carrega nada ou nao esta vivo). */
+    fun marcadorLoot(i: Int): ModelInstance? {
+        val z = inimigos[i]
+        if (!z.vivo || !z.visivel) return null
+        return when (z.loot) {
+            1 -> marcadoresMunicao[i]
+            2 -> marcadoresCura[i]
+            else -> null
+        }
+    }
+
+    /** O zumbi morto larga o loot que carregava (municao aleatoria ou cura) onde caiu. */
+    /** Zumbis mortos pelo jogador (mostrado no HUD). */
+    var abates = 0
+        private set
+
+    /**
+     * Golpe de faca: acerta todo zumbi vivo dentro do alcance e do arco a frente de (x, z) olhando para (dirX, dirZ).
+     * Preenche impacto/impactoTipo/impactoMorreu (para o sangue). Devolve true se acertou alguem.
+     */
+    fun golpeFaca(x: Float, z: Float, y: Float, dirX: Float, dirZ: Float): Boolean {
+        impactoTipo = 0
+        impactoMorreu = false
+        var acertou = false
+        for (i in inimigos.indices) {
+            val inimigo = inimigos[i]
+            if (!inimigo.vivo) continue
+            val dx = inimigo.posicao.x - x
+            val dz = inimigo.posicao.z - z
+            val d = kotlin.math.sqrt(dx * dx + dz * dz)
+            if (d > Constantes.FACA_ALCANCE + Constantes.ENIMIGO_RAIO) continue
+            if (d > 0.05f) {
+                val cosA = (dx * dirX + dz * dirZ) / d
+                if (cosA < Constantes.FACA_ARCO_COS) continue
+            }
+            acertou = true
+            impactoTipo = 1
+            impacto.set(inimigo.posicao.x, inimigo.posicao.y + 1.1f, inimigo.posicao.z)
+            val morreu = inimigo.receberTiro(Constantes.FACA_DANO, 1.1f, dirX, dirZ)
+            impactoMorreu = morreu
+            if (morreu) soltarLoot(inimigo)
+        }
+        return acertou
+    }
+
+    private fun soltarLoot(z: Inimigo) {
+        abates++
+        val l = z.consumirLoot()
+        if (l == 0) return
+        var k = drops.size - 1
+        while (k >= 0) {
+            if (drops[k].coletado) drops.removeAt(k)
+            k--
+        }
+        if (drops.size >= Constantes.LOOT_MAX_NO_CHAO) drops.removeAt(0)
+        drops.add(
+            if (l == 2) ItemMundo(modeloItemCura, TipoItem.CURA, Constantes.ITEM_CURA_QUANTIDADE, z.posicao.x, z.posicao.z, z.posicao.y)
+            else ItemMundo(
+                modeloItemMunicao, TipoItem.MUNICAO,
+                MathUtils.random(Constantes.LOOT_MUNICAO_MIN, Constantes.LOOT_MUNICAO_MAX), z.posicao.x, z.posicao.z, z.posicao.y
+            )
+        )
     }
 
     /** Posiciona as sombras redondas sob o jogador e os zumbis visiveis. */
@@ -314,6 +422,7 @@ class Mundo : Disposable {
 
     /** Volta ao inicio: zumbis iniciais vivos, resto some, itens no chao. */
     fun reiniciar() {
+        abates = 0
         val iniciais = Constantes.INIMIGOS_XZ.size / 2
         for (i in inimigos.indices) {
             if (i < iniciais) {
@@ -326,6 +435,7 @@ class Mundo : Disposable {
         for (i in itens.indices) {
             itens[i].coletado = false
         }
+        drops.clear()
         tempoSpawn = Constantes.SPAWN_INTERVALO_S
     }
 
@@ -339,6 +449,18 @@ class Mundo : Disposable {
             val dx = item.x - x
             val dz = item.z - z
             if (kotlin.math.abs(item.y - y) > 1.8f) continue // outro andar
+            val quadrado = dx * dx + dz * dz
+            if (quadrado <= melhorQuadrado) {
+                melhorQuadrado = quadrado
+                melhor = item
+            }
+        }
+        for (i in drops.indices) {
+            val item = drops[i]
+            if (item.coletado) continue
+            val dx = item.x - x
+            val dz = item.z - z
+            if (kotlin.math.abs(item.y - y) > 1.8f) continue
             val quadrado = dx * dx + dz * dz
             if (quadrado <= melhorQuadrado) {
                 melhorQuadrado = quadrado
@@ -388,7 +510,8 @@ class Mundo : Disposable {
         if (alvo != null) {
             impactoTipo = 1
             impacto.set(origem).mulAdd(direcao, melhorDistancia)
-            impactoMorreu = alvo.receberDano(dano)
+            impactoMorreu = alvo.receberTiro(dano, impacto.y - alvo.posicao.y, direcao.x, direcao.z)
+            if (impactoMorreu) soltarLoot(alvo)
         } else if (melhorDistancia < alcance - 0.01f) {
             impactoTipo = 2 // parede ou piso
             impacto.set(origem).mulAdd(direcao, melhorDistancia)

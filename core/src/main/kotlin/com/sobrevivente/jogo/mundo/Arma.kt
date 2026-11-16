@@ -61,6 +61,18 @@ class Arma {
     val reserva: Int
         get() = reservas[tipo.ordinal]
 
+    /** Faca equipada (4o slot): sem municao, golpe corpo a corpo. */
+    var faca = false
+        private set
+
+    /** True so no frame em que a faca golpeou. */
+    var golpeFaca = false
+        private set
+
+    /** Slot ativo no HUD: 0..2 = armas de fogo, 3 = faca. */
+    val slotAtivo: Int
+        get() = if (faca) 3 else tipo.ordinal
+
     var recarregando = false
         private set
 
@@ -74,7 +86,15 @@ class Arma {
      * Devolve true se um tiro saiu neste frame.
      */
     fun atualizar(dt: Float, atirando: Boolean, pedidoRecarga: Boolean): Boolean {
+        golpeFaca = false
         if (tempoCadencia > 0f) tempoCadencia -= dt
+        if (faca) {
+            if (atirando && tempoCadencia <= 0f) {
+                tempoCadencia = 1f / Constantes.FACA_CADENCIA
+                golpeFaca = true
+            }
+            return false
+        }
         val i = tipo.ordinal
 
         if (recarregando) {
@@ -100,20 +120,29 @@ class Arma {
         return false
     }
 
-    /** Passa para a proxima arma. Nao troca durante a recarga. Devolve true se trocou. */
+    /** Passa para o proximo slot disponivel (pistola, fuzil, escopeta, faca). Nao troca durante a recarga. */
     fun trocar(): Boolean {
         if (recarregando) return false
-        var proxima = tipo.ordinal
-        for (k in 1..tipos.size) {
-            val c = (tipo.ordinal + k) % tipos.size
-            if (liberadas[c]) {
-                proxima = c
-                break
-            }
+        val atual = slotAtivo
+        for (k in 1..4) {
+            val c = (atual + k) % 4
+            if (slotDisponivel(c)) return selecionarSlot(c)
         }
-        if (proxima == tipo.ordinal) return false
-        tipo = tipos[proxima]
-        tempoCadencia = Constantes.TROCAR_ARMA_ATRASO_S // sacar a arma leva um instante
+        return false
+    }
+
+    fun slotDisponivel(slot: Int): Boolean = if (slot == 3) true else slot in 0..2 && liberadas[slot]
+
+    /** Equipa o slot (0..2 arma de fogo, 3 faca). Devolve true se mudou. */
+    fun selecionarSlot(slot: Int): Boolean {
+        if (recarregando || !slotDisponivel(slot) || slot == slotAtivo) return false
+        if (slot == 3) {
+            faca = true
+        } else {
+            faca = false
+            tipo = tipos[slot]
+        }
+        tempoCadencia = Constantes.TROCAR_ARMA_ATRASO_S
         return true
     }
 
@@ -127,6 +156,7 @@ class Arma {
         if (nova) carregadores[i] = t.carregador else reservas[i] += t.reservaInicial / 2
         if (!recarregando) {
             tipo = t
+            faca = false
             tempoCadencia = Constantes.TROCAR_ARMA_ATRASO_S
         }
         return nova
@@ -140,6 +170,8 @@ class Arma {
         }
         for (i in liberadas.indices) liberadas[i] = i == 0
         tipo = TipoArma.PISTOLA
+        faca = false
+        golpeFaca = false
         recarregando = false
         tempoRecarga = 0f
         tempoCadencia = 0f

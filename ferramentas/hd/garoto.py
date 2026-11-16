@@ -117,10 +117,12 @@ class TuboRodado(Tubo):
 
 
 class Garoto(Personagem):
-    def __init__(self, alta=False):
+    def __init__(self, alta=False, lod=None, cabelo=None):
         super().__init__("garoto")
         self.alta = alta
-        self.lod = 3.0 if alta else 0.62
+        self.lod = lod if lod is not None else (3.0 if alta else 0.62)
+        self.n_cabelo = cabelo if cabelo is not None else (440 if alta else 46)
+        self.fino = alta or self.lod > 1.5   # mais segmentos nos tubinhos (cabelo, tira, capuz)
 
     # ------------------------------------------------------------------------------------ cabeca e cabelo
     def cabeca(self):
@@ -132,7 +134,7 @@ class Garoto(Personagem):
     def cabelo(self):
         m = self.m
         rs = np.random.RandomState(21)
-        n = 440 if self.alta else 46
+        n = self.n_cabelo
         reg = R["cabelo"]
         t = self.tubos["cabeca"]
         remendo(m, t, "cabeca", 0.0, 2 * math.pi, 1.770, 1.806, 0.0070, 44, 4, uv_modo="tile", tile=reg, saia=False,
@@ -170,7 +172,7 @@ class Garoto(Personagem):
             p2 = p1 + d2 * L * 0.6
             p3 = p2 + norm(d2 + g * 0.4 + tw * 0.2) * L * 0.45
             tubo_caminho(m, "cabeca", [P0, p1, p2, p3], [0.0085, 0.0078, 0.0050, 0.0010],
-                         uv_regiao=reg, nseg=4 if not self.alta else 6, nn=5 if not self.alta else 9, tampas=False,
+                         uv_regiao=reg, nseg=4 if not self.fino else 6, nn=5 if not self.fino else 9, tampas=False,
                          nome="cabelo", angulo=80.0)
 
     # ------------------------------------------------------------------------------------ tronco (camisa por baixo)
@@ -231,7 +233,7 @@ class Garoto(Personagem):
         UV = uv_atlas(R["casaco"], TH / (2 * math.pi), (Y - CASACO_Y0) / (CASACO_Y1 - CASACO_Y0))
         grade_malha(m, "tronco", P, UV, rad, "casaco")
         # forro interno (escuro) visivel pela abertura e pela barra
-        sl = slice(None, None, 1 if self.alta else 2)   # o forro tem metade da resolucao (so aparece pela abertura)
+        sl = slice(None, None, 1 if self.fino else 2)   # o forro tem metade da resolucao (so aparece pela abertura)
         P2, _ = t.ponto(TH[sl, sl], Y[sl, sl], -0.009)
         UV2 = np.tile(uv_atlas(TILE["forro"], 0.5, 0.5), (P2.shape[0] * P2.shape[1], 1)).reshape(P2.shape[:2] + (2,))
         grade_malha(m, "tronco", P2, UV2, -rad[sl, sl], "forro")
@@ -253,11 +255,11 @@ class Garoto(Personagem):
             rx, rz = 0.108 + 0.016 * math.cos(th), 0.098 + 0.020 * math.cos(th)
             pts.append((rx * math.sin(th), y, rz * math.cos(th) + 0.008))
             rr.append(0.017 + 0.020 * max(0.0, math.cos(th)) ** 0.8)
-        tubo_caminho(m, "tronco", pts, rr, tile=TILE["casaco"], nseg=10 if not self.alta else 14, nn=34 if not self.alta else 80,
+        tubo_caminho(m, "tronco", pts, rr, tile=TILE["casaco"], nseg=10 if not self.fino else 14, nn=34 if not self.fino else 80,
                      tampas=True, nome="capuz")
         # capuz caido nas costas (bolsa de tecido com dobras)
         t = self.tubos["casaco"]
-        nth, nrow = 18 if not self.alta else 60, 10 if not self.alta else 36
+        nth, nrow = 18 if not self.fino else 60, 10 if not self.fino else 36
         TH, Y = np.meshgrid(np.linspace(-0.85, 0.85, nth + 1), np.linspace(1.47, 1.27, nrow + 1))
         sy = (1.47 - Y) / 0.20
         alt = 0.014 + 0.036 * np.sin(math.pi * sy) ** 0.7 * np.cos(TH / 0.85 * math.pi / 2) ** 0.6
@@ -276,8 +278,8 @@ class Garoto(Personagem):
         Y = 1.47 - s * 0.62
         P, _ = t.ponto(TH, Y, 0.022)
         pts = [tuple(p) for p in P]
-        tubo_caminho(m, "tronco", pts, [0.0150] * len(pts), tile=TILE["tira"], nseg=6 if not self.alta else 10,
-                     nn=20 if not self.alta else 48, achatar=(0.35, np.array([0.0, 0.0, 1.0])), nome="tira")
+        tubo_caminho(m, "tronco", pts, [0.0150] * len(pts), tile=TILE["tira"], nseg=6 if not self.fino else 10,
+                     nn=20 if not self.fino else 48, achatar=(0.35, np.array([0.0, 0.0, 1.0])), nome="tira")
         cx, cy, cz = 0.212, 0.760, -0.090
         rot = rotz(math.radians(-5))
         caixa(m, "tronco", (cx, cy, cz), (0.085, 0.185, 0.165), TILE["bolsa"], rot=rot, nome="bolsa")
