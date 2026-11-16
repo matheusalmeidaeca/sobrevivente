@@ -1,10 +1,15 @@
-# MAPA DE CRIAÇÃO v2.16 — Jogo 3D de Sobrevivência (Kotlin + Python de bastidor / Android)
+# MAPA DE CRIAÇÃO v2.17 — Jogo 3D de Sobrevivência (Kotlin + Python de bastidor / Android)
 
-**Versão do documento:** 2.16 | **Data:** 16/11/2026 | **Substitui:** v2.15
+**Versão do documento:** 2.17 | **Data:** 16/11/2026 | **Substitui:** v2.16
 **Nome provisório:** PROJETO_SOBREVIVENTE (nome final: em aberto)
 
 > Cole este arquivo inteiro no início de qualquer conversa com uma IA.
 > Ele é a **fonte única da verdade**. O que não estiver aqui, a IA **pergunta**; ela não decide.
+
+### Mudanças da v2.16 para a v2.17 (F3d — referências de zumbi e protagonista)
+- **Referências usadas** (vídeo do dono de uma pessoa andando como zumbi + MoCap Online "Horror Game Animation" e "Third-Person Shooter Animation" + Dying Light "All about zombies"): zumbi guarda **movimento humano distorcido**, marcha **assimétrica** (perna esquerda arrastando), cabeça caída/balançando, **braços soltos e pendurados** ao vagar e **estendidos para agarrar** ao perseguir; parado com **cacoetes** (olhar de lado, ombro sobe, braço cai, cabeça estala) em ciclo de 6 s; ataque com **telegrafia** (cabeça inclina antes do bote).
+- Protagonista (TPS): **camada da arma** — braço direito em "baixo-pronto" andando/correndo, passando só ~35–45% do balanço; mão de apoio com balanço reduzido; velocidade da animação casada com a real (já existia); transição de mira/tiro de 0,12 s (faixa recomendada 0,15–0,25 s, mas o tiro precisa reiniciar rápido).
+- Zumbi `parado` passa de 90 para 180 quadros. **Não incluído** (ficam para decisão): variações de zumbi (magro/gordo), mortes direcionais, ragdoll, mira por ângulo (aim offset), strafe.
 
 ### Mudanças da v2.15 para a v2.16 (F3c — pedidos do dono depois do vídeo da F3b)
 - **Decisão do dono:** os zumbis agora **contornam paredes (A* em grade)** e **vagam livremente** pelo cenário (isso substitui "sem pathfinding na Fase 1" e "inimigos sem pathfinding" das seções 13, 20 e 22).
@@ -766,7 +771,7 @@ RELATÓRIO
 
 ## 22. ESTADO ATUAL (atualizar ao fim de cada sessão)
 
-- Marco atual: **F3c entregue (v2.16: suavidade, ataque com um braço, vagar e A*; não compilado pela IA)**; antes: **1.8 (dono informou "deu certo"; caixas a marcar por ele)**; trilha ativa de ferramentas: **F0 e F1 (rodaram no CI), F2 (rodou no CI; poses a aprovar) e F3 (entregue, em teste)**
+- Marco atual: **F3d entregue (v2.17: referências de zumbi e protagonista)**; antes F3c ( (v2.16: suavidade, ataque com um braço, vagar e A*; não compilado pela IA)**; antes: **1.8 (dono informou "deu certo"; caixas a marcar por ele)**; trilha ativa de ferramentas: **F0 e F1 (rodaram no CI), F2 (rodou no CI; poses a aprovar) e F3 (entregue, em teste)**
 - Último build verde confirmado: run #9 (código dos Marcos 1.7 e 1.8). F0 enviado (`ebb5ef4`); "Gerar modelo" ainda não rodado
 - Versões congeladas: **sim** (seção 6)
 - Arquivos existentes no repositório: tudo até o Marco 1.7 + 1 novo no 1.8 (`mundo/Colisao.kt`) e 8 alterados (depois do push)

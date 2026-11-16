@@ -369,7 +369,7 @@ object Constantes {
     const val ANIM_LIMIAR_INICIAR = 0.12f
     const val ANIM_LIMIAR_PARAR = 0.05f
     const val ANIM_TRANSICAO_S = 0.22f
-    const val ANIM_TRANSICAO_TIRO_S = 0.04f
+    const val ANIM_TRANSICAO_TIRO_S = 0.12f
     /** Joystick acima disto = correr; abaixo = andar. */
     const val JOGADOR_LIMIAR_CORRER = 0.6f
     /** Velocidade de reproducao do ciclo `correr` do zumbi (o ciclo cobre ~2,1 m/s; o zumbi anda a 2 m/s). */
