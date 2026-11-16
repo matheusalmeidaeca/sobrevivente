@@ -150,7 +150,7 @@ def montar_g3dj(id_modelo, tris, textura, estilo, passo_chaves=1):
 
     pontos = [(v["p"][0], v["p"][1], v["p"][2], v["pesos"]) for v in vertices]
     animacoes = []
-    for nome_anim, n_quadros, _loop in an.listar_animacoes(estilo):
+    for nome_anim, n_quadros, _loop in an.listar_animacoes_exportacao(estilo):
         quadros = [(q, an.pose_final(estilo, nome_anim, float(q), pontos))
                    for q in range(0, n_quadros + 1, passo_chaves)]
         if quadros[-1][0] != n_quadros:

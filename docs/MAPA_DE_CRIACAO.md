@@ -1,10 +1,18 @@
-# MAPA DE CRIAÇÃO v2.17 — Jogo 3D de Sobrevivência (Kotlin + Python de bastidor / Android)
+# MAPA DE CRIAÇÃO v2.18 — Jogo 3D de Sobrevivência (Kotlin + Python de bastidor / Android)
 
-**Versão do documento:** 2.17 | **Data:** 16/11/2026 | **Substitui:** v2.16
+**Versão do documento:** 2.18 | **Data:** 16/11/2026 | **Substitui:** v2.17
 **Nome provisório:** PROJETO_SOBREVIVENTE (nome final: em aberto)
 
 > Cole este arquivo inteiro no início de qualquer conversa com uma IA.
 > Ele é a **fonte única da verdade**. O que não estiver aqui, a IA **pergunta**; ela não decide.
+
+### Mudanças da v2.17 para a v2.18 (F4 — armas e pegada do protagonista)
+- **3 armas** (pedido do dono): **Pistola**, **Fuzil** e **Escopeta**, cada uma com modelo 3D (caixas coloridas, `ferramentas/blender/armas.py` → `android/assets/modelos/arma_*.g3dj` + `textura_armas.png`), carregador e reserva próprios. Valores iniciais em `Constantes.kt`: pistola 25 dano / 2,5 tiros/s / 12+36 / recarga 1,5 s / 30 m; fuzil 18 / 8 / 30+90 / 2,2 s / 45 m; escopeta 6 bagos × 14, dispersão 0,045 rad / 1,1 tiros/s / 6+18 / 2,6 s / 18 m. Todas começam disponíveis (sem loot de arma ainda).
+- **Botão TROCAR** (4º botão, laranja, acima do RECARREGAR): passa pistola → fuzil → escopeta. Não troca durante a recarga. O HUD mostra o nome da arma junto da munição. MUNICAO da maleta vai para a reserva da arma **em uso**.
+- **Pegada de verdade:** `ferramentas/blender/pegada.py` posiciona a arma no tórax e resolve os braços por **IK** (mínimos quadrados amortecidos): a mão direita na empunhadura e a esquerda no apoio da arma (ou no bolso/pente, na recarga); erro de alcance < 2 cm nas poses principais, até ~5 cm por 2 quadros no coice. Animações novas do jogador (20 no total, `jogador.g3dj` ≈ 1,8 MB): `parado_`, `andar_`, `correr_`, `atirar_`, `recarregar_` + `pistola|fuzil|escopeta`. As sem arma continuam (e `morrer`). Arma "baixo-pronto" andando, mais colada ao corpo correndo, elevada ao tiro, com coice por arma e bombeada da escopeta.
+- Arma presa ao osso `mao_dir` (`Jogador.kt`): `corpo.transform × globalTransform(mao_dir) × T(0, −0,08, 0) × Rx(−90°)`; o clarão sai da boca do cano de cada arma. Recarga: a animação (2,0 s a 1x) é acelerada/freada para durar o tempo de recarga da arma.
+- Limitações: arma só como modelo estático de caixas (sem textura detalhada); mão = a mesma malha (sem dedos); alcance dos braços do boneco é curto, então fuzil/escopeta ficam mais "recolhidos" que numa foto real. Blender (`gerar_boneco.py`) continua gerando só as 5 animações básicas; o `.g3dj` completo vem do `exportar.py`.
+- Novos arquivos fora da seção 9: `mundo/Navegacao.kt` (v2.16), `ferramentas/blender/armas.py`, `ferramentas/blender/pegada.py`.
 
 ### Mudanças da v2.16 para a v2.17 (F3d — referências de zumbi e protagonista)
 - **Referências usadas** (vídeo do dono de uma pessoa andando como zumbi + MoCap Online "Horror Game Animation" e "Third-Person Shooter Animation" + Dying Light "All about zombies"): zumbi guarda **movimento humano distorcido**, marcha **assimétrica** (perna esquerda arrastando), cabeça caída/balançando, **braços soltos e pendurados** ao vagar e **estendidos para agarrar** ao perseguir; parado com **cacoetes** (olhar de lado, ombro sobe, braço cai, cabeça estala) em ciclo de 6 s; ataque com **telegrafia** (cabeça inclina antes do bote).
@@ -512,7 +520,7 @@ Caso contrário, é arrasto de movimento. Com a maleta aberta, o joystick fica *
 
 **Modelo:** hitscan. Raio sai do **centro da câmera**, atravessa o centro da tela, alcance **30 m**. Vale o **primeiro** acerto (parede ou inimigo). Sem auxílio de mira.
 
-| Pistola (placeholder) | Valor |
+| Pistola | Valor |
 |---|---|
 | Dano | 25 |
 | Cadência | 2,5 tiros/s |
@@ -771,7 +779,7 @@ RELATÓRIO
 
 ## 22. ESTADO ATUAL (atualizar ao fim de cada sessão)
 
-- Marco atual: **F3d entregue (v2.17: referências de zumbi e protagonista)**; antes F3c ( (v2.16: suavidade, ataque com um braço, vagar e A*; não compilado pela IA)**; antes: **1.8 (dono informou "deu certo"; caixas a marcar por ele)**; trilha ativa de ferramentas: **F0 e F1 (rodaram no CI), F2 (rodou no CI; poses a aprovar) e F3 (entregue, em teste)**
+- Marco atual: **F4 entregue (v2.18: 3 armas, troca, pegada com IK; não compilado pela IA)**; antes F3d ( (v2.17: referências de zumbi e protagonista)**; antes F3c ( (v2.16: suavidade, ataque com um braço, vagar e A*; não compilado pela IA)**; antes: **1.8 (dono informou "deu certo"; caixas a marcar por ele)**; trilha ativa de ferramentas: **F0 e F1 (rodaram no CI), F2 (rodou no CI; poses a aprovar) e F3 (entregue, em teste)**
 - Último build verde confirmado: run #9 (código dos Marcos 1.7 e 1.8). F0 enviado (`ebb5ef4`); "Gerar modelo" ainda não rodado
 - Versões congeladas: **sim** (seção 6)
 - Arquivos existentes no repositório: tudo até o Marco 1.7 + 1 novo no 1.8 (`mundo/Colisao.kt`) e 8 alterados (depois do push)

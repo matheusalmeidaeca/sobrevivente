@@ -165,6 +165,14 @@ class ControlesToque : InputAdapter() {
             raioPequeno,
             alvoMinimo
         )
+        // TROCAR (arma): na diagonal, acima do RECARREGAR e ao lado do INTERAGIR
+        definirAcao(
+            ACAO_TROCAR,
+            atirarX - raioAtirar - folga - raioPequeno,
+            atirarY + raioAtirar + folga + raioPequeno,
+            raioPequeno,
+            alvoMinimo
+        )
     }
 
     /** Botão REINICIAR: centrado na largura, logo abaixo do meio da tela (o título fica acima). */
@@ -564,7 +572,8 @@ class ControlesToque : InputAdapter() {
         const val ACAO_ATIRAR = 0
         const val ACAO_RECARREGAR = 1
         const val ACAO_INTERAGIR = 2
-        const val NUM_ACOES = 3
+        const val ACAO_TROCAR = 3
+        const val NUM_ACOES = 4
         private const val SEM_PONTEIRO = -1
         private const val SEM_SLOT = -1
     }

@@ -10,6 +10,8 @@ import com.badlogic.gdx.graphics.g3d.ModelBatch
 import com.badlogic.gdx.graphics.g3d.shaders.DefaultShader
 import com.badlogic.gdx.graphics.g3d.utils.DefaultShaderProvider
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer
+import com.badlogic.gdx.math.MathUtils
+import com.badlogic.gdx.math.Vector3
 import com.badlogic.gdx.utils.ScreenUtils
 import com.sobrevivente.jogo.Constantes
 import com.sobrevivente.jogo.camera.CameraTerceiraPessoa
@@ -28,6 +30,7 @@ class TelaJogo : ScreenAdapter() {
     private val mundo = Mundo()
     private var jogador = Jogador() // var: é recriado ao reiniciar depois da morte
     private val arma = Arma()
+    private val direcaoTiro = Vector3() // reaproveitado: dispersao dos bagos da escopeta
     private val cameraJogo = CameraTerceiraPessoa()
     private val controles = ControlesToque()
     private val joystick = Joystick(controles)
@@ -90,14 +93,23 @@ class TelaJogo : ScreenAdapter() {
             controles.consumirPressao(ControlesToque.ACAO_RECARREGAR)
         )
         if (atirou) {
-            val acertou = mundo.atirar(
-                cameraJogo.camera.position,
-                cameraJogo.camera.direction,
-                Constantes.PISTOLA_ALCANCE,
-                Constantes.PISTOLA_DANO
-            )
+            val tipo = arma.tipo
+            var acertou = false
+            for (i in 0 until tipo.projeteis) {
+                direcaoTiro.set(cameraJogo.camera.direction)
+                if (tipo.dispersao > 0f) {
+                    val d = tipo.dispersao
+                    direcaoTiro.add(MathUtils.random(-d, d), MathUtils.random(-d, d), MathUtils.random(-d, d)).nor()
+                }
+                if (mundo.atirar(cameraJogo.camera.position, direcaoTiro, tipo.alcance, tipo.dano)) acertou = true
+            }
             if (acertou) hud.mostrarAcerto()
         }
+        if (controles.consumirPressao(ControlesToque.ACAO_TROCAR) && arma.trocar()) {
+            hud.mostrarMensagem(arma.tipo.nome)
+        }
+        jogador.definirArma(arma.tipo)
+        jogador.definirRecarga(arma.recarregando)
         if (controles.consumirPressao(ControlesToque.ACAO_INTERAGIR)) interagir()
         jogador.atualizarTiro(dt, cameraJogo.yaw, atirou)
     }
@@ -203,7 +215,7 @@ class TelaJogo : ScreenAdapter() {
             hud.atualizar(dt) // o tempo das mensagens corre também com a maleta aberta
             if (!morto && jogador.vida <= 0) morrer()
         }
-        hud.definirMunicao(arma.carregador, arma.reserva, arma.recarregando)
+        hud.definirMunicao(arma.tipo.nome, arma.carregador, arma.reserva, arma.recarregando)
         hud.definirVida(maxOf(jogador.vida, 0), Constantes.JOGADOR_VIDA_MAXIMA)
         hud.inimigosVivos = mundo.contarInimigosVivos()
         hud.definirJogador(jogador.posicao.x, jogador.posicao.z)
@@ -224,6 +236,7 @@ class TelaJogo : ScreenAdapter() {
         }
         loteModelos.render(jogador.corpo, mundo.ambiente)
         if (!jogador.animado) loteModelos.render(jogador.nariz, mundo.ambiente)
+        jogador.armaVisivel?.let { loteModelos.render(it, mundo.ambiente) }
         if (jogador.claraoVisivel) loteModelos.render(jogador.clarao, mundo.ambiente)
         for (i in mundo.inimigos.indices) {
             val inimigo = mundo.inimigos[i]

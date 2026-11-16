@@ -41,6 +41,7 @@ class Hud(
     private var carregador = 0
     private var reserva = 0
     private var recarregando = false
+    private var nomeDaArma = ""
     private val textoMunicao = StringBuilder(24) // reutilizado: zero alocação por frame
     private var municaoX = 0f
     private var municaoY = 0f
@@ -75,7 +76,8 @@ class Hud(
         barraVida.vidaMaxima = vidaMaxima
     }
 
-    fun definirMunicao(carregadorAtual: Int, reservaAtual: Int, emRecarga: Boolean) {
+    fun definirMunicao(nomeArma: String, carregadorAtual: Int, reservaAtual: Int, emRecarga: Boolean) {
+        nomeDaArma = nomeArma
         carregador = carregadorAtual
         reserva = reservaAtual
         recarregando = emRecarga
@@ -295,6 +297,7 @@ class Hud(
 
     private fun desenharMunicao(lote: SpriteBatch) {
         textoMunicao.setLength(0)
+        textoMunicao.append(nomeDaArma).append("  ")
         if (recarregando) {
             textoMunicao.append("Recarregando...")
         } else {

@@ -8,18 +8,19 @@ import com.badlogic.gdx.graphics.glutils.ShapeRenderer
 import com.sobrevivente.jogo.Constantes
 import com.sobrevivente.jogo.entrada.ControlesToque
 
-/** Marco 1.3: só o visual dos 3 botões. A geometria e o toque ficam em ControlesToque. */
+/** Marco 1.3: só o visual dos 4 botões. A geometria e o toque ficam em ControlesToque. */
 class BotoesAcao(
     private val controles: ControlesToque,
     private val fonte: BitmapFont
 ) {
-    private val textos = arrayOf("ATIRAR", "RECARREGAR", "INTERAGIR")
+    private val textos = arrayOf("ATIRAR", "RECARREGAR", "INTERAGIR", "TROCAR")
 
     // Cor de cada botão: R, G, B (3 valores por botão, na ordem das ações)
     private val cores = floatArrayOf(
         Constantes.BOTAO_ATIRAR_COR_R, Constantes.BOTAO_ATIRAR_COR_G, Constantes.BOTAO_ATIRAR_COR_B,
         Constantes.BOTAO_RECARREGAR_COR_R, Constantes.BOTAO_RECARREGAR_COR_G, Constantes.BOTAO_RECARREGAR_COR_B,
-        Constantes.BOTAO_INTERAGIR_COR_R, Constantes.BOTAO_INTERAGIR_COR_G, Constantes.BOTAO_INTERAGIR_COR_B
+        Constantes.BOTAO_INTERAGIR_COR_R, Constantes.BOTAO_INTERAGIR_COR_G, Constantes.BOTAO_INTERAGIR_COR_B,
+        Constantes.BOTAO_TROCAR_COR_R, Constantes.BOTAO_TROCAR_COR_G, Constantes.BOTAO_TROCAR_COR_B
     )
 
     // Um layout por botão, calculado uma vez no resize (zero alocação por frame)

@@ -165,6 +165,32 @@ object Constantes {
     const val PISTOLA_ALCANCE = 30f // metros, a partir da câmera
     const val PISTOLA_TEMPO_ENCARAR_S = 0.5f // jogador encara a mira depois de atirar (seção 11)
 
+    // Armas do F4 (valores iniciais para testar; ajustar jogando)
+    const val FUZIL_DANO = 18
+    const val FUZIL_CADENCIA = 8f
+    const val FUZIL_CARREGADOR = 30
+    const val FUZIL_RESERVA_INICIAL = 90
+    const val FUZIL_RECARGA_S = 2.2f
+    const val FUZIL_ALCANCE = 45f
+    const val ESCOPETA_DANO = 14 // por bago
+    const val ESCOPETA_PROJETEIS = 6
+    const val ESCOPETA_DISPERSAO = 0.045f // radianos
+    const val ESCOPETA_CADENCIA = 1.1f
+    const val ESCOPETA_CARREGADOR = 6
+    const val ESCOPETA_RESERVA_INICIAL = 18
+    const val ESCOPETA_RECARGA_S = 2.6f
+    const val ESCOPETA_ALCANCE = 18f
+    const val ESCOPETA_TEMPO_ENCARAR_S = 0.7f
+    const val TROCAR_ARMA_ATRASO_S = 0.35f
+    const val ARMA_RECARGA_ANIM_S = 2.0f // duracao da animacao recarregar_* (60 quadros / 30 fps) a 1x
+    const val ARMA_PALMA_Y = -0.08f // centro da palma no osso mao_dir (igual a pegada.py)
+    const val MODELO_ARMA_PISTOLA = "modelos/arma_pistola.g3dj"
+    const val MODELO_ARMA_FUZIL = "modelos/arma_fuzil.g3dj"
+    const val MODELO_ARMA_ESCOPETA = "modelos/arma_escopeta.g3dj"
+    const val BOTAO_TROCAR_COR_R = 0.80f
+    const val BOTAO_TROCAR_COR_G = 0.55f
+    const val BOTAO_TROCAR_COR_B = 0.10f
+
     // Clarão no cano (cubo amarelo)
     const val CLARAO_DURACAO_S = 0.05f
     const val CLARAO_LADO = 0.15f

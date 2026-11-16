@@ -25,7 +25,7 @@ def _projetar(p, ang):
     return x, p[:, 1], z
 
 
-def desenhar(tris, textura, estilo, animacao, quadro, ang=None):
+def desenhar(tris, textura, estilo, animacao, quadro, ang=None, arma=None):
     ang = ANGULO_VISTA if ang is None else ang
     vertices, indices = ex.montar_vertices(tris)
     pontos = [(v["p"][0], v["p"][1], v["p"][2], v["pesos"]) for v in vertices]
@@ -35,6 +35,24 @@ def desenhar(tris, textura, estilo, animacao, quadro, ang=None):
     nor = np.array([an.aplicar_normal(w, v["pesos"], v["n"]) if hasattr(an, "aplicar_normal") else v["n"]
                     for v in vertices])
     uv = np.array([v["uv"] for v in vertices])
+    idx = np.array(indices).reshape(-1, 3)
+    cores_fixas = {}
+    if arma:  # arma presa ao osso mao_dir (mesma conta do Jogador.kt): W_mao * T(pivo + palma) * Rx(-90)
+        import armas as ar
+        h = np.eye(4)
+        h[:3, 3] = np.array(an.PIVO["mao_dir"]) + np.array([0.0, -0.08, 0.0])
+        h[:3, :3] = np.array(an.rotacao_euler(-90.0, 0.0, 0.0))[:3, :3]
+        m = np.array(w["mao_dir"]) @ h
+        extra_pos, extra_idx = [], []
+        for tri in ar.triangulos(arma):
+            base = len(pos) + len(extra_pos)
+            for p_, n_, uv_ in tri:
+                extra_pos.append((m @ np.array([p_[0], p_[1], p_[2], 1.0]))[:3])
+            extra_idx.append([base, base + 1, base + 2])
+            cores_fixas[len(idx) + len(extra_idx) - 1] = np.array(ar.PALETA[int(tri[0][2][0] * len(ar.PALETA))][1], np.float32)
+        pos = np.vstack([pos, np.array(extra_pos)])
+        uv = np.vstack([uv, np.zeros((len(extra_pos), 2))])
+        idx = np.vstack([idx, np.array(extra_idx)])
     xs, ys, zs = _projetar(pos, ang)
     px = LARGURA / 2 + (xs - (xs.max() + xs.min()) / 2) * ESCALA
     py = ALTURA - 24 - ys * ESCALA
@@ -50,8 +68,7 @@ def desenhar(tris, textura, estilo, animacao, quadro, ang=None):
     th, tw = tex.shape[:2]
     luz = np.array([0.4, 0.8, -0.5])
     luz /= np.linalg.norm(luz)
-    idx = np.array(indices).reshape(-1, 3)
-    for a, b, c in idx:
+    for ti_, (a, b, c) in enumerate(idx):
         x0, x1, x2 = px[a], px[b], px[c]
         y0, y1, y2 = py[a], py[b], py[c]
         den = (y1 - y2) * (x0 - x2) + (x2 - x1) * (y0 - y2)
@@ -80,7 +97,7 @@ def desenhar(tris, textura, estilo, animacao, quadro, ang=None):
         v = 1.0 - (l0 * uv[a, 1] + l1 * uv[b, 1] + l2 * uv[c, 1])
         ti = np.clip((u * tw).astype(int), 0, tw - 1)
         tj = np.clip((v * th).astype(int), 0, th - 1)
-        cor = tex[tj, ti]
+        cor = tex[tj, ti] if ti_ not in cores_fixas else np.broadcast_to(cores_fixas[ti_], (ti.shape[0], ti.shape[1], 3))
         n = np.cross(pos[b] - pos[a], pos[c] - pos[a])
         nn = np.linalg.norm(n)
         n = n / nn if nn > 0 else n

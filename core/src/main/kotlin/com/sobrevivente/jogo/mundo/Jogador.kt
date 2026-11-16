@@ -7,7 +7,9 @@ import com.badlogic.gdx.graphics.g3d.Model
 import com.badlogic.gdx.graphics.g3d.ModelInstance
 import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute
 import com.badlogic.gdx.graphics.g3d.utils.ModelBuilder
+import com.badlogic.gdx.graphics.g3d.model.Node
 import com.badlogic.gdx.math.MathUtils
+import com.badlogic.gdx.math.Matrix4
 import com.badlogic.gdx.math.Vector3
 import com.badlogic.gdx.utils.Disposable
 import com.sobrevivente.jogo.Constantes
@@ -50,6 +52,18 @@ class Jogador : Disposable {
     private var correndo = false          // histerese andar <-> correr
     private var fatorAnim = 1f            // velocidade de reproducao suavizada
     private val animador: Animador
+
+    // Armas (F4): cada uma e um modelo estatico preso ao osso mao_dir do esqueleto.
+    private val modelosArma = arrayOfNulls<Model>(TipoArma.values().size)
+    private val instanciasArma = arrayOfNulls<ModelInstance>(TipoArma.values().size)
+    private var armaAtual = TipoArma.PISTOLA
+    private var recarregandoArma = false
+    private var noMao: Node? = null
+    private val deslocamentoMao = Matrix4().setToTranslation(0f, Constantes.ARMA_PALMA_Y, 0f).rotate(Vector3.X, -90f)
+
+    /** Arma que aparece na mao (null = sem modelo; o jogo continua sem a arma desenhada). */
+    val armaVisivel: ModelInstance?
+        get() = if (animado) instanciasArma[armaAtual.ordinal] else null
 
     init {
         val construtor = ModelBuilder()
@@ -104,10 +118,41 @@ class Jogador : Disposable {
         clarao = ModelInstance(modeloClarao)
         animador = Animador(corpo)
         if (animado) {
-            animador.tocar("parado", -1, 1f, 0f)
+            noMao = corpo.getNode("mao_dir", true)
+            for (tipo in TipoArma.values()) {
+                val m = CarregadorModelos.carregar(tipo.modelo)
+                modelosArma[tipo.ordinal] = m
+                if (m != null) instanciasArma[tipo.ordinal] = ModelInstance(m)
+            }
+            animador.tocar(nomeAnim("parado"), -1, 1f, 0f)
             animador.atualizar(0f)
         }
         atualizarTransformacao()
+        atualizarArma()
+    }
+
+    /** Troca a arma na mao (chamar quando Arma.tipo mudar). */
+    fun definirArma(tipo: TipoArma) {
+        armaAtual = tipo
+    }
+
+    /** True enquanto a arma esta recarregando (toca recarregar_<arma>). */
+    fun definirRecarga(recarregando: Boolean) {
+        recarregandoArma = recarregando
+    }
+
+    /** Nome da animacao desta arma (cai para a sem arma se o modelo nao tiver a versao armada). */
+    private fun nomeAnim(base: String): String {
+        val nome = base + "_" + armaAtual.sufixo
+        return if (corpo.getAnimation(nome) != null) nome else base
+    }
+
+    /** Prende a arma a mao e o clarao ao cano. Chamar depois de animar e de posicionar o corpo. Sem alocacao. */
+    private fun atualizarArma() {
+        val instancia = armaVisivel ?: return
+        val mao = noMao ?: return
+        instancia.transform.set(corpo.transform).mul(mao.globalTransform).mul(deslocamentoMao)
+        clarao.transform.set(instancia.transform).translate(armaAtual.bocaX, armaAtual.bocaY, armaAtual.bocaZ)
     }
 
     fun receberDano(dano: Int) {
@@ -169,10 +214,10 @@ class Jogador : Disposable {
         if (!atirou && tempoEncarar <= 0f && !claraoVisivel) return
 
         if (atirou) {
-            tempoEncarar = Constantes.PISTOLA_TEMPO_ENCARAR_S
+            tempoEncarar = armaAtual.tempoEncarar
             tempoClarao = Constantes.CLARAO_DURACAO_S
             claraoVisivel = true
-            if (animado) animador.tocar("atirar", 1, 1f, Constantes.ANIM_TRANSICAO_TIRO_S)
+            if (animado) animador.tocar(nomeAnim("atirar"), 1, 1f, Constantes.ANIM_TRANSICAO_TIRO_S)
         }
         if (tempoEncarar > 0f) {
             tempoEncarar -= dt
@@ -194,8 +239,12 @@ class Jogador : Disposable {
         val t = Constantes.ANIM_TRANSICAO_S
         if (vida <= 0) {
             animador.tocarSe("morrer", 1, 1f, t)
+        } else if (recarregandoArma && corpo.getAnimation(nomeAnim("recarregar")) != null) {
+            animador.tocarSe(
+                nomeAnim("recarregar"), 1, Constantes.ARMA_RECARGA_ANIM_S / armaAtual.recargaS, Constantes.ANIM_TRANSICAO_S
+            )
         } else if (tempoEncarar > 0f) {
-            animador.tocarSe("atirar", 1, 1f, Constantes.ANIM_TRANSICAO_TIRO_S)
+            animador.tocarSe(nomeAnim("atirar"), 1, 1f, Constantes.ANIM_TRANSICAO_TIRO_S)
         } else {
             intensidadeSuave += (intensidadeMovimento - intensidadeSuave) * minOf(1f, Constantes.ANIM_FILTRO_ENTRADA * dt)
             if (!andando && intensidadeMovimento > Constantes.ANIM_LIMIAR_INICIAR) andando = true
@@ -204,24 +253,25 @@ class Jogador : Disposable {
             if (correndo && intensidadeSuave < Constantes.JOGADOR_LIMIAR_CORRER - 0.1f) correndo = false
             if (!andando) {
                 correndo = false
-                animador.tocarSe("parado", -1, 1f, t)
+                animador.tocarSe(nomeAnim("parado"), -1, 1f, t)
             } else if (correndo) {
                 val alvo = MathUtils.clamp(
                     intensidadeSuave * Constantes.JOGADOR_VELOCIDADE / Constantes.JOGADOR_ANIM_REF_CORRER, 0.8f, 1.5f
                 )
                 fatorAnim += (alvo - fatorAnim) * minOf(1f, Constantes.ANIM_FILTRO_VELOCIDADE * dt)
-                animador.tocarSe("correr", -1, fatorAnim, Constantes.ANIM_TRANSICAO_MARCHA_S)
+                animador.tocarSe(nomeAnim("correr"), -1, fatorAnim, Constantes.ANIM_TRANSICAO_MARCHA_S)
                 animador.definirVelocidade(fatorAnim)
             } else {
                 val alvo = MathUtils.clamp(
                     intensidadeSuave * Constantes.JOGADOR_VELOCIDADE / Constantes.JOGADOR_ANIM_REF_ANDAR, 0.6f, 1.6f
                 )
                 fatorAnim += (alvo - fatorAnim) * minOf(1f, Constantes.ANIM_FILTRO_VELOCIDADE * dt)
-                animador.tocarSe("andar", -1, fatorAnim, Constantes.ANIM_TRANSICAO_MARCHA_S)
+                animador.tocarSe(nomeAnim("andar"), -1, fatorAnim, Constantes.ANIM_TRANSICAO_MARCHA_S)
                 animador.definirVelocidade(fatorAnim)
             }
         }
         animador.atualizar(dt)
+        atualizarArma()
     }
 
     /** Reposiciona os modelos conforme `posicao` e `yaw`. Sem alocação. */
@@ -242,15 +292,20 @@ class Jogador : Disposable {
             .translate(0f, 0f, -Constantes.NARIZ_DESLOCAMENTO_FRENTE)
         val alturaClarao = if (animado) Constantes.CLARAO_MODELO_ALTURA else Constantes.CLARAO_ALTURA_DO_CHAO
         val frenteClarao = if (animado) Constantes.CLARAO_MODELO_FRENTE else Constantes.CLARAO_DESLOCAMENTO_FRENTE
-        clarao.transform
-            .setToTranslation(posicao.x, posicao.y + alturaClarao, posicao.z)
-            .rotate(Vector3.Y, yaw)
-            .translate(0f, 0f, -frenteClarao)
+        if (armaVisivel == null) {
+            clarao.transform
+                .setToTranslation(posicao.x, posicao.y + alturaClarao, posicao.z)
+                .rotate(Vector3.Y, yaw)
+                .translate(0f, 0f, -frenteClarao)
+        } else {
+            atualizarArma()
+        }
     }
 
     override fun dispose() {
         modeloCorpo.dispose()
         modeloNariz.dispose()
         modeloClarao.dispose()
+        for (m in modelosArma) m?.dispose()
     }
 }

@@ -634,6 +634,10 @@ def _pose_morrer(estilo, q):
 # ---------------------------------------------------------------------------
 def pose_sem_chao(estilo, animacao, q):
     """Pose da animacao no quadro q (pode ser fracionario), SEM o ajuste de altura (ver aterrar)."""
+    if estilo == "jogador" and "_" in animacao:  # com arma: parado_pistola, andar_fuzil, ... (ver pegada.py)
+        import pegada
+        base, arma = pegada.separar(animacao)
+        return pegada.pose_armada(arma, base, q)
     if animacao == "parado":
         return _pose_parado(estilo, q)
     if animacao in ("andar", "correr"):
@@ -654,6 +658,15 @@ def pose_final(estilo, animacao, q, pontos):
 
 def listar_animacoes(estilo):
     return ANIMACOES[estilo]
+
+
+def listar_animacoes_exportacao(estilo):
+    """Animacoes gravadas no g3dj: as basicas + (jogador) as armadas. O Blender usa so listar_animacoes."""
+    lista = list(ANIMACOES[estilo])
+    if estilo == "jogador":
+        import pegada
+        lista += pegada.listar()
+    return lista
 
 
 def quadros_da_animacao(estilo, animacao, pontos):
