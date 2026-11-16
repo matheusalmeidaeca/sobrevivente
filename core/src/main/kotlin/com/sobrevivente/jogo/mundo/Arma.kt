@@ -60,6 +60,11 @@ class Arma {
         tempoCadencia = 0f
     }
 
+    /** Soma munição à reserva (usar um item MUNICAO da maleta, Marco 1.7). */
+    fun adicionarReserva(quantidade: Int) {
+        if (quantidade > 0) reserva += quantidade
+    }
+
     private fun iniciarRecarga() {
         recarregando = true
         tempoRecarga = Constantes.PISTOLA_RECARGA_S

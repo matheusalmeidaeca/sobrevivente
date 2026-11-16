@@ -3,6 +3,7 @@ package com.sobrevivente.jogo.entrada
 
 import com.badlogic.gdx.Input
 import com.badlogic.gdx.InputAdapter
+import com.badlogic.gdx.utils.TimeUtils
 import com.sobrevivente.jogo.Constantes
 import kotlin.math.sqrt
 
@@ -11,6 +12,7 @@ import kotlin.math.sqrt
  * Prioridade no toque: zona de debug > botões de ação > joystick/câmera.
  * Metade esquerda (parte de baixo) = joystick; metade direita (fora dos botões) = girar câmera.
  * Com o jogador morto (Marco 1.6) só o botão REINICIAR aceita toque.
+ * Maleta (Marco 1.7): toque curto no botão central abre/fecha; aberta, só slots e botão central respondem.
  * Todas as coordenadas daqui têm origem EMBAIXO-ESQUERDA (Y para cima),
  * já convertidas do Y do toque, que vem de cima (armadilha 5 do mapa).
  */
@@ -62,6 +64,36 @@ class ControlesToque : InputAdapter() {
     val reiniciarApertado: Boolean
         get() = ponteiroReiniciar != SEM_PONTEIRO
 
+    /** Quando true (maleta aberta), só os slots e o botão central aceitam toque. Use definirModoMaleta(). */
+    var maletaAberta = false
+        private set
+
+    // Grade da maleta (pixels; canto inferior esquerdo de cada slot)
+    var slotLado = 1f
+        private set
+    var gradeBase = 0f
+        private set
+    var gradeAltura = 1f
+        private set
+    private val slotsEsquerda = FloatArray(Constantes.MALETA_SLOTS)
+    private val slotsBase = FloatArray(Constantes.MALETA_SLOTS)
+    private var ponteiroSlot = SEM_PONTEIRO
+    private var usarSlotPendente = SEM_SLOT
+    private var alternarMaletaPendente = false
+
+    /** Índice do slot sob o dedo agora (feedback visual), ou -1. */
+    var slotApertado = SEM_SLOT
+        private set
+
+    // Toque curto no botão central (seção 10.4): começou no botão, < 250 ms, deslocou < 8 dp
+    private var ponteiroBotaoMaleta = SEM_PONTEIRO // só usado com a maleta aberta
+    private var toqueNoBotao = false
+    private var toqueBotaoInicioMs = 0L
+    private var toqueBotaoInicioX = 0f
+    private var toqueBotaoInicioY = 0f
+    private var toqueBotaoDeslocMax = 0f
+    private var densidadeTela = 1f
+
     private var largura = 1f
     private var altura = 1f
     private var ponteiroJoystick = SEM_PONTEIRO
@@ -100,6 +132,8 @@ class ControlesToque : InputAdapter() {
         centroY = margem + raioBase
         calcularAcoes(densidade)
         calcularReiniciar(densidade)
+        densidadeTela = densidade
+        calcularMaleta(densidade)
         debugLargura = Constantes.DEBUG_ZONA_LARGURA_DP * densidade
         debugAltura = Constantes.DEBUG_ZONA_ALTURA_DP * densidade
         liberarTudo()
@@ -146,6 +180,65 @@ class ControlesToque : InputAdapter() {
             y >= reiniciarBase && y <= reiniciarBase + reiniciarAltura
     }
 
+    /** Grade 2 x 4 centrada na tela; a linha 0 fica em cima. */
+    private fun calcularMaleta(densidade: Float) {
+        slotLado = Constantes.MALETA_SLOT_LADO_DP * densidade
+        val espaco = Constantes.MALETA_SLOT_ESPACO_DP * densidade
+        val gradeLargura = Constantes.MALETA_COLUNAS * slotLado + (Constantes.MALETA_COLUNAS - 1) * espaco
+        gradeAltura = Constantes.MALETA_LINHAS * slotLado + (Constantes.MALETA_LINHAS - 1) * espaco
+        val gradeEsquerda = (largura - gradeLargura) * 0.5f
+        val gradeTopo = altura * Constantes.MALETA_CENTRO_ALTURA + gradeAltura * 0.5f
+        gradeBase = gradeTopo - gradeAltura
+        for (i in 0 until Constantes.MALETA_SLOTS) {
+            val coluna = i % Constantes.MALETA_COLUNAS
+            val linha = i / Constantes.MALETA_COLUNAS
+            slotsEsquerda[i] = gradeEsquerda + coluna * (slotLado + espaco)
+            slotsBase[i] = gradeTopo - (linha + 1) * slotLado - linha * espaco
+        }
+    }
+
+    fun slotEsquerda(indice: Int): Float = slotsEsquerda[indice]
+    fun slotBase(indice: Int): Float = slotsBase[indice]
+
+    private fun slotEm(x: Float, y: Float): Int {
+        for (i in 0 until Constantes.MALETA_SLOTS) {
+            val esquerda = slotsEsquerda[i]
+            val base = slotsBase[i]
+            if (x >= esquerda && x <= esquerda + slotLado && y >= base && y <= base + slotLado) return i
+        }
+        return SEM_SLOT
+    }
+
+    private fun dentroBotaoCentral(x: Float, y: Float): Boolean {
+        val dx = x - centroX
+        val dy = y - centroY
+        return dx * dx + dy * dy <= raioBotao * raioBotao
+    }
+
+    private fun iniciarToqueBotao(x: Float, y: Float) {
+        toqueNoBotao = true
+        toqueBotaoInicioMs = TimeUtils.millis()
+        toqueBotaoInicioX = x
+        toqueBotaoInicioY = y
+        toqueBotaoDeslocMax = 0f
+    }
+
+    private fun acompanharToqueBotao(x: Float, y: Float) {
+        if (!toqueNoBotao) return
+        val dx = x - toqueBotaoInicioX
+        val dy = y - toqueBotaoInicioY
+        val distancia = sqrt(dx * dx + dy * dy)
+        if (distancia > toqueBotaoDeslocMax) toqueBotaoDeslocMax = distancia
+    }
+
+    /** True se o dedo que acabou de soltar fez um toque curto válido no botão central. */
+    private fun toqueCurtoValido(): Boolean {
+        if (!toqueNoBotao) return false
+        val duracao = TimeUtils.millis() - toqueBotaoInicioMs
+        return duracao < Constantes.MALETA_TOQUE_CURTO_MS &&
+            toqueBotaoDeslocMax < Constantes.MALETA_TOQUE_DESLOC_DP * densidadeTela
+    }
+
     private fun definirAcao(indice: Int, x: Float, y: Float, raio: Float, alvoMinimo: Float) {
         acoesX[indice] = x
         acoesY[indice] = y
@@ -182,6 +275,28 @@ class ControlesToque : InputAdapter() {
     fun consumirReiniciar(): Boolean {
         val valor = reiniciarPendente
         reiniciarPendente = false
+        return valor
+    }
+
+    /** Maleta aberta/fechada: solta todos os dedos; aberta, o joystick fica desativado (seção 10.4). */
+    fun definirModoMaleta(valor: Boolean) {
+        maletaAberta = valor
+        liberarTudo()
+        alternarMaletaPendente = false
+        usarSlotPendente = SEM_SLOT
+    }
+
+    /** True uma única vez depois de um toque curto válido no botão central. */
+    fun consumirAlternarMaleta(): Boolean {
+        val valor = alternarMaletaPendente
+        alternarMaletaPendente = false
+        return valor
+    }
+
+    /** Índice do slot tocado (soltou o dedo em cima dele), ou -1. Lido uma única vez. */
+    fun consumirUsarSlot(): Int {
+        val valor = usarSlotPendente
+        usarSlotPendente = SEM_SLOT
         return valor
     }
 
@@ -235,6 +350,10 @@ class ControlesToque : InputAdapter() {
         tempoDebug = 0f
         debugDisparado = false
         ponteiroReiniciar = SEM_PONTEIRO
+        ponteiroSlot = SEM_PONTEIRO
+        slotApertado = SEM_SLOT
+        ponteiroBotaoMaleta = SEM_PONTEIRO
+        toqueNoBotao = false
     }
 
     private fun liberarJoystick() {
@@ -301,6 +420,24 @@ class ControlesToque : InputAdapter() {
             return false
         }
 
+        // 0b) Maleta aberta: só o botão central (fecha) e os slots (usam o item) respondem.
+        if (maletaAberta) {
+            if (ponteiroBotaoMaleta == SEM_PONTEIRO && dentroBotaoCentral(x, y)) {
+                ponteiroBotaoMaleta = pointer
+                iniciarToqueBotao(x, y)
+                return true
+            }
+            if (ponteiroSlot == SEM_PONTEIRO) {
+                val slot = slotEm(x, y)
+                if (slot != SEM_SLOT) {
+                    ponteiroSlot = pointer
+                    slotApertado = slot
+                    return true
+                }
+            }
+            return false
+        }
+
         // 1) Zona de debug (canto superior esquerdo): só conta o toque longo.
         if (x <= debugLargura && y >= altura - debugAltura) {
             if (ponteiroDebug == SEM_PONTEIRO) {
@@ -326,6 +463,7 @@ class ControlesToque : InputAdapter() {
             if (ponteiroJoystick == SEM_PONTEIRO && y <= altura * Constantes.ZONA_JOYSTICK_ALTURA) {
                 ponteiroJoystick = pointer
                 joystickAtivo = true
+                if (dentroBotaoCentral(x, y)) iniciarToqueBotao(x, y) else toqueNoBotao = false
                 atualizarJoystick(x, y)
                 return true
             }
@@ -343,9 +481,15 @@ class ControlesToque : InputAdapter() {
         val y = altura - screenY
 
         if (pointer == ponteiroJoystick) {
+            acompanharToqueBotao(x, y)
             atualizarJoystick(x, y)
             return true
         }
+        if (pointer == ponteiroBotaoMaleta) {
+            acompanharToqueBotao(x, y)
+            return true
+        }
+        if (pointer == ponteiroSlot) return true
         if (pointer == ponteiroCamera) {
             giroX += x - cameraUltimoX
             giroY += y - cameraUltimoY
@@ -368,7 +512,24 @@ class ControlesToque : InputAdapter() {
             if (dentroReiniciar(screenX.toFloat(), altura - screenY)) reiniciarPendente = true
             return true
         }
+        if (pointer == ponteiroSlot) {
+            val solto = slotEm(screenX.toFloat(), altura - screenY)
+            if (solto != SEM_SLOT && solto == slotApertado) usarSlotPendente = solto
+            ponteiroSlot = SEM_PONTEIRO
+            slotApertado = SEM_SLOT
+            return true
+        }
+        if (pointer == ponteiroBotaoMaleta) {
+            acompanharToqueBotao(screenX.toFloat(), altura - screenY)
+            if (toqueCurtoValido()) alternarMaletaPendente = true
+            ponteiroBotaoMaleta = SEM_PONTEIRO
+            toqueNoBotao = false
+            return true
+        }
         if (pointer == ponteiroJoystick) {
+            acompanharToqueBotao(screenX.toFloat(), altura - screenY)
+            if (toqueCurtoValido()) alternarMaletaPendente = true
+            toqueNoBotao = false
             liberarJoystick()
             return true
         }
@@ -405,5 +566,6 @@ class ControlesToque : InputAdapter() {
         const val ACAO_INTERAGIR = 2
         const val NUM_ACOES = 3
         private const val SEM_PONTEIRO = -1
+        private const val SEM_SLOT = -1
     }
 }
