@@ -7,6 +7,8 @@ import com.badlogic.gdx.ScreenAdapter
 import com.badlogic.gdx.graphics.GL20
 import com.badlogic.gdx.graphics.g2d.SpriteBatch
 import com.badlogic.gdx.graphics.g3d.ModelBatch
+import com.badlogic.gdx.graphics.g3d.shaders.DefaultShader
+import com.badlogic.gdx.graphics.g3d.utils.DefaultShaderProvider
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer
 import com.badlogic.gdx.utils.ScreenUtils
 import com.sobrevivente.jogo.Constantes
@@ -20,7 +22,7 @@ import com.sobrevivente.jogo.mundo.Arma
 import com.sobrevivente.jogo.mundo.Jogador
 import com.sobrevivente.jogo.mundo.Mundo
 
-/** Marco 1.8: mapa de teste (paredes, colisão, minimapa), sobre maleta (1.7), morte/reinício (1.6), inimigos (1.5), tiro (1.4) e HUD (1.3). */
+/** Marco F3: personagens animados (F2) no lugar das capsulas. Marco 1.8: mapa de teste (paredes, colisão, minimapa), sobre maleta (1.7), morte/reinício (1.6), inimigos (1.5), tiro (1.4) e HUD (1.3). */
 class TelaJogo : ScreenAdapter() {
 
     private val mundo = Mundo()
@@ -32,7 +34,7 @@ class TelaJogo : ScreenAdapter() {
     private val maleta = Maleta()
     private val hud = Hud(controles, maleta, mundo)
 
-    private val loteModelos = ModelBatch()
+    private val loteModelos = ModelBatch(criarProvedorShader())
     private val lote = SpriteBatch()
     private val forma = ShapeRenderer()
 
@@ -42,6 +44,13 @@ class TelaJogo : ScreenAdapter() {
 
     init {
         cameraJogo.seguir(jogador.posicao)
+    }
+
+    /** O boneco do F2 tem 13 ossos; o DefaultShader do LibGDX aceita 12 por padrao. */
+    private fun criarProvedorShader(): DefaultShaderProvider {
+        val config = DefaultShader.Config()
+        config.numBones = Constantes.NUM_OSSOS_SHADER
+        return DefaultShaderProvider(config)
     }
 
     override fun show() {
@@ -188,6 +197,7 @@ class TelaJogo : ScreenAdapter() {
                 } else {
                     atualizarJogador(dt, densidade)
                 }
+                jogador.atualizarAnimacao(dt)
                 mundo.atualizar(dt, jogador)
             }
             hud.atualizar(dt) // o tempo das mensagens corre também com a maleta aberta
@@ -213,11 +223,11 @@ class TelaJogo : ScreenAdapter() {
             loteModelos.render(mundo.paredes[i], mundo.ambiente)
         }
         loteModelos.render(jogador.corpo, mundo.ambiente)
-        loteModelos.render(jogador.nariz, mundo.ambiente)
+        if (!jogador.animado) loteModelos.render(jogador.nariz, mundo.ambiente)
         if (jogador.claraoVisivel) loteModelos.render(jogador.clarao, mundo.ambiente)
         for (i in mundo.inimigos.indices) {
             val inimigo = mundo.inimigos[i]
-            if (inimigo.vivo) loteModelos.render(inimigo.instancia, mundo.ambiente)
+            if (inimigo.visivel) loteModelos.render(inimigo.instancia, mundo.ambiente)
         }
         for (i in mundo.itens.indices) {
             val item = mundo.itens[i]

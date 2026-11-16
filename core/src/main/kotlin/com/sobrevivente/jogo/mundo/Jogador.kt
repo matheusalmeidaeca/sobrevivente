@@ -11,6 +11,7 @@ import com.badlogic.gdx.math.MathUtils
 import com.badlogic.gdx.math.Vector3
 import com.badlogic.gdx.utils.Disposable
 import com.sobrevivente.jogo.Constantes
+import kotlin.math.sqrt
 
 /**
  * Jogador placeholder: cápsula + "nariz" amarelo que mostra a frente.
@@ -26,6 +27,10 @@ class Jogador : Disposable {
     var vida = Constantes.JOGADOR_VIDA_MAXIMA
         private set
 
+    /** Modelo animado do F2 (null = usa a capsula placeholder). */
+    private val modeloAnimado: Model? = CarregadorModelos.carregar(Constantes.MODELO_JOGADOR)
+    val animado: Boolean = modeloAnimado != null
+
     private val modeloCorpo: Model
     private val modeloNariz: Model
     private val modeloClarao: Model
@@ -39,12 +44,14 @@ class Jogador : Disposable {
 
     private var tempoClarao = 0f
     private var tempoEncarar = 0f
+    private var intensidadeMovimento = 0f
+    private val animador: Animador
 
     init {
         val construtor = ModelBuilder()
         val atributos = (Usage.Position or Usage.Normal).toLong()
 
-        modeloCorpo = construtor.createCapsule(
+        modeloCorpo = modeloAnimado ?: construtor.createCapsule(
             Constantes.JOGADOR_RAIO,
             Constantes.JOGADOR_ALTURA,
             Constantes.JOGADOR_DIVISOES,
@@ -91,6 +98,11 @@ class Jogador : Disposable {
         corpo = ModelInstance(modeloCorpo)
         nariz = ModelInstance(modeloNariz)
         clarao = ModelInstance(modeloClarao)
+        animador = Animador(corpo)
+        if (animado) {
+            animador.tocar("parado", -1, 1f, 0f)
+            animador.atualizar(0f)
+        }
         atualizarTransformacao()
     }
 
@@ -108,6 +120,7 @@ class Jogador : Disposable {
      * O movimento é relativo ao yaw da câmera. Sem alocação.
      */
     fun mover(dt: Float, entradaX: Float, entradaY: Float, yawCamera: Float) {
+        intensidadeMovimento = minOf(1f, sqrt(entradaX * entradaX + entradaY * entradaY))
         if (entradaX == 0f && entradaY == 0f) return
 
         val radianos = yawCamera * MathUtils.degreesToRadians
@@ -155,6 +168,7 @@ class Jogador : Disposable {
             tempoEncarar = Constantes.PISTOLA_TEMPO_ENCARAR_S
             tempoClarao = Constantes.CLARAO_DURACAO_S
             claraoVisivel = true
+            if (animado) animador.tocar("atirar", 1, 1f, Constantes.ANIM_TRANSICAO_TIRO_S)
         }
         if (tempoEncarar > 0f) {
             tempoEncarar -= dt
@@ -167,21 +181,49 @@ class Jogador : Disposable {
         atualizarTransformacao()
     }
 
+    /**
+     * Escolhe e avanca a animacao (Marco F3). Chamar todo frame com o jogo rodando e a maleta fechada.
+     * Prioridade: morrer > atirar (so reinicia no tiro) > correr/andar (pelo joystick) > parado.
+     */
+    fun atualizarAnimacao(dt: Float) {
+        if (!animado) return
+        val t = Constantes.ANIM_TRANSICAO_S
+        if (vida <= 0) {
+            animador.tocarSe("morrer", 1, 1f, t)
+        } else if (tempoEncarar > 0f) {
+            animador.tocarSe("atirar", 1, 1f, Constantes.ANIM_TRANSICAO_TIRO_S)
+        } else if (intensidadeMovimento >= Constantes.JOGADOR_LIMIAR_CORRER) {
+            animador.tocarSe("correr", -1, 1f, t)
+        } else if (intensidadeMovimento > 0f) {
+            animador.tocarSe("andar", -1, 1f, t)
+        } else {
+            animador.tocarSe("parado", -1, 1f, t)
+        }
+        animador.atualizar(dt)
+    }
+
     /** Reposiciona os modelos conforme `posicao` e `yaw`. Sem alocação. */
     fun atualizarTransformacao() {
-        corpo.transform.setToTranslation(
-            posicao.x,
-            posicao.y + Constantes.JOGADOR_ALTURA / 2f,
-            posicao.z
-        )
+        if (animado) {
+            // Modelo do F2: origem nos pes, frente = -Z.
+            corpo.transform.setToTranslation(posicao.x, posicao.y, posicao.z).rotate(Vector3.Y, yaw)
+        } else {
+            corpo.transform.setToTranslation(
+                posicao.x,
+                posicao.y + Constantes.JOGADOR_ALTURA / 2f,
+                posicao.z
+            )
+        }
         nariz.transform
             .setToTranslation(posicao.x, posicao.y + Constantes.NARIZ_ALTURA_DO_CHAO, posicao.z)
             .rotate(Vector3.Y, yaw)
             .translate(0f, 0f, -Constantes.NARIZ_DESLOCAMENTO_FRENTE)
+        val alturaClarao = if (animado) Constantes.CLARAO_MODELO_ALTURA else Constantes.CLARAO_ALTURA_DO_CHAO
+        val frenteClarao = if (animado) Constantes.CLARAO_MODELO_FRENTE else Constantes.CLARAO_DESLOCAMENTO_FRENTE
         clarao.transform
-            .setToTranslation(posicao.x, posicao.y + Constantes.CLARAO_ALTURA_DO_CHAO, posicao.z)
+            .setToTranslation(posicao.x, posicao.y + alturaClarao, posicao.z)
             .rotate(Vector3.Y, yaw)
-            .translate(0f, 0f, -Constantes.CLARAO_DESLOCAMENTO_FRENTE)
+            .translate(0f, 0f, -frenteClarao)
     }
 
     override fun dispose() {

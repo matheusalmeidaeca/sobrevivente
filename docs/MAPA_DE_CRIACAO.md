@@ -1,10 +1,17 @@
-# MAPA DE CRIAÇÃO v2.13 — Jogo 3D de Sobrevivência (Kotlin + Python de bastidor / Android)
+# MAPA DE CRIAÇÃO v2.14 — Jogo 3D de Sobrevivência (Kotlin + Python de bastidor / Android)
 
-**Versão do documento:** 2.13 | **Data:** 16/11/2026 | **Substitui:** v2.12
+**Versão do documento:** 2.14 | **Data:** 16/11/2026 | **Substitui:** v2.13
 **Nome provisório:** PROJETO_SOBREVIVENTE (nome final: em aberto)
 
 > Cole este arquivo inteiro no início de qualquer conversa com uma IA.
 > Ele é a **fonte única da verdade**. O que não estiver aqui, a IA **pergunta**; ela não decide.
+
+### Mudanças da v2.13 para a v2.14
+- **F2 rodou no CI (log verde, 16/11/2026):** orçamento da seção 24.3 OK (1050 triângulos, 13 ossos, 512×512, 1,80 m, origem nos pés) e pele do Blender idêntica à conta em Python (0,000000 m). Falta o dono aprovar as poses na folha `previa_python.png`.
+- **Decidido pelo dono:** formato de exportação **`.g3dj`** (carregado com `G3dModelLoader`, sem dependência extra).
+- **F3 entregue (em teste):** `jogador.g3dj` e `zumbi.g3dj` (+ texturas) em `android/assets/modelos/`; jogador e zumbi usam o modelo animado no lugar das cápsulas, com a animação trocando conforme o estado. Se o arquivo faltar ou falhar ao carregar, o jogo **volta sozinho para a cápsula**. Alterados: `Constantes.kt`, `Jogador.kt`, `Inimigo.kt`, `Mundo.kt`, `TelaJogo.kt`. Novo: `mundo/ModeloAnimado.kt` (fora da seção 9, a confirmar).
+- Escolhas do F3 (a confirmar): jogador usa `correr` com o joystick ≥ 60% e `andar` abaixo; `atirar` reinicia a cada tiro; zumbi persegue com `correr` a 0,55× e ataca com `atacar`; o corpo do zumbi fica 5 s no chão e some; o zumbi tem tinta (laranja ao perseguir, vermelho ao atacar) e pisca claro ao levar tiro; clarão no cano mais perto das mãos.
+- `DefaultShader` configurado com 16 ossos (`numBones`), pois o boneco tem 13.
 
 ### Mudanças da v2.12 para a v2.13
 - **F2 entregue (em teste):** esqueleto de 13 ossos, pesos de pele (no máximo 2 ossos por vértice), 5 animações por personagem e exportação em `.g3dj`. Novos arquivos em `ferramentas/blender/`: `animacao.py`, `exportar.py`, `gerar_boneco.py`, `previa_python.py`, `LEIAME.md`. Alterado: `.github/workflows/gerar-modelo.yml` (etapa `f2`).
@@ -352,6 +359,7 @@ projeto/
 │       ├── telas/
 │       │   └── TelaJogo.kt
 │       ├── mundo/
+│       │   ├── ModeloAnimado.kt       (fora do plano original; carrega .g3dj e toca animações; marco F3)
 │       │   ├── Mundo.kt               (cena, colisores, atualização)
 │       │   ├── Jogador.kt
 │       │   ├── Inimigo.kt             (Marco 1.5)
@@ -684,8 +692,8 @@ Não implementar nem detalhar agora. Quando o dono liberar, esta seção será p
 - (Resolvido) Ambiente de trabalho do dono: Termux no celular (colar comandos e `git push`) e GitHub Actions para compilar. Caminhos e comandos reais: **seção 25**.
 - (Resolvido em 15/11/2026) Gradle instalado pelo CI, sem wrapper: ver seção 20.
 - Sons/música (por padrão: nenhum na Fase 1).
-- **Como carregar modelo com esqueleto no LibGDX:** **proposta (F2): `.g3dj` carregado com `G3dModelLoader` (sem dependência extra)**; alternativa: gdx-gltf (dependência extra; versão compatível com LibGDX 1.12.1 a confirmar). A confirmar pelo dono; o F3 só começa com a decisão. O `.g3dj` do F2 **não foi carregado no LibGDX pela IA** (sem LibGDX no ambiente): a prova será o F3.
-- Boneco com 13 ossos × `numBones` padrão 12 do `DefaultShader`: no F3 usar `numBones` ≥ 16 (a confirmar no aparelho; limite de uniformes do GLES2).
+- (Resolvido em 16/11/2026) Como carregar modelo com esqueleto no LibGDX: **`.g3dj` com `G3dModelLoader`** (decisão do dono). O `.g3dj` **ainda não foi carregado no LibGDX pela IA** (sem LibGDX no ambiente): a prova é o teste do F3 no aparelho.
+- `numBones` do `DefaultShader` em 16 (boneco com 13 ossos): a confirmar no aparelho (limite de uniformes do GLES2).
 - Versão do Blender e método de instalação no CI: **proposta 4.5.11 LTS, tarball oficial** (a confirmar pelo resultado do F1).
 - Convenção de **frente do modelo**: proposta no F0 = **-Z** (a confirmar pelo dono ao ver o preview).
 - (Resolvido em 15/11/2026) Marcos F0 a F3 correm agora, em paralelo aos 1.x.
@@ -706,6 +714,7 @@ Não implementar nem detalhar agora. Quando o dono liberar, esta seção será p
 | 15/11/2026 | Boneco com textura simples de roupa 512x512 (gerada por código) | Dono | Escolha do dono |
 | 15/11/2026 | Marcos F0 a F3 liberados agora, em paralelo aos 1.x | Dono (pedido de foco na estética) | Prioridade do dono |
 | 15/11/2026 | Blender 4.5.11 LTS (tarball oficial) para o F1 | Proposta da IA (a confirmar) | 4.2 LTS fora de suporte; 4.5 LTS ativo até 07/2027 |
+| 16/11/2026 | Exportar modelos animados em `.g3dj` | Dono | Sem dependência extra |
 | 16/11/2026 | Esqueleto de 13 ossos, pele com ≤ 2 ossos por vértice, animações a 30 fps; exportar em `.g3dj` | Proposta da IA (a confirmar) | Sem dependência extra; atende ao orçamento da seção 24.3 |
 | 15/11/2026 | Gradle 8.5 instalado pelo CI (sem wrapper); versões da seção 6 congeladas | Dono (validou no teste) | Build verde e app rodando no aparelho alvo |
 
@@ -742,13 +751,13 @@ RELATÓRIO
 
 ## 22. ESTADO ATUAL (atualizar ao fim de cada sessão)
 
-- Marco atual: **1.8 (dono informou "deu certo"; caixas a marcar por ele)**; trilha ativa de ferramentas: **F0 (em teste, com correção de faces), F1 (em teste) e F2 (entregue, em teste)**
+- Marco atual: **1.8 (dono informou "deu certo"; caixas a marcar por ele)**; trilha ativa de ferramentas: **F0 e F1 (rodaram no CI), F2 (rodou no CI; poses a aprovar) e F3 (entregue, em teste)**
 - Último build verde confirmado: run #9 (código dos Marcos 1.7 e 1.8). F0 enviado (`ebb5ef4`); "Gerar modelo" ainda não rodado
 - Versões congeladas: **sim** (seção 6)
 - Arquivos existentes no repositório: tudo até o Marco 1.7 + 1 novo no 1.8 (`mundo/Colisao.kt`) e 8 alterados (depois do push)
 - Problemas conhecidos: faixa preta lateral (recorte da câmera) ainda a confirmar na tela cheia; os Marcos 1.7 e 1.8 não foram compilados pela IA (sem compilador no ambiente da conversa)
 - Observações: HUD sem Scene2D (ver v2.4); Voltar do Android vira pausa (ou fecha a maleta, se aberta); acentos na fonte padrão não verificados (textos do 1.7 sem acento); inimigos sem linha de visão nem pathfinding
-- Marcos de ferramentas (seção 24): **F0 em teste** (enviado, ainda não rodado no CI; correção de faces entregue com o F2); **F1 em teste** (código entregue, não executado); **F2 em teste** (código entregue; matemática e `.g3dj` verificados em Python; o script do Blender **não foi executado pela IA**)
+- Marcos de ferramentas (seção 24): **F0 rodou no CI** (dentro da etapa `f2`; correção de faces entregue com o F2); **F1** não rodou isolado, mas o mesmo Blender 4.5.11 rodou no F2; **F2 rodou no CI** (orçamento OK; falta aprovar as poses); **F3 em teste** (código entregue, **não compilado pela IA**: sem LibGDX no ambiente)
 
 - Envio ao GitHub: caminhos e comandos verificados em 15/11/2026 estão na seção 25.
 
@@ -767,7 +776,7 @@ RELATÓRIO
 ### 24.1 Princípio
 - Python **só gera arquivos** (modelos, previews). Não roda no celular e **não entra no APK**.
 - Tudo roda no **GitHub Actions**, de forma **manual** (`gerar-modelo.yml`). O resultado volta como **artefato baixável** para eu testar.
-- Estes marcos (F0 a F3) são **independentes** dos marcos 1.x. O jogo segue com a cápsula placeholder até o F3.
+- Estes marcos (F0 a F3) são **independentes** dos marcos 1.x. O jogo usa a cápsula placeholder se os modelos de `android/assets/modelos/` faltarem.
 
 ### 24.2 Marcos de ferramentas (com teste de aceite)
 
@@ -792,7 +801,7 @@ RELATÓRIO
 - [ ] **Teste:** rodar "Gerar modelo" com etapa `f2`; baixar o artefato `boneco-f2`; abrir `previa_python.png` no celular (poses reconhecíveis); `f2_relatorio.txt` sem "ESTOUROU", "FORA" ou "DIVERGE"
 - [ ] (proposta, a confirmar) Zumbi com `atacar` no lugar de `atirar`; atenção: o script do Blender não foi executado pela IA, verificar o log do passo "Gerar esqueleto e animações"
 
-**F3: Integração no jogo**
+**F3: Integração no jogo (EM TESTE)**
 - [ ] Decisão sobre a dependência de carga do modelo registrada (seção 19)
 - [ ] Modelo substitui a cápsula; animação troca conforme o estado (parado/andando/atirando/morto)
 - [ ] **Teste:** FPS dentro do orçamento (seção 5) com o boneco e 3 inimigos

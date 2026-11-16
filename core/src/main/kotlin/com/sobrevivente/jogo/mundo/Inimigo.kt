@@ -15,7 +15,7 @@ import kotlin.math.sqrt
  * Estados: PARADO -> PERSEGUINDO -> ATACANDO -> MORTO.
  * A cor muda conforme o estado (ajuda a testar no celular) e pisca ao levar tiro.
  */
-class Inimigo(modelo: Model, x: Float, z: Float) {
+class Inimigo(modelo: Model, x: Float, z: Float, private val animado: Boolean = false) {
 
     enum class Estado { PARADO, PERSEGUINDO, ATACANDO, MORTO }
 
@@ -33,7 +33,14 @@ class Inimigo(modelo: Model, x: Float, z: Float) {
     val vivo: Boolean
         get() = estado != Estado.MORTO
 
-    private val cor: ColorAttribute
+    private val cor: ColorAttribute?
+    private val animador = Animador(instancia)
+    private var yaw = 0f
+    private var tempoMorto = 0f
+
+    /** Desenhar? Vivo, ou (modelo animado) ate CORPO_DURACAO_S depois de morrer. */
+    val visivel: Boolean
+        get() = vivo || (animado && tempoMorto < Constantes.CORPO_DURACAO_S)
     private val pontoMinimo = Vector3()
     private val pontoMaximo = Vector3()
     private var tempoAtaque = 0f
@@ -41,14 +48,27 @@ class Inimigo(modelo: Model, x: Float, z: Float) {
 
     init {
         // Cada ModelInstance tem cópia própria do material: a cor não afeta os outros inimigos.
-        cor = instancia.materials.get(0).get(ColorAttribute.Diffuse) as ColorAttribute
+        cor = instancia.materials.get(0).get(ColorAttribute.Diffuse) as? ColorAttribute
         aplicarCor()
         atualizarTransformacao()
+        if (animado) {
+            animador.tocar("parado", -1, 1f, 0f)
+            animador.atualizar(0f)
+        }
     }
 
     /** Chamar uma vez por frame (jogo rodando). Sem alocação. */
     fun atualizar(dt: Float, jogador: Jogador) {
-        if (estado == Estado.MORTO) return
+        if (estado == Estado.MORTO) {
+            tempoMorto += dt
+            if (tempoFlash > 0f) {
+                tempoFlash -= dt
+                if (tempoFlash <= 0f) aplicarCor()
+            }
+            if (animado) animador.atualizar(dt) // termina a animacao de morrer e segura a ultima pose
+            return
+        }
+        if (animado) animador.atualizar(dt)
 
         if (tempoFlash > 0f) {
             tempoFlash -= dt
@@ -64,6 +84,12 @@ class Inimigo(modelo: Model, x: Float, z: Float) {
         val dx = jogador.posicao.x - posicao.x
         val dz = jogador.posicao.z - posicao.z
         val distancia = sqrt(dx * dx + dz * dz)
+
+        if (animado && (estado == Estado.PERSEGUINDO || estado == Estado.ATACANDO)) {
+            val alvo = MathUtils.atan2(-dx, -dz) * MathUtils.radiansToDegrees
+            yaw = MathUtils.lerpAngleDeg(yaw, alvo, minOf(1f, Constantes.ENIMIGO_VELOCIDADE_GIRO * dt))
+            atualizarTransformacao()
+        }
 
         when (estado) {
             Estado.PARADO -> {
@@ -101,8 +127,14 @@ class Inimigo(modelo: Model, x: Float, z: Float) {
         estado = Estado.PARADO
         tempoAtaque = 0f
         tempoFlash = 0f
+        tempoMorto = 0f
+        yaw = 0f
         aplicarCor()
         atualizarTransformacao()
+        if (animado) {
+            animador.tocar("parado", -1, 1f, 0f)
+            animador.atualizar(0f)
+        }
     }
 
     /** Devolve true se este tiro matou o inimigo. */
@@ -139,11 +171,53 @@ class Inimigo(modelo: Model, x: Float, z: Float) {
     private fun mudarEstado(novo: Estado) {
         estado = novo
         aplicarCor()
+        if (!animado) return
+        val t = Constantes.ANIM_TRANSICAO_S
+        when (novo) {
+            Estado.PARADO -> animador.tocar("parado", -1, 1f, t)
+            Estado.PERSEGUINDO -> animador.tocar("correr", -1, Constantes.ZUMBI_ANIM_VELOCIDADE, t)
+            Estado.ATACANDO -> animador.tocar("atacar", -1, 1f, t)
+            Estado.MORTO -> animador.tocar("morrer", 1, 1f, t)
+        }
+    }
+
+    /** Cor com textura: branco = textura pura; flash e tinta de estado multiplicam a textura. */
+    private fun aplicarTinta(c: ColorAttribute) {
+        if (tempoFlash > 0f) {
+            c.color.set(
+                Constantes.ZUMBI_TINTA_FLASH,
+                Constantes.ZUMBI_TINTA_FLASH,
+                Constantes.ZUMBI_TINTA_FLASH,
+                1f
+            )
+            return
+        }
+        when (estado) {
+            Estado.PARADO -> c.color.set(1f, 1f, 1f, 1f)
+            Estado.PERSEGUINDO -> c.color.set(
+                Constantes.ZUMBI_TINTA_PERSEGUINDO_R,
+                Constantes.ZUMBI_TINTA_PERSEGUINDO_G,
+                Constantes.ZUMBI_TINTA_PERSEGUINDO_B,
+                1f
+            )
+            Estado.ATACANDO -> c.color.set(
+                Constantes.ZUMBI_TINTA_ATACANDO_R,
+                Constantes.ZUMBI_TINTA_ATACANDO_G,
+                Constantes.ZUMBI_TINTA_ATACANDO_B,
+                1f
+            )
+            Estado.MORTO -> c.color.set(1f, 1f, 1f, 1f)
+        }
     }
 
     private fun aplicarCor() {
+        val atributo = cor ?: return
+        if (animado) {
+            aplicarTinta(atributo)
+            return
+        }
         if (tempoFlash > 0f) {
-            cor.color.set(
+            atributo.color.set(
                 Constantes.ENIMIGO_FLASH_COR,
                 Constantes.ENIMIGO_FLASH_COR,
                 Constantes.ENIMIGO_FLASH_COR,
@@ -152,19 +226,19 @@ class Inimigo(modelo: Model, x: Float, z: Float) {
             return
         }
         when (estado) {
-            Estado.PARADO -> cor.color.set(
+            Estado.PARADO -> atributo.color.set(
                 Constantes.ENIMIGO_COR_PARADO_R,
                 Constantes.ENIMIGO_COR_PARADO_G,
                 Constantes.ENIMIGO_COR_PARADO_B,
                 1f
             )
-            Estado.PERSEGUINDO -> cor.color.set(
+            Estado.PERSEGUINDO -> atributo.color.set(
                 Constantes.ENIMIGO_COR_PERSEGUINDO_R,
                 Constantes.ENIMIGO_COR_PERSEGUINDO_G,
                 Constantes.ENIMIGO_COR_PERSEGUINDO_B,
                 1f
             )
-            Estado.ATACANDO -> cor.color.set(
+            Estado.ATACANDO -> atributo.color.set(
                 Constantes.ENIMIGO_COR_ATACANDO_R,
                 Constantes.ENIMIGO_COR_ATACANDO_G,
                 Constantes.ENIMIGO_COR_ATACANDO_B,
@@ -175,11 +249,16 @@ class Inimigo(modelo: Model, x: Float, z: Float) {
     }
 
     private fun atualizarTransformacao() {
-        instancia.transform.setToTranslation(
-            posicao.x,
-            posicao.y + Constantes.ENIMIGO_ALTURA / 2f,
-            posicao.z
-        )
+        if (animado) {
+            // Modelo do F2: origem nos pes, frente = -Z.
+            instancia.transform.setToTranslation(posicao.x, posicao.y, posicao.z).rotate(Vector3.Y, yaw)
+        } else {
+            instancia.transform.setToTranslation(
+                posicao.x,
+                posicao.y + Constantes.ENIMIGO_ALTURA / 2f,
+                posicao.z
+            )
+        }
         // Caixa do raio de tiro: aproxima a cápsula por um prisma.
         pontoMinimo.set(
             posicao.x - Constantes.ENIMIGO_RAIO,

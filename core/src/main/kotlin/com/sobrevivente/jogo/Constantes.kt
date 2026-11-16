@@ -345,4 +345,30 @@ object Constantes {
     const val MINIMAPA_INIMIGO_COR_R = 1.0f
     const val MINIMAPA_INIMIGO_COR_G = 0.25f
     const val MINIMAPA_INIMIGO_COR_B = 0.25f
+
+    // Marco F3: personagens animados (modelos .g3dj gerados no F2, copiados para android/assets/modelos)
+    const val MODELO_JOGADOR = "modelos/jogador.g3dj"
+    const val MODELO_ZUMBI = "modelos/zumbi.g3dj"
+    /** Ossos por modelo no shader (o boneco tem 13; o padrao do LibGDX e 12). */
+    const val NUM_OSSOS_SHADER = 16
+    const val ANIM_TRANSICAO_S = 0.12f
+    const val ANIM_TRANSICAO_TIRO_S = 0.04f
+    /** Joystick acima disto = correr; abaixo = andar. */
+    const val JOGADOR_LIMIAR_CORRER = 0.6f
+    /** Velocidade de reproducao do ciclo `correr` do zumbi (o ciclo cobre ~3,7 m/s; o zumbi anda a 2 m/s). */
+    const val ZUMBI_ANIM_VELOCIDADE = 0.55f
+    const val ENIMIGO_VELOCIDADE_GIRO = 8f
+    /** Quanto tempo o corpo do zumbi fica visivel depois de morrer. */
+    const val CORPO_DURACAO_S = 5f
+    /** Clarao no cano com o modelo animado (maos na altura do peito, ~0,85 m a frente). */
+    const val CLARAO_MODELO_ALTURA = 1.22f
+    const val CLARAO_MODELO_FRENTE = 0.85f
+    /** Tinta do zumbi com textura (branco = textura pura). */
+    const val ZUMBI_TINTA_PERSEGUINDO_R = 1.0f
+    const val ZUMBI_TINTA_PERSEGUINDO_G = 0.85f
+    const val ZUMBI_TINTA_PERSEGUINDO_B = 0.65f
+    const val ZUMBI_TINTA_ATACANDO_R = 1.0f
+    const val ZUMBI_TINTA_ATACANDO_G = 0.60f
+    const val ZUMBI_TINTA_ATACANDO_B = 0.55f
+    const val ZUMBI_TINTA_FLASH = 2.2f
 }

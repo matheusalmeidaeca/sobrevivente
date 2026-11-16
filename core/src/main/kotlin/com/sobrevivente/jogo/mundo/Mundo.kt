@@ -26,6 +26,8 @@ class Mundo : Disposable {
     val ambiente = Environment()
     val chao: ModelInstance
     private val modeloChao: Model
+    /** Modelo animado do zumbi (F2); null = capsula placeholder. */
+    private val modeloZumbi: Model? = CarregadorModelos.carregar(Constantes.MODELO_ZUMBI)
     private val modeloInimigo: Model
     val inimigos: Array<Inimigo>
     private val modeloItemCura: Model
@@ -64,10 +66,15 @@ class Mundo : Disposable {
         modeloChao = criarModeloChao()
         chao = ModelInstance(modeloChao)
 
-        modeloInimigo = criarModeloInimigo()
+        modeloInimigo = modeloZumbi ?: criarModeloInimigo()
         val quantidade = minOf(Constantes.INIMIGOS_ATIVOS, Constantes.INIMIGOS_XZ.size / 2)
         inimigos = Array(quantidade) { i ->
-            Inimigo(modeloInimigo, Constantes.INIMIGOS_XZ[i * 2], Constantes.INIMIGOS_XZ[i * 2 + 1])
+            Inimigo(
+                modeloInimigo,
+                Constantes.INIMIGOS_XZ[i * 2],
+                Constantes.INIMIGOS_XZ[i * 2 + 1],
+                modeloZumbi != null
+            )
         }
 
         modeloItemCura = criarModeloItem(
