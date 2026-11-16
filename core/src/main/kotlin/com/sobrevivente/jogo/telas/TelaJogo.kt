@@ -18,7 +18,7 @@ import com.sobrevivente.jogo.mundo.Arma
 import com.sobrevivente.jogo.mundo.Jogador
 import com.sobrevivente.jogo.mundo.Mundo
 
-/** Marco 1.4: tiro hitscan, munição, recarga, alvos de teste e feedback de acerto (sobre o HUD do 1.3). */
+/** Marco 1.5: inimigos que perseguem, atacam e morrem a tiros (sobre o tiro do 1.4 e o HUD do 1.3). */
 class TelaJogo : ScreenAdapter() {
 
     private val mundo = Mundo()
@@ -36,7 +36,6 @@ class TelaJogo : ScreenAdapter() {
     private var pausado = false
 
     init {
-        hud.definirVida(Constantes.JOGADOR_VIDA_MAXIMA, Constantes.JOGADOR_VIDA_MAXIMA)
         cameraJogo.seguir(jogador.posicao)
     }
 
@@ -89,15 +88,18 @@ class TelaJogo : ScreenAdapter() {
                 val acertou = mundo.atirar(
                     cameraJogo.camera.position,
                     cameraJogo.camera.direction,
-                    Constantes.PISTOLA_ALCANCE
+                    Constantes.PISTOLA_ALCANCE,
+                    Constantes.PISTOLA_DANO
                 )
                 if (acertou) hud.mostrarAcerto()
             }
             jogador.atualizarTiro(dt, cameraJogo.yaw, atirou)
-            mundo.atualizar(dt)
+            mundo.atualizar(dt, jogador)
             hud.atualizar(dt)
         }
         hud.definirMunicao(arma.carregador, arma.reserva, arma.recarregando)
+        hud.definirVida(jogador.vida, Constantes.JOGADOR_VIDA_MAXIMA)
+        hud.inimigosVivos = mundo.contarInimigosVivos()
 
         // Desenho 3D
         ScreenUtils.clear(
@@ -112,8 +114,9 @@ class TelaJogo : ScreenAdapter() {
         loteModelos.render(jogador.corpo, mundo.ambiente)
         loteModelos.render(jogador.nariz, mundo.ambiente)
         if (jogador.claraoVisivel) loteModelos.render(jogador.clarao, mundo.ambiente)
-        for (i in mundo.alvos.indices) {
-            loteModelos.render(mundo.alvos[i].instancia, mundo.ambiente)
+        for (i in mundo.inimigos.indices) {
+            val inimigo = mundo.inimigos[i]
+            if (inimigo.vivo) loteModelos.render(inimigo.instancia, mundo.ambiente)
         }
         loteModelos.end()
 

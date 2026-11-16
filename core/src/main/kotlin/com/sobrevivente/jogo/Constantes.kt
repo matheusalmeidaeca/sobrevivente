@@ -157,6 +157,7 @@ object Constantes {
     const val PAUSA_ESPACO_DP = 12f
 
     // Pistola placeholder (seção 12 do mapa)
+    const val PISTOLA_DANO = 25
     const val PISTOLA_CADENCIA = 2.5f // tiros por segundo
     const val PISTOLA_CARREGADOR = 12
     const val PISTOLA_RESERVA_INICIAL = 36
@@ -173,21 +174,36 @@ object Constantes {
     const val CLARAO_COR_G = 0.90f
     const val CLARAO_COR_B = 0.10f
 
-    // Alvos fixos de teste (Marco 1.4)
-    const val ALVO_LADO = 1.5f
-    const val ALVO_COR_R = 0.35f
-    const val ALVO_COR_G = 0.45f
-    const val ALVO_COR_B = 0.75f
-    const val ALVO_FLASH_COR_R = 1.0f
-    const val ALVO_FLASH_COR_G = 0.25f
-    const val ALVO_FLASH_COR_B = 0.20f
-    const val ALVO_FLASH_S = 0.15f
-    /** Posições (x, z) dos cubos, em metros; o jogador começa em (0, 0) olhando para -Z. */
-    val ALVOS_XZ = floatArrayOf(
-        0f, -8f,
-        -5f, -14f,
-        6f, -18f,
-        -2f, -26f
+    // Inimigo básico (seção 13 do mapa)
+    const val ENIMIGO_VIDA = 100
+    const val ENIMIGO_VELOCIDADE = 2.0f // m/s (menor que a do jogador)
+    const val ENIMIGO_VISAO = 12f // começa a perseguir a até 12 m
+    const val ENIMIGO_PERDE_JOGADOR = 18f // volta a ficar parado acima de 18 m
+    const val ENIMIGO_ALCANCE_ATAQUE = 1.2f
+    const val ENIMIGO_DANO = 10
+    const val ENIMIGO_INTERVALO_ATAQUE = 1.0f // segundos entre golpes
+    const val ENIMIGO_RAIO = 0.4f
+    const val ENIMIGO_ALTURA = 1.8f
+    const val ENIMIGO_DIVISOES = 16
+    const val ENIMIGO_FLASH_S = 0.10f
+    const val ENIMIGO_FLASH_COR = 1.0f // branco ao levar tiro
+    // Cor por estado (ajuda a testar): parado = verde, perseguindo = laranja, atacando = vermelho
+    const val ENIMIGO_COR_PARADO_R = 0.35f
+    const val ENIMIGO_COR_PARADO_G = 0.55f
+    const val ENIMIGO_COR_PARADO_B = 0.30f
+    const val ENIMIGO_COR_PERSEGUINDO_R = 0.90f
+    const val ENIMIGO_COR_PERSEGUINDO_G = 0.60f
+    const val ENIMIGO_COR_PERSEGUINDO_B = 0.15f
+    const val ENIMIGO_COR_ATACANDO_R = 0.85f
+    const val ENIMIGO_COR_ATACANDO_G = 0.12f
+    const val ENIMIGO_COR_ATACANDO_B = 0.12f
+    /** Quantos inimigos entram no mapa (1 a 3). Use 1 para testar um só. */
+    const val INIMIGOS_ATIVOS = 3
+    /** Posições (x, z) dos inimigos, em metros; o jogador começa em (0, 0). Todos começam parados. */
+    val INIMIGOS_XZ = floatArrayOf(
+        0f, -14f,
+        -9f, -12f,
+        10f, -13f
     )
 
     // Marcador de acerto na mira

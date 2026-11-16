@@ -18,14 +18,14 @@ import com.badlogic.gdx.math.collision.Ray
 import com.badlogic.gdx.utils.Disposable
 import com.sobrevivente.jogo.Constantes
 
-/** Cena: luz, chão e alvos de teste. Sem desenho de HUD aqui. */
+/** Cena: luz, chão e inimigos. Sem desenho de HUD aqui. */
 class Mundo : Disposable {
 
     val ambiente = Environment()
     val chao: ModelInstance
     private val modeloChao: Model
-    private val modeloAlvo: Model
-    val alvos: Array<Alvo>
+    private val modeloInimigo: Model
+    val inimigos: Array<Inimigo>
 
     private val raio = Ray() // reutilizado nos tiros: zero alocação por frame
     private val ponto = Vector3()
@@ -54,56 +54,49 @@ class Mundo : Disposable {
         modeloChao = criarModeloChao()
         chao = ModelInstance(modeloChao)
 
-        modeloAlvo = criarModeloAlvo()
-        alvos = Array(Constantes.ALVOS_XZ.size / 2) { i ->
-            Alvo(modeloAlvo, Constantes.ALVOS_XZ[i * 2], Constantes.ALVOS_XZ[i * 2 + 1])
+        modeloInimigo = criarModeloInimigo()
+        val quantidade = minOf(Constantes.INIMIGOS_ATIVOS, Constantes.INIMIGOS_XZ.size / 2)
+        inimigos = Array(quantidade) { i ->
+            Inimigo(modeloInimigo, Constantes.INIMIGOS_XZ[i * 2], Constantes.INIMIGOS_XZ[i * 2 + 1])
         }
     }
 
-    fun atualizar(dt: Float) {
-        for (i in alvos.indices) {
-            alvos[i].atualizar(dt)
+    /** Atualiza a IA dos inimigos. Chamar uma vez por frame (jogo rodando). */
+    fun atualizar(dt: Float, jogador: Jogador) {
+        for (i in inimigos.indices) {
+            inimigos[i].atualizar(dt, jogador)
         }
+    }
+
+    fun contarInimigosVivos(): Int {
+        var total = 0
+        for (i in inimigos.indices) {
+            if (inimigos[i].vivo) total++
+        }
+        return total
     }
 
     /**
-     * Hitscan: raio de `origem` na `direcao`, vale o primeiro alvo dentro do `alcance`.
-     * Devolve true se acertou algum alvo. Sem alocação.
+     * Hitscan: raio de `origem` na `direcao`; vale o primeiro inimigo vivo dentro do `alcance`.
+     * Devolve true se acertou. Sem alocação.
      */
-    fun atirar(origem: Vector3, direcao: Vector3, alcance: Float): Boolean {
+    fun atirar(origem: Vector3, direcao: Vector3, alcance: Float, dano: Int): Boolean {
         raio.set(origem, direcao)
-        var melhor: Alvo? = null
+        var melhor: Inimigo? = null
         var melhorDistancia = alcance
-        for (i in alvos.indices) {
-            val alvo = alvos[i]
-            if (Intersector.intersectRayBounds(raio, alvo.caixa, ponto)) {
+        for (i in inimigos.indices) {
+            val inimigo = inimigos[i]
+            if (!inimigo.vivo) continue
+            if (Intersector.intersectRayBounds(raio, inimigo.caixa, ponto)) {
                 val distancia = ponto.dst(origem)
                 if (distancia <= melhorDistancia) {
                     melhorDistancia = distancia
-                    melhor = alvo
+                    melhor = inimigo
                 }
             }
         }
-        melhor?.acertar()
+        melhor?.receberDano(dano)
         return melhor != null
-    }
-
-    private fun criarModeloAlvo(): Model {
-        val atributos = (Usage.Position or Usage.Normal).toLong()
-        return ModelBuilder().createBox(
-            Constantes.ALVO_LADO,
-            Constantes.ALVO_LADO,
-            Constantes.ALVO_LADO,
-            Material(
-                ColorAttribute.createDiffuse(
-                    Constantes.ALVO_COR_R,
-                    Constantes.ALVO_COR_G,
-                    Constantes.ALVO_COR_B,
-                    1f
-                )
-            ),
-            atributos
-        )
     }
 
     private fun criarMaterial(r: Float, g: Float, b: Float): Material {
@@ -111,6 +104,24 @@ class Mundo : Disposable {
         return Material(
             ColorAttribute.createDiffuse(r, g, b, 1f),
             IntAttribute.createCullFace(GL20.GL_NONE)
+        )
+    }
+
+    private fun criarModeloInimigo(): Model {
+        val atributos = (Usage.Position or Usage.Normal).toLong()
+        return ModelBuilder().createCapsule(
+            Constantes.ENIMIGO_RAIO,
+            Constantes.ENIMIGO_ALTURA,
+            Constantes.ENIMIGO_DIVISOES,
+            Material(
+                ColorAttribute.createDiffuse(
+                    Constantes.ENIMIGO_COR_PARADO_R,
+                    Constantes.ENIMIGO_COR_PARADO_G,
+                    Constantes.ENIMIGO_COR_PARADO_B,
+                    1f
+                )
+            ),
+            atributos
         )
     }
 
@@ -169,6 +180,6 @@ class Mundo : Disposable {
 
     override fun dispose() {
         modeloChao.dispose()
-        modeloAlvo.dispose()
+        modeloInimigo.dispose()
     }
 }

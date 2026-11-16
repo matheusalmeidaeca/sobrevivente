@@ -22,6 +22,10 @@ class Jogador : Disposable {
     val posicao = Vector3(0f, 0f, 0f)
     var yaw = 0f
 
+    /** Vida atual (0 a JOGADOR_VIDA_MAXIMA). A morte e o reinício são do Marco 1.6. */
+    var vida = Constantes.JOGADOR_VIDA_MAXIMA
+        private set
+
     private val modeloCorpo: Model
     private val modeloNariz: Model
     private val modeloClarao: Model
@@ -88,6 +92,10 @@ class Jogador : Disposable {
         nariz = ModelInstance(modeloNariz)
         clarao = ModelInstance(modeloClarao)
         atualizarTransformacao()
+    }
+
+    fun receberDano(dano: Int) {
+        vida = maxOf(0, vida - dano)
     }
 
     /**
