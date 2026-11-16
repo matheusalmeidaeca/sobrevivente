@@ -9,6 +9,7 @@ import math
 import numpy as np
 
 ATLAS = 1024
+FINO = False   # True = ALTA POLIGONAGEM: liga os detalhes finos (trama, costuras, vincos) dos Campos
 
 
 def _sp(a, p):
@@ -38,6 +39,7 @@ class Campo:
     def __init__(self):
         self.bossas = []
         self.funcoes = []
+        self.finas = []
 
     def bossa(self, cx, cy, cz, sx, sy, sz, amp, espelho=False):
         self.bossas.append((cx, cy, cz, sx, sy, sz, amp))
@@ -49,6 +51,11 @@ class Campo:
         self.funcoes.append(f)
         return self
 
+    def fina(self, f):
+        """Detalhe fino f(P, th, y) -> metros: so existe na malha ALTA (kit.FINO=True); na baixa vira normal map."""
+        self.finas.append(f)
+        return self
+
     def __call__(self, P, th, y):
         P = P.reshape(-1, 3)
         tot = np.zeros(len(P))
@@ -58,6 +65,9 @@ class Campo:
             tot += (np.exp(-0.5 * (d ** 2).sum(-1)) * B[None, :, 6]).sum(1)
         for f in self.funcoes:
             tot += f(P, np.ravel(th), np.ravel(y))
+        if FINO:
+            for f in self.finas:
+                tot += f(P, np.ravel(th), np.ravel(y))
         return tot
 
 

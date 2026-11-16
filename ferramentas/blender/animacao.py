@@ -258,6 +258,11 @@ def pesos_do_vertice(grupo, x, y, z):
         u = _suave((y - 1.54) / 0.05)  # pescoco -> cabeca
         return [("pescoco", 1.0 - u), ("cabeca", u)]
     if grupo == "tronco":
+        if y < 0.88:  # saia do casaco (garoto): segue o quadril e um pouco as coxas (nao fura na corrida)
+            k = _suave((0.88 - y) / 0.30) * 0.45 * _suave(abs(x) / 0.08)  # 0 no centro: sem rasgo na costura
+            if k < 1e-4:
+                return [("quadril", 1.0)]
+            return [("quadril", 1.0 - k), ("coxa_dir" if x > 0 else "coxa_esq", k)]
         t = _suave((y - 0.90) / 0.22)  # cintura: quadril -> coluna
         lado = "esq" if x < 0 else "dir"
         w = _suave((abs(x) - 0.10) / 0.09) * _suave((y - 1.30) / 0.10) * 0.5  # ombro acompanha a clavicula
