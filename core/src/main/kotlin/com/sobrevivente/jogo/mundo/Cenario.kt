@@ -136,15 +136,22 @@ class Cenario : Disposable {
         val atributos = (Usage.Position or Usage.Normal or Usage.ColorPacked).toLong()
         val mb = ModelBuilder()
         mb.begin()
-        val mp = mb.part("decor", GL20.GL_TRIANGLES, atributos, Material())
         val d = VilaDecoracao.CAIXAS
         val m = Matrix4()
-        for (i in 0 until d.size / 10) {
-            val o = i * 10
+        var mp = mb.part("decor0", GL20.GL_TRIANGLES, atributos, Material())
+        for (i in 0 until d.size / 11) {
+            // a cada 150 formas pede uma parte nova: o ModelBuilder troca de malha antes de estourar o limite de vertices
+            if (i > 0 && i % 150 == 0) mp = mb.part("decor" + i, GL20.GL_TRIANGLES, atributos, Material())
+            val o = i * 11
             m.setToTranslation(d[o], d[o + 1], d[o + 2]).rotate(Vector3.Y, d[o + 6])
             mp.setVertexTransform(m)
             mp.setColor(d[o + 7], d[o + 8], d[o + 9], 1f)
-            mp.box(d[o + 3], d[o + 4], d[o + 5])
+            when (d[o + 10].toInt()) {
+                1 -> mp.sphere(d[o + 3], d[o + 4], d[o + 5], 10, 7)
+                2 -> mp.cylinder(d[o + 3], d[o + 4], d[o + 5], 10)
+                3 -> mp.cone(d[o + 3], d[o + 4], d[o + 5], 8)
+                else -> mp.box(d[o + 3], d[o + 4], d[o + 5])
+            }
         }
         return mb.end()
     }

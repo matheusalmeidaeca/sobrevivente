@@ -23,6 +23,9 @@ bloq_inimigo = []
 itens = []    # (x, z, y, tipo) tipo: 0 cura, 1 municao, 2 fuzil, 3 escopeta
 spawns = []
 inimigos = []
+cercas_seg = []   # pecas de cerca: ('h'|'v', a, b, fixo)
+caixotes = []     # (x, z, base)
+objetos = []      # (tipo, x, z): poco e fardos de feno (colisao + desenho proprio)
 casas_info = []  # (x0, z0, w, d, alt, tipo, lado, pos, larg) para a decoracao
 decor = []       # caixas so de desenho: (cx, cy, cz, sx, sy, sz, rotY, r, g, b)
 telhados = []    # (x0, z0, x1, z1, yBase, altura, forma, r, g, b, oculta) forma 0 cumeeira em X, 1 em Z, 2 piramide
@@ -67,8 +70,10 @@ def cerca(x0, z0, x1, z1, vaos=()):
         if not any(not (b <= v0 or a >= v1) for v0, v1 in vaos):
             if horizontal:
                 caixa(a, z0 - 0.1, b, z0 + 0.1, 2, 1.0)
+                cercas_seg.append(('h', a, b, z0))
             else:
                 caixa(x0 - 0.1, a, x0 + 0.1, b, 2, 1.0)
+                cercas_seg.append(('v', a, b, x0))
         a = b
 
 
@@ -90,7 +95,8 @@ caixa(fx0, fz0, fx0 + 2.2, fz0 + 0.2, 4, 1.0, ALTURA_ANDAR) if False else None
 itens.append((-21.0, -28.5, ALTURA_ANDAR, 3))   # ESCOPETA
 itens.append((-31.0, -29.0, ALTURA_ANDAR, 1))
 itens.append((-24.0, -22.0, 0.0, 0))
-caixa(-28.0, -28.0, -27.0, -27.0, 2, 1.0, ALTURA_ANDAR)  # caixote em cima
+caixa(-28.0, -28.0, -27.0, -27.0, 9, 1.0, ALTURA_ANDAR)  # caixote em cima
+caixotes.append((-27.5, -27.5, ALTURA_ANDAR))
 
 casa(14, -32, 14, 10, 'S', 0.5, 3.0, 6)
 casa(-32, 10, 12, 10, 'N', 0.5, 3.0, 7)
@@ -108,9 +114,14 @@ casa(-12, -62, 24, 16, 'S', 0.5, 4.0, 1, 5.0)
 casa(38, -52, 20, 14, 'O', 0.5, 4.0, 3, 4.5)
 caixa(-19.0, -50.0, -14.0, -45.0, 1, 11.0)   # torre do sino (pedra)
 # poco e caixotes
-caixa(-1.2, -7.2, 1.2, -4.8, 1, 1.2)
+caixa(-1.2, -7.2, 1.2, -4.8, 10, 1.2)
+objetos.append((10, 0.0, -6.0))
+for (hx, hz) in [(62.0, -40.0), (62.0, -37.0), (34.0, -36.0), (31.0, -39.0)]:
+    caixa(hx - 0.7, hz - 0.7, hx + 0.7, hz + 0.7, 11, 1.4)
+    objetos.append((11, hx, hz))
 for (cx, cz) in [(8, 6), (-9, 7), (12, -10), (-14, -8), (25, 28), (-25, 28), (-38, -2), (47, 8), (-4, 28), (9, 30)]:
-    caixa(cx - 0.5, cz - 0.5, cx + 0.5, cz + 0.5, 2, 1.0)
+    caixa(cx - 0.5, cz - 0.5, cx + 0.5, cz + 0.5, 9, 1.0)
+    caixotes.append((cx, cz, 0.0))
 # cercas de quintal
 cerca(-38, -12, -10, -12, [(-28, -22)])
 cerca(-38, 2, -34, 2)
@@ -156,8 +167,9 @@ VIDRO = (0.10, 0.13, 0.17)
 TERRA = (0.43, 0.35, 0.25)
 
 
-def dec(cx, cy, cz, sx, sy, sz, cor, rot=0.0):
-    decor.append((cx, cy, cz, sx, sy, sz, rot, cor[0], cor[1], cor[2]))
+def dec(cx, cy, cz, sx, sy, sz, cor, rot=0.0, forma=0):
+    """forma: 0 caixa, 1 esfera/elipsoide, 2 cilindro, 3 cone (sx, sy, sz = diametro X, altura, diametro Z)."""
+    decor.append((cx, cy, cz, sx, sy, sz, rot, cor[0], cor[1], cor[2], forma))
 
 
 def janela(cx, cy, cz, eixo, lado):
@@ -252,24 +264,78 @@ for (x0, z0, w, d, alt, tipo, lado, pos, larg) in casas_info:
         dec(x0 + w + 4.5, 0.0125, cz, 9.0, 0.025, larg + 0.4, TERRA)
 dec(-31.0, 0.0125, -16.0, 2.4, 0.025, 12.0, TERRA)
 
-for (x, z) in arvs:
+# arvores: tronco redondo com raiz alargada; folhosa (esferas) ou pinheiro (cones empilhados)
+for k, (x, z) in enumerate(arvs):
     g = rnd.uniform(0.0, 1.0)
-    cor = (0.14 + 0.06 * g, 0.30 + 0.12 * g, 0.12 + 0.04 * g)
-    cor2 = (cor[0] * 0.85, cor[1] * 0.85, cor[2] * 0.85)
-    dec(x, 3.6, z, 4.2, 1.6, 4.2, cor2, rnd.uniform(0, 45))
-    dec(x, 5.0, z, 3.2, 1.5, 3.2, cor, rnd.uniform(0, 45))
-    dec(x, 6.3, z, 2.0, 1.4, 2.0, cor, rnd.uniform(0, 45))
-    dec(x, 7.2, z, 1.0, 0.8, 1.0, (cor[0] * 1.1, cor[1] * 1.1, cor[2]), rnd.uniform(0, 45))
+    cor = (0.14 + 0.07 * g, 0.30 + 0.14 * g, 0.12 + 0.05 * g)
+    escuro = (cor[0] * 0.8, cor[1] * 0.8, cor[2] * 0.8)
+    casca = (0.27, 0.19, 0.11)
+    dec(x, 3.0, z, 0.55, 6.0, 0.55, casca, 0, 2)
+    dec(x, 0.45, z, 1.3, 0.9, 1.3, casca, 0, 3)
+    if k % 3 == 0:  # pinheiro
+        for (yy, dd, hh, f) in [(2.6, 4.0, 2.6, 0.85), (4.3, 3.2, 2.4, 0.95), (5.9, 2.3, 2.2, 1.05), (7.3, 1.4, 1.8, 1.12)]:
+            dec(x, yy + hh / 2 - 0.4, z, dd, hh, dd, (cor[0] * f * 0.8, cor[1] * f * 0.95, cor[2] * f * 0.8), rnd.uniform(0, 90), 3)
+    else:  # folhosa: um grupo de elipsoides
+        dec(x, 5.2, z, 4.2, 3.0, 4.2, escuro, rnd.uniform(0, 90), 1)
+        for (ox, oy, oz, dd) in [(1.1, 5.6, 0.4, 2.8), (-1.0, 5.7, -0.6, 2.9), (0.2, 6.6, 0.9, 2.6), (-0.4, 6.3, -1.2, 2.5)]:
+            dec(x + ox, oy, z + oz, dd, dd * 0.85, dd, cor, rnd.uniform(0, 90), 1)
+# pedras (elipsoides baixos)
 for _ in range(60):
     px, pz = rnd.uniform(-74, 74), rnd.uniform(-74, 74)
     if abs(px) < 8 and abs(pz) < 8:
         continue
-    t = rnd.uniform(0.3, 0.7)
-    dec(px, t / 2, pz, t * 1.3, t, t, (0.42, 0.42, 0.40), rnd.uniform(0, 90))
-for _ in range(120):
+    t = rnd.uniform(0.3, 0.8)
+    tom = rnd.uniform(0.36, 0.5)
+    dec(px, t * 0.3, pz, t * 1.4, t * 0.7, t * 1.1, (tom, tom, tom - 0.02), rnd.uniform(0, 180), 1)
+# capim: tufos de cones finos
+for _ in range(110):
     px, pz = rnd.uniform(-76, 76), rnd.uniform(-76, 76)
     gg = rnd.uniform(0.0, 1.0)
-    dec(px, 0.15, pz, rnd.uniform(0.5, 1.2), 0.3, rnd.uniform(0.5, 1.2), (0.20 + 0.08 * gg, 0.34 + 0.1 * gg, 0.14), rnd.uniform(0, 90))
+    cor = (0.22 + 0.10 * gg, 0.38 + 0.10 * gg, 0.14)
+    for (ox, oz, hh) in [(0.0, 0.0, 0.7), (0.18, 0.1, 0.5), (-0.15, 0.12, 0.55)]:
+        dec(px + ox, hh / 2, pz + oz, 0.18, hh, 0.18, cor, 0, 3)
+
+# cercas: moirões redondos + duas travessas por peca
+MADEIRA_VELHA = (0.36, 0.27, 0.17)
+for (dirc, a, b, fixo) in cercas_seg:
+    if dirc == 'h':
+        dec(a, 0.6, fixo, 0.2, 1.2, 0.2, MADEIRA_VELHA, 0, 2)
+        dec(b, 0.6, fixo, 0.2, 1.2, 0.2, MADEIRA_VELHA, 0, 2)
+        for yy in (0.45, 0.85):
+            dec((a + b) / 2, yy, fixo, b - a, 0.09, 0.07, (0.42, 0.32, 0.20))
+    else:
+        dec(fixo, 0.6, a, 0.2, 1.2, 0.2, MADEIRA_VELHA, 0, 2)
+        dec(fixo, 0.6, b, 0.2, 1.2, 0.2, MADEIRA_VELHA, 0, 2)
+        for yy in (0.45, 0.85):
+            dec(fixo, yy, (a + b) / 2, 0.07, 0.09, b - a, (0.42, 0.32, 0.20))
+
+# caixotes: barris (cilindro + aros) e caixas de tabuas
+for k, (cx, cz, base) in enumerate(caixotes):
+    if k % 2 == 0:
+        dec(cx, base + 0.5, cz, 0.92, 1.0, 0.92, (0.40, 0.26, 0.14), 0, 2)
+        for yy in (0.22, 0.78):
+            dec(cx, base + yy, cz, 0.97, 0.07, 0.97, (0.18, 0.18, 0.20), 0, 2)
+        dec(cx, base + 1.0, cz, 0.8, 0.03, 0.8, (0.30, 0.20, 0.10), 0, 2)
+    else:
+        dec(cx, base + 0.5, cz, 0.96, 0.96, 0.96, (0.50, 0.37, 0.21), rnd.uniform(-8, 8))
+        for sx_ in (-0.4, 0.4):
+            dec(cx + sx_, base + 0.5, cz, 0.1, 0.98, 0.98, (0.30, 0.21, 0.12), 0)
+        dec(cx, base + 0.5, cz, 0.98, 0.1, 0.98, (0.30, 0.21, 0.12), 0)
+
+# poco (anel de pedra, agua escura, dois postes e telhadinho) e fardos de feno
+for (tipo, ox, oz) in objetos:
+    if tipo == 10:
+        dec(ox, 0.6, oz, 2.5, 1.2, 2.5, (0.48, 0.47, 0.44), 0, 2)
+        dec(ox, 1.0, oz, 1.9, 0.05, 1.9, (0.08, 0.14, 0.22), 0, 2)
+        dec(ox, 1.25, oz, 2.6, 0.12, 2.6, (0.56, 0.55, 0.52), 0, 2)
+        for sx_ in (-1.0, 1.0):
+            dec(ox + sx_, 2.0, oz, 0.16, 1.6, 0.16, MADEIRA, 0, 2)
+        telhados.append((ox - 1.6, oz - 1.6, ox + 1.6, oz + 1.6, 2.8, 0.9, 1, 0.40, 0.27, 0.18, 0))
+    else:
+        dec(ox, 0.6, oz, 1.4, 1.2, 1.4, (0.78, 0.64, 0.28), 0, 2)
+        dec(ox, 1.3, oz, 1.2, 0.5, 1.2, (0.82, 0.68, 0.30), 0, 3)
+        for yy in (0.35, 0.85):
+            dec(ox, yy, oz, 1.44, 0.06, 1.44, (0.55, 0.42, 0.18), 0, 2)
 
 # ------------------------------------------------------------------ teste de navegacao (mesma grade/folga do Navegacao.kt)
 CEL = 0.5
@@ -369,7 +435,7 @@ def kotlin():
     o.append("    /** Altura da base de cada parede (0 = chao; 3,2 = guarda-corpo do andar alto). */")
     o.append("    val PAREDES_BASE = floatArrayOf(" + ", ".join(f(p[4]) for p in paredes) + ")")
     o.append("    val PAREDES_ALTURA = floatArrayOf(" + ", ".join(f(p[5]) for p in paredes) + ")")
-    o.append("    /** 0 casa, 1 pedra, 2 cerca/caixote, 3 celeiro, 4 guarda-corpo, 5 tronco. */")
+    o.append("    /** 0 casa, 1 pedra, 2 cerca, 3 celeiro, 4 guarda-corpo, 5 tronco, 6-8 reboco, 9 caixote/barril, 10 poco, 11 fardo (2, 5, 9, 10, 11 so colisao: o desenho vem da decoracao). */")
     o.append("    val PAREDES_TIPO = intArrayOf(" + ", ".join(str(p[6]) for p in paredes) + ")")
     o.append("    /** Piso interno das casas (minX, minZ, maxX, maxZ). */")
     o.append("    val PISOS = floatArrayOf(" + ", ".join(f(v) for p in pisos for v in p) + ")")
@@ -407,7 +473,7 @@ def kotlin_decor():
          "        for (l in linhas) for (n in l.split(',')) if (n.isNotEmpty()) out.add(n.toFloat())",
          "        return out.toFloatArray()",
          "    }", "",
-         "    /** Por caixa: cx, cy, cz, sx, sy, sz, rotY(graus), r, g, b  (10 numeros). */",
+         "    /** Por forma: cx, cy, cz, sx, sy, sz, rotY(graus), r, g, b, forma (0 caixa, 1 esfera, 2 cilindro, 3 cone)  (11 numeros). */",
          "    val CAIXAS: FloatArray by lazy { ler(CAIXAS_TXT) }",
          "    /** Por telhado: x0, z0, x1, z1, yBase, altura, forma (0 cumeeira em X, 1 em Z, 2 piramide), r, g, b, oculta (1 = some com o jogador dentro) (11 numeros). */",
          "    val TELHADOS: FloatArray by lazy { ler(TELHADOS_TXT) }", ""]
@@ -445,7 +511,7 @@ def previa(caminho, b):
         d.rectangle([px(x0, z0), px(x1, z1)], fill=(120, 96, 66))
     for (x0, z0, x1, z1, a, c, e) in rampas:
         d.rectangle([px(x0, z0), px(x1, z1)], fill=(170, 140, 90))
-    cor = {0: (120, 84, 56), 1: (150, 150, 150), 2: (140, 110, 70), 3: (150, 60, 50), 4: (80, 60, 40), 5: (40, 70, 30), 6: (190, 170, 130), 7: (180, 140, 90), 8: (150, 160, 160)}
+    cor = {0: (120, 84, 56), 1: (150, 150, 150), 2: (140, 110, 70), 3: (150, 60, 50), 4: (80, 60, 40), 5: (40, 70, 30), 6: (190, 170, 130), 7: (180, 140, 90), 8: (150, 160, 160), 9: (140, 110, 70), 10: (120, 120, 120), 11: (200, 170, 70)}
     for (x0, z0, x1, z1, base, alt, tipo) in paredes:
         d.rectangle([px(x0, z0), px(x1, z1)], fill=cor[tipo])
     for (x, z, y, t) in itens:

@@ -1,10 +1,18 @@
-# MAPA DE CRIAÇÃO v2.20 — Jogo 3D de Sobrevivência (Kotlin + Python de bastidor / Android)
+# MAPA DE CRIAÇÃO v2.21 — Jogo 3D de Sobrevivência (Kotlin + Python de bastidor / Android)
 
-**Versão do documento:** 2.20 | **Data:** 16/11/2026 | **Substitui:** v2.19
+**Versão do documento:** 2.21 | **Data:** 16/11/2026 | **Substitui:** v2.20
 **Nome provisório:** PROJETO_SOBREVIVENTE (nome final: em aberto)
 
 > Cole este arquivo inteiro no início de qualquer conversa com uma IA.
 > Ele é a **fonte única da verdade**. O que não estiver aqui, a IA **pergunta**; ela não decide.
+
+### Mudanças da v2.20 para a v2.21 (F7 — salto de qualidade visual, nível "pesado")
+- **Personagens redondos:** `ferramentas/blender/redondear.py` subdivide a malha (jogador 2 níveis = 16,8 mil triângulos; zumbi 1 nível = 4,2 mil), arredonda cada parte (superelipse nos membros/tronco, elipsoide leve na cabeça) e recalcula **normais suaves**; esqueleto, pesos, UVs e animações iguais. `gerar_modelos_redondos.py <pasta_obj_F0> <saida>` regenera `jogador.g3dj` (35 animações, ~3,9 MB) e `zumbi.g3dj` (~0,9 MB). `previa_python.py` ganhou `SUAVE = True` (luz pela normal do vértice).
+- **Sombras reais:** `DirectionalShadowLight` (mapa 2048², área 56 m em volta do jogador, só o sol) com `DepthShaderProvider` (numBones = 20). Personagens, casas, telhados e decoração projetam e recebem. A sombra redonda translúcida continua como sombra de contato. `Constantes.SOMBRAS_REAIS = false` desliga.
+- **Pós-processamento** (`grafico/PosProcessamento.kt`): a cena vai para um FBO e sai com **FXAA simplificado**, **bloom** (1/4 da resolução, borrão gaussiano em 2 passos), contraste/saturação/tom quente e **vinheta**. Se o shader/FBO falhar, cai sozinho no desenho direto. `POS_PROCESSAMENTO = false` desliga.
+- **Cenário com volume:** árvores com tronco cilíndrico + raiz alargada e copas de elipsoides (folhosa) ou cones empilhados (pinheiro); cercas com moirões redondos e travessas; barris (cilindro + aros) e caixas de tabuas; poço (anel de pedra, água, postes e telhadinho); fardos de feno; pedras elípticas; capim em cones. Esses objetos têm colisão em caixa (tipos 2, 5, 9, 10, 11 em `PAREDES_TIPO`) mas o desenho é da decoração (`Mundo.paredeVisivel`). `VilaDecoracao.kt` passou a 11 números por forma (0 caixa, 1 esfera, 2 cilindro, 3 cone).
+- **Efeitos de combate** (`grafico/Particulas.kt`, 600 partículas, 1 chamada de desenho): fumaça e faíscas no cano (mais fortes na escopeta), cápsula de latão ejetada, sangue (mais no abate), faíscas e poeira em parede/piso, poeira dos pés ao correr e ao pousar. `Mundo.atirar` agora guarda o ponto e o tipo do impacto.
+- Limitações: só o último projétil da escopeta gera efeito de impacto; sombras com bias padrão do LibGDX (podem aparecer listras em superfícies muito inclinadas); 16,8 mil triângulos do jogador + 14 zumbis de 4,2 mil + sombra (cena desenhada duas vezes) pesam em celular fraco; **tudo não compilado nem testado pela IA** (shaders GLSL e FBO são o maior risco).
 
 ### Mudanças da v2.19 para a v2.20 (F6 — estética geral)
 - **Ceu e luz:** domo em degradê (horizonte claro -> zênite azulado) que segue a câmera (`mundo/Cenario.kt`), **névoa** do LibGDX (`ColorAttribute.Fog`, cor = horizonte; some o fim do mundo na bruma, far = 120 m), sol mais quente. Chão com tom de verde/terra por quadrado (cor por vértice, sem cara de tabuleiro). **Sombras redondas** translúcidas sob o jogador e os zumbis.
@@ -794,7 +802,7 @@ RELATÓRIO
 
 ## 22. ESTADO ATUAL (atualizar ao fim de cada sessão)
 
-- Marco atual: **F6 entregue (v2.20: estética geral; não compilado pela IA)**; antes F5 entregue (v2.19: movimento CoD Mobile, vila grande, respawn, casas; não compilado pela IA)**; antes F4 entregue (v2.18: 3 armas, troca, pegada com IK; não compilado pela IA)**; antes F3d ( (v2.17: referências de zumbi e protagonista)**; antes F3c ( (v2.16: suavidade, ataque com um braço, vagar e A*; não compilado pela IA)**; antes: **1.8 (dono informou "deu certo"; caixas a marcar por ele)**; trilha ativa de ferramentas: **F0 e F1 (rodaram no CI), F2 (rodou no CI; poses a aprovar) e F3 (entregue, em teste)**
+- Marco atual: **F7 entregue (v2.21: personagens redondos, sombras reais, pós-processamento, cenário com volume, partículas; não compilado pela IA)**; antes F6 entregue (v2.20: estética geral; não compilado pela IA)**; antes F5 entregue (v2.19: movimento CoD Mobile, vila grande, respawn, casas; não compilado pela IA)**; antes F4 entregue (v2.18: 3 armas, troca, pegada com IK; não compilado pela IA)**; antes F3d ( (v2.17: referências de zumbi e protagonista)**; antes F3c ( (v2.16: suavidade, ataque com um braço, vagar e A*; não compilado pela IA)**; antes: **1.8 (dono informou "deu certo"; caixas a marcar por ele)**; trilha ativa de ferramentas: **F0 e F1 (rodaram no CI), F2 (rodou no CI; poses a aprovar) e F3 (entregue, em teste)**
 - Último build verde confirmado: run #9 (código dos Marcos 1.7 e 1.8). F0 enviado (`ebb5ef4`); "Gerar modelo" ainda não rodado
 - Versões congeladas: **sim** (seção 6)
 - Arquivos existentes no repositório: tudo até o Marco 1.7 + 1 novo no 1.8 (`mundo/Colisao.kt`) e 8 alterados (depois do push)

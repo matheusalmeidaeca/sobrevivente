@@ -8,6 +8,10 @@ import com.badlogic.gdx.graphics.GL20
 import com.badlogic.gdx.graphics.g2d.SpriteBatch
 import com.badlogic.gdx.graphics.g3d.ModelBatch
 import com.badlogic.gdx.graphics.g3d.shaders.DefaultShader
+import com.badlogic.gdx.graphics.g3d.shaders.DepthShader
+import com.badlogic.gdx.graphics.g3d.utils.DepthShaderProvider
+import com.sobrevivente.jogo.grafico.Particulas
+import com.sobrevivente.jogo.grafico.PosProcessamento
 import com.badlogic.gdx.graphics.g3d.utils.DefaultShaderProvider
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer
 import com.badlogic.gdx.math.MathUtils
@@ -38,6 +42,11 @@ class TelaJogo : ScreenAdapter() {
     private val hud = Hud(controles, maleta, mundo)
 
     private val loteModelos = ModelBatch(criarProvedorShader())
+    private val loteSombra = ModelBatch(criarProvedorSombra())
+    private val pos = PosProcessamento()
+    private val particulas = Particulas()
+    private val tmp = Vector3()
+    private var tempoPoeira = 0f
     private val lote = SpriteBatch()
     private val forma = ShapeRenderer()
 
@@ -54,6 +63,35 @@ class TelaJogo : ScreenAdapter() {
         val config = DefaultShader.Config()
         config.numBones = Constantes.NUM_OSSOS_SHADER
         return DefaultShaderProvider(config)
+    }
+
+    /** Sombra: o shader de profundidade tambem precisa aceitar os ossos do boneco. */
+    private fun criarProvedorSombra(): DepthShaderProvider {
+        val config = DepthShader.Config()
+        config.numBones = Constantes.NUM_OSSOS_SHADER
+        return DepthShaderProvider(config)
+    }
+
+    /** Desenha no mapa de sombra tudo que projeta sombra (personagens, casas, decoracao). */
+    private fun desenharSombras() {
+        val luz = mundo.luzSol ?: return
+        luz.begin(jogador.posicao, cameraJogo.camera.direction)
+        loteSombra.begin(luz.camera)
+        for (i in mundo.paredes.indices) {
+            if (mundo.paredeVisivel(i)) loteSombra.render(mundo.paredes[i])
+        }
+        loteSombra.render(mundo.cenario.decoracao)
+        for (i in mundo.cenario.telhados.indices) {
+            if (mundo.cenario.telhadoVisivel(i)) loteSombra.render(mundo.cenario.telhados[i])
+        }
+        loteSombra.render(jogador.corpo)
+        jogador.armaVisivel?.let { loteSombra.render(it) }
+        for (i in mundo.inimigos.indices) {
+            val inimigo = mundo.inimigos[i]
+            if (inimigo.visivel) loteSombra.render(inimigo.instancia)
+        }
+        loteSombra.end()
+        luz.end()
     }
 
     override fun show() {
@@ -104,6 +142,7 @@ class TelaJogo : ScreenAdapter() {
                 if (mundo.atirar(cameraJogo.camera.position, direcaoTiro, tipo.alcance, tipo.dano)) acertou = true
             }
             if (acertou) hud.mostrarAcerto()
+            efeitosDoTiro(tipo)
         }
         if (controles.consumirPressao(ControlesToque.ACAO_TROCAR)) {
             if (arma.trocar()) hud.mostrarMensagem(arma.tipo.nome)
@@ -115,6 +154,37 @@ class TelaJogo : ScreenAdapter() {
         jogador.definirRecarga(arma.recarregando)
         if (controles.consumirPressao(ControlesToque.ACAO_INTERAGIR)) interagir()
         jogador.atualizarTiro(dt, cameraJogo.yaw, atirou)
+    }
+
+    /** Fumaca/faiscas no cano, capsula ejetada e o que o ultimo raio acertou (sangue ou faiscas). */
+    private fun efeitosDoTiro(tipo: com.sobrevivente.jogo.mundo.TipoArma) {
+        val c = cameraJogo.camera
+        if (jogador.armaVisivel != null) {
+            jogador.clarao.transform.getTranslation(tmp)
+            particulas.tiro(tmp.x, tmp.y, tmp.z, c.direction.x, c.direction.y, c.direction.z, tipo.projeteis > 1)
+            particulas.capsula(tmp.x - c.direction.x * 0.3f, tmp.y - 0.05f, tmp.z - c.direction.z * 0.3f, -c.direction.z, c.direction.x)
+        }
+        when (mundo.impactoTipo) {
+            1 -> particulas.sangue(
+                mundo.impacto.x, mundo.impacto.y, mundo.impacto.z,
+                c.direction.x, c.direction.y, c.direction.z, mundo.impactoMorreu
+            )
+            2 -> particulas.impacto(
+                mundo.impacto.x, mundo.impacto.y, mundo.impacto.z,
+                c.direction.x, c.direction.y, c.direction.z
+            )
+        }
+    }
+
+    /** Poeira nos pes ao correr e ao pousar do pulo. */
+    private fun efeitosDeMovimento(dt: Float) {
+        if (morto) return
+        if (jogador.consumirPouso()) particulas.poeira(jogador.posicao.x, jogador.posicao.y, jogador.posicao.z, 7)
+        tempoPoeira -= dt
+        if (jogador.sprintando && tempoPoeira <= 0f) {
+            tempoPoeira = 0.16f
+            particulas.poeira(jogador.posicao.x, jogador.posicao.y, jogador.posicao.z, 1)
+        }
     }
 
     /** INTERAGIR: guarda na maleta o item mais perto (raio 1,5 m). Se não couber, recusa. */
@@ -185,6 +255,7 @@ class TelaJogo : ScreenAdapter() {
         jogador = Jogador()
         arma.reiniciar()
         mundo.reiniciar()
+        particulas.limpar()
         maleta.limpar()
         hud.limparMensagem()
         cameraJogo.seguir(jogador.posicao)
@@ -226,6 +297,7 @@ class TelaJogo : ScreenAdapter() {
                 val fl = kotlin.math.sqrt(fx * fx + fz * fz)
                 if (fl > 0.001f) { fx /= fl; fz /= fl } else { fx = 0f; fz = -1f }
                 mundo.atualizar(dt, jogador, fx, fz)
+                efeitosDeMovimento(dt)
             }
             hud.atualizar(dt) // o tempo das mensagens corre também com a maleta aberta
             if (!morto && jogador.vida <= 0) morrer()
@@ -235,7 +307,9 @@ class TelaJogo : ScreenAdapter() {
         hud.inimigosVivos = mundo.contarInimigosVivos()
         hud.definirJogador(jogador.posicao.x, jogador.posicao.z)
 
-        // Desenho 3D
+        // Desenho 3D (primeiro o mapa de sombra, depois a cena numa textura com pos-processamento)
+        desenharSombras()
+        pos.comecar()
         ScreenUtils.clear(
             Constantes.COR_CEU_R,
             Constantes.COR_CEU_G,
@@ -262,7 +336,7 @@ class TelaJogo : ScreenAdapter() {
             loteModelos.render(mundo.pisos[i], mundo.ambiente)
         }
         for (i in mundo.paredes.indices) {
-            loteModelos.render(mundo.paredes[i], mundo.ambiente)
+            if (mundo.paredeVisivel(i)) loteModelos.render(mundo.paredes[i], mundo.ambiente)
         }
         loteModelos.render(jogador.corpo, mundo.ambiente)
         if (!jogador.animado) loteModelos.render(jogador.nariz, mundo.ambiente)
@@ -277,6 +351,9 @@ class TelaJogo : ScreenAdapter() {
             if (!item.coletado) loteModelos.render(item.instancia, mundo.ambiente)
         }
         loteModelos.end()
+        particulas.atualizar(if (pausado || maletaAberta) 0f else dt)
+        particulas.desenhar(cameraJogo.camera)
+        pos.terminar()
 
         // HUD: formas com transparência, depois textos
         Gdx.gl.glEnable(GL20.GL_BLEND)
@@ -295,6 +372,7 @@ class TelaJogo : ScreenAdapter() {
 
     override fun resize(width: Int, height: Int) {
         cameraJogo.redimensionar(width, height)
+        pos.redimensionar(width, height)
         controles.redimensionar(width, height, Gdx.graphics.density)
         hud.redimensionar(width, height, Gdx.graphics.density)
         lote.projectionMatrix.setToOrtho2D(0f, 0f, width.toFloat(), height.toFloat())
@@ -305,6 +383,9 @@ class TelaJogo : ScreenAdapter() {
 
     override fun dispose() {
         loteModelos.dispose()
+        loteSombra.dispose()
+        pos.dispose()
+        particulas.dispose()
         lote.dispose()
         forma.dispose()
         hud.dispose()

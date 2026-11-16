@@ -417,6 +417,10 @@ object Constantes {
         57.6f, -51.6f, 58f, -38.4f,
         -19f, -50f, -14f, -45f,
         -1.2f, -7.2f, 1.2f, -4.8f,
+        61.3f, -40.7f, 62.7f, -39.3f,
+        61.3f, -37.7f, 62.7f, -36.3f,
+        33.3f, -36.7f, 34.7f, -35.3f,
+        30.3f, -39.7f, 31.7f, -38.3f,
         7.5f, 5.5f, 8.5f, 6.5f,
         -9.5f, 6.5f, -8.5f, 7.5f,
         11.5f, -10.5f, 12.5f, -9.5f,
@@ -506,10 +510,10 @@ object Constantes {
         -44.3f, 59.7f, -43.7f, 60.3f
     )
     /** Altura da base de cada parede (0 = chao; 3,2 = guarda-corpo do andar alto). */
-    val PAREDES_BASE = floatArrayOf(0f, 0f, 0f, 0f, 0f, 3.2f, 3.2f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f)
-    val PAREDES_ALTURA = floatArrayOf(6.4f, 6.4f, 6.4f, 6.4f, 6.4f, 1f, 1f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 5f, 5f, 5f, 5f, 5f, 4.5f, 4.5f, 4.5f, 4.5f, 4.5f, 11f, 1.2f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f)
-    /** 0 casa, 1 pedra, 2 cerca/caixote, 3 celeiro, 4 guarda-corpo, 5 tronco. */
-    val PAREDES_TIPO = intArrayOf(0, 0, 0, 0, 0, 4, 2, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 0, 0, 0, 0, 0, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 0, 0, 0, 0, 0, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 3, 3, 3, 3, 3, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5)
+    val PAREDES_BASE = floatArrayOf(0f, 0f, 0f, 0f, 0f, 3.2f, 3.2f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f)
+    val PAREDES_ALTURA = floatArrayOf(6.4f, 6.4f, 6.4f, 6.4f, 6.4f, 1f, 1f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 5f, 5f, 5f, 5f, 5f, 4.5f, 4.5f, 4.5f, 4.5f, 4.5f, 11f, 1.2f, 1.4f, 1.4f, 1.4f, 1.4f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f)
+    /** 0 casa, 1 pedra, 2 cerca, 3 celeiro, 4 guarda-corpo, 5 tronco, 6-8 reboco, 9 caixote/barril, 10 poco, 11 fardo (2, 5, 9, 10, 11 so colisao: o desenho vem da decoracao). */
+    val PAREDES_TIPO = intArrayOf(0, 0, 0, 0, 0, 4, 9, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 0, 0, 0, 0, 0, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 0, 0, 0, 0, 0, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 3, 3, 3, 3, 3, 1, 10, 11, 11, 11, 11, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5)
     /** Piso interno das casas (minX, minZ, maxX, maxZ). */
     val PISOS = floatArrayOf(-33.6f, -31.6f, -18.4f, -18.4f, 14.4f, -31.6f, 27.6f, -22.4f, -31.6f, 10.4f, -20.4f, 19.6f, 18.4f, 12.4f, 29.6f, 23.6f, -55.6f, -5.6f, -47.4f, 1.6f, 40.4f, -7.6f, 49.6f, 0.6f, -9.6f, 40.4f, 3.6f, 49.6f, 30.4f, 36.4f, 39.6f, 45.6f, -47.6f, 36.4f, -37.4f, 44.6f, 55.4f, 30.4f, 63.6f, 37.6f, -59.6f, -47.6f, -50.4f, -39.4f, 58.4f, -29.6f, 66.6f, -21.4f, -11.6f, -61.6f, 11.6f, -46.4f, 38.4f, -51.6f, 57.6f, -38.4f)
     /** Andares altos: (minX, minZ, maxX, maxZ) e altura. */
@@ -643,4 +647,17 @@ object Constantes {
     const val ZUMBI_ESCALA_ALTURA_MAX = 1.08f
     const val ZUMBI_ESCALA_LARGURA_MIN = 0.88f
     const val ZUMBI_ESCALA_LARGURA_MAX = 1.18f
+
+    // ---- F7: pos-processamento e sombras reais ----
+    const val POS_PROCESSAMENTO = true // false = desenha direto na tela (celular fraco)
+    const val BLOOM_LIMIAR = 0.62f
+    const val BLOOM_FORCA = 0.55f
+    const val VINHETA_FORCA = 0.38f
+    const val COR_SATURACAO = 1.12f
+    const val COR_CONTRASTE = 1.08f
+    const val SOMBRAS_REAIS = true // false = so as sombras redondas
+    const val SOMBRA_MAPA_TAMANHO = 2048
+    const val SOMBRA_AREA_M = 56f // lado da area (em metros) em volta do jogador que recebe sombra
+    const val SOMBRA_PROFUNDIDADE_M = 120f
+    const val PARTICULAS_MAX = 600
 }

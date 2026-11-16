@@ -10,6 +10,7 @@ import com.badlogic.gdx.graphics.g3d.ModelInstance
 import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute
 import com.badlogic.gdx.graphics.g3d.attributes.IntAttribute
 import com.badlogic.gdx.graphics.g3d.environment.DirectionalLight
+import com.badlogic.gdx.graphics.g3d.environment.DirectionalShadowLight
 import com.badlogic.gdx.graphics.g3d.utils.MeshPartBuilder
 import com.badlogic.gdx.graphics.g3d.utils.ModelBuilder
 import com.badlogic.gdx.math.Intersector
@@ -25,6 +26,9 @@ import com.sobrevivente.jogo.inventario.TipoItem
 class Mundo : Disposable {
 
     val ambiente = Environment()
+    /** Sol com sombra real (null se Constantes.SOMBRAS_REAIS = false). Quem desenha chama begin/end dela. */
+    var luzSol: DirectionalShadowLight? = null
+        private set
     val chao: ModelInstance
     private val modeloChao: Model
     /** Modelo animado do zumbi (F2); null = capsula placeholder. */
@@ -49,6 +53,13 @@ class Mundo : Disposable {
     /** Sombras redondas: 0 = jogador, 1.. = zumbis (mesma ordem de `inimigos`). */
     val sombras: Array<ModelInstance>
 
+    /** Ultimo tiro: 0 = nada, 1 = zumbi, 2 = parede/piso. `impacto` = ponto; `impactoMorreu` = o zumbi morreu. */
+    var impactoTipo = 0
+        private set
+    var impactoMorreu = false
+        private set
+    val impacto = Vector3()
+
     private val raio = Ray() // reutilizado nos tiros: zero alocação por frame
     private val ponto = Vector3()
     private var tempoSpawn = Constantes.SPAWN_INTERVALO_S
@@ -63,15 +74,30 @@ class Mundo : Disposable {
                 1f
             )
         )
-        ambiente.add(
-            DirectionalLight().set(
-                Constantes.LUZ_SOL_R,
-                Constantes.LUZ_SOL_G,
-                Constantes.LUZ_SOL_B,
-                Constantes.LUZ_SOL_DIR_X,
-                Constantes.LUZ_SOL_DIR_Y,
-                Constantes.LUZ_SOL_DIR_Z
+        if (Constantes.SOMBRAS_REAIS) {
+            val sol = DirectionalShadowLight(
+                Constantes.SOMBRA_MAPA_TAMANHO, Constantes.SOMBRA_MAPA_TAMANHO,
+                Constantes.SOMBRA_AREA_M, Constantes.SOMBRA_AREA_M, 1f, Constantes.SOMBRA_PROFUNDIDADE_M
             )
+            sol.set(
+                Constantes.LUZ_SOL_R, Constantes.LUZ_SOL_G, Constantes.LUZ_SOL_B,
+                Constantes.LUZ_SOL_DIR_X, Constantes.LUZ_SOL_DIR_Y, Constantes.LUZ_SOL_DIR_Z
+            )
+            ambiente.add(sol)
+            ambiente.shadowMap = sol
+            luzSol = sol
+        } else {
+            ambiente.add(
+                DirectionalLight().set(
+                    Constantes.LUZ_SOL_R,
+                    Constantes.LUZ_SOL_G,
+                    Constantes.LUZ_SOL_B,
+                    Constantes.LUZ_SOL_DIR_X,
+                    Constantes.LUZ_SOL_DIR_Y,
+                    Constantes.LUZ_SOL_DIR_Z
+                )
+            )
+        }
         )
 
         ambiente.set(ColorAttribute(ColorAttribute.Fog, Constantes.NEVOA_R, Constantes.NEVOA_G, Constantes.NEVOA_B, 1f))
@@ -149,6 +175,12 @@ class Mundo : Disposable {
             }
         }
         Navegacao.livre(0f, 0f) // monta a grade de navegacao agora (e nao no meio do jogo)
+    }
+
+    /** Cercas, troncos, caixotes/barris, poco e fardos so colidem; o desenho deles vem da decoracao (Cenario). */
+    fun paredeVisivel(i: Int): Boolean {
+        val t = Constantes.PAREDES_TIPO[i]
+        return t != 2 && t != 5 && t != 9 && t != 10 && t != 11
     }
 
     private fun corDaParede(tipo: Int): FloatArray = when (tipo) {
@@ -351,8 +383,18 @@ class Mundo : Disposable {
                 }
             }
         }
-        melhor?.receberDano(dano)
-        return melhor != null
+        impactoTipo = 0
+        impactoMorreu = false
+        val alvo = melhor
+        if (alvo != null) {
+            impactoTipo = 1
+            impacto.set(origem).mulAdd(direcao, melhorDistancia)
+            impactoMorreu = alvo.receberDano(dano)
+        } else if (melhorDistancia < alcance - 0.01f) {
+            impactoTipo = 2 // parede ou piso
+            impacto.set(origem).mulAdd(direcao, melhorDistancia)
+        }
+        return alvo != null
     }
 
     private fun criarMaterial(r: Float, g: Float, b: Float): Material {
@@ -445,6 +487,7 @@ class Mundo : Disposable {
 
     override fun dispose() {
         modeloChao.dispose()
+        luzSol?.dispose()
         modeloSombra.dispose()
         cenario.dispose()
         modeloInimigo.dispose()

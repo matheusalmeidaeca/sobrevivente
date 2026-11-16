@@ -14,6 +14,7 @@ import exportar as ex
 
 LARGURA, ALTURA = 300, 400
 ESCALA = 150.0  # pixels por metro
+SUAVE = False  # True: luz pela normal do vertice (modelo redondo)
 ANGULO_VISTA = 125.0  # graus em torno de Y (3/4 pela frente-esquerda)
 
 
@@ -101,6 +102,11 @@ def desenhar(tris, textura, estilo, animacao, quadro, ang=None, arma=None):
         n = np.cross(pos[b] - pos[a], pos[c] - pos[a])
         nn = np.linalg.norm(n)
         n = n / nn if nn > 0 else n
+        if SUAVE:
+            nv = (nor[a] + nor[b] + nor[c])
+            nl = np.linalg.norm(nv)
+            if nl > 0:
+                n = nv / nl
         difuso = 0.45 + 0.55 * max(0.0, float(np.dot(n, luz)))
         sub[ok] = z[ok]
         prof[miny:maxy + 1, minx:maxx + 1] = sub

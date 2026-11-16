@@ -53,6 +53,7 @@ class Jogador : Disposable {
     private var fatorAnim = 1f            // velocidade de reproducao suavizada
     private val animador: Animador
     private var velY = 0f
+    private var pousou = false
     private var noChao = true
     var agachado = false
         private set
@@ -217,6 +218,7 @@ class Jogador : Disposable {
             velY -= Constantes.GRAVIDADE * dt
             posicao.y += velY * dt
             if (posicao.y <= chaoY && velY <= 0f) {
+                if (velY < -3f) pousou = true
                 posicao.y = chaoY
                 velY = 0f
                 noChao = true
@@ -228,6 +230,17 @@ class Jogador : Disposable {
         if (temEntrada || !noChao) Colisao.resolver(posicao, Constantes.JOGADOR_RAIO)
 
         atualizarTransformacao()
+    }
+
+    /** Correndo de verdade no chao (sprint): serve para a poeira dos pes. */
+    val sprintando: Boolean
+        get() = noChao && !agachado && fatorMov > 1.2f && intensidadeMovimento > 0.5f
+
+    /** Acabou de pousar de um pulo? (true uma vez, para a poeira). */
+    fun consumirPouso(): Boolean {
+        val v = pousou
+        pousou = false
+        return v
     }
 
     /** PULAR: so no chao e em pe. */
