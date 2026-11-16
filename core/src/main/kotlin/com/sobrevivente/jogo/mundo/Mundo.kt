@@ -98,7 +98,6 @@ class Mundo : Disposable {
                 )
             )
         }
-        )
 
         ambiente.set(ColorAttribute(ColorAttribute.Fog, Constantes.NEVOA_R, Constantes.NEVOA_G, Constantes.NEVOA_B, 1f))
         sombras = Array(Constantes.INIMIGOS_POOL.coerceAtLeast(Constantes.INIMIGOS_XZ.size / 2) + 1) { ModelInstance(modeloSombra) }

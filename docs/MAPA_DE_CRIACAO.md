@@ -6,6 +6,8 @@
 > Cole este arquivo inteiro no início de qualquer conversa com uma IA.
 > Ele é a **fonte única da verdade**. O que não estiver aqui, a IA **pergunta**; ela não decide.
 
+> Correção pós-CI (v2.21b): `Mundo.kt` tinha um `)` sobrando no init (erro 'Expecting an element'); removido. Resto revisado à mão, ainda sem compilador.
+
 ### Mudanças da v2.20 para a v2.21 (F7 — salto de qualidade visual, nível "pesado")
 - **Personagens redondos:** `ferramentas/blender/redondear.py` subdivide a malha (jogador 2 níveis = 16,8 mil triângulos; zumbi 1 nível = 4,2 mil), arredonda cada parte (superelipse nos membros/tronco, elipsoide leve na cabeça) e recalcula **normais suaves**; esqueleto, pesos, UVs e animações iguais. `gerar_modelos_redondos.py <pasta_obj_F0> <saida>` regenera `jogador.g3dj` (35 animações, ~3,9 MB) e `zumbi.g3dj` (~0,9 MB). `previa_python.py` ganhou `SUAVE = True` (luz pela normal do vértice).
 - **Sombras reais:** `DirectionalShadowLight` (mapa 2048², área 56 m em volta do jogador, só o sol) com `DepthShaderProvider` (numBones = 20). Personagens, casas, telhados e decoração projetam e recebem. A sombra redonda translúcida continua como sombra de contato. `Constantes.SOMBRAS_REAIS = false` desliga.
