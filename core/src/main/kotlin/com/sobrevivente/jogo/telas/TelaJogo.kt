@@ -14,14 +14,16 @@ import com.sobrevivente.jogo.camera.CameraTerceiraPessoa
 import com.sobrevivente.jogo.entrada.ControlesToque
 import com.sobrevivente.jogo.hud.Hud
 import com.sobrevivente.jogo.hud.Joystick
+import com.sobrevivente.jogo.mundo.Arma
 import com.sobrevivente.jogo.mundo.Jogador
 import com.sobrevivente.jogo.mundo.Mundo
 
-/** Marco 1.3: HUD base (vida, mira, botões visuais, minimapa placeholder, debug e pausa). */
+/** Marco 1.4: tiro hitscan, munição, recarga, alvos de teste e feedback de acerto (sobre o HUD do 1.3). */
 class TelaJogo : ScreenAdapter() {
 
     private val mundo = Mundo()
     private val jogador = Jogador()
+    private val arma = Arma()
     private val cameraJogo = CameraTerceiraPessoa()
     private val controles = ControlesToque()
     private val joystick = Joystick(controles)
@@ -76,7 +78,26 @@ class TelaJogo : ScreenAdapter() {
             )
             jogador.mover(dt, controles.movimentoX, controles.movimentoY, cameraJogo.yaw)
             cameraJogo.seguir(jogador.posicao)
+
+            // Tiro: o raio sai da câmera, atravessa o centro da tela (onde fica a mira)
+            val atirou = arma.atualizar(
+                dt,
+                controles.acaoPressionada(ControlesToque.ACAO_ATIRAR),
+                controles.consumirPressao(ControlesToque.ACAO_RECARREGAR)
+            )
+            if (atirou) {
+                val acertou = mundo.atirar(
+                    cameraJogo.camera.position,
+                    cameraJogo.camera.direction,
+                    Constantes.PISTOLA_ALCANCE
+                )
+                if (acertou) hud.mostrarAcerto()
+            }
+            jogador.atualizarTiro(dt, cameraJogo.yaw, atirou)
+            mundo.atualizar(dt)
+            hud.atualizar(dt)
         }
+        hud.definirMunicao(arma.carregador, arma.reserva, arma.recarregando)
 
         // Desenho 3D
         ScreenUtils.clear(
@@ -90,6 +111,10 @@ class TelaJogo : ScreenAdapter() {
         loteModelos.render(mundo.chao, mundo.ambiente)
         loteModelos.render(jogador.corpo, mundo.ambiente)
         loteModelos.render(jogador.nariz, mundo.ambiente)
+        if (jogador.claraoVisivel) loteModelos.render(jogador.clarao, mundo.ambiente)
+        for (i in mundo.alvos.indices) {
+            loteModelos.render(mundo.alvos[i].instancia, mundo.ambiente)
+        }
         loteModelos.end()
 
         // HUD: formas com transparência, depois textos

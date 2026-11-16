@@ -12,15 +12,23 @@ import com.badlogic.gdx.graphics.g3d.attributes.IntAttribute
 import com.badlogic.gdx.graphics.g3d.environment.DirectionalLight
 import com.badlogic.gdx.graphics.g3d.utils.MeshPartBuilder
 import com.badlogic.gdx.graphics.g3d.utils.ModelBuilder
+import com.badlogic.gdx.math.Intersector
+import com.badlogic.gdx.math.Vector3
+import com.badlogic.gdx.math.collision.Ray
 import com.badlogic.gdx.utils.Disposable
 import com.sobrevivente.jogo.Constantes
 
-/** Cena: luz e chão. Sem desenho de HUD aqui. */
+/** Cena: luz, chão e alvos de teste. Sem desenho de HUD aqui. */
 class Mundo : Disposable {
 
     val ambiente = Environment()
     val chao: ModelInstance
     private val modeloChao: Model
+    private val modeloAlvo: Model
+    val alvos: Array<Alvo>
+
+    private val raio = Ray() // reutilizado nos tiros: zero alocação por frame
+    private val ponto = Vector3()
 
     init {
         ambiente.set(
@@ -45,6 +53,57 @@ class Mundo : Disposable {
 
         modeloChao = criarModeloChao()
         chao = ModelInstance(modeloChao)
+
+        modeloAlvo = criarModeloAlvo()
+        alvos = Array(Constantes.ALVOS_XZ.size / 2) { i ->
+            Alvo(modeloAlvo, Constantes.ALVOS_XZ[i * 2], Constantes.ALVOS_XZ[i * 2 + 1])
+        }
+    }
+
+    fun atualizar(dt: Float) {
+        for (i in alvos.indices) {
+            alvos[i].atualizar(dt)
+        }
+    }
+
+    /**
+     * Hitscan: raio de `origem` na `direcao`, vale o primeiro alvo dentro do `alcance`.
+     * Devolve true se acertou algum alvo. Sem alocação.
+     */
+    fun atirar(origem: Vector3, direcao: Vector3, alcance: Float): Boolean {
+        raio.set(origem, direcao)
+        var melhor: Alvo? = null
+        var melhorDistancia = alcance
+        for (i in alvos.indices) {
+            val alvo = alvos[i]
+            if (Intersector.intersectRayBounds(raio, alvo.caixa, ponto)) {
+                val distancia = ponto.dst(origem)
+                if (distancia <= melhorDistancia) {
+                    melhorDistancia = distancia
+                    melhor = alvo
+                }
+            }
+        }
+        melhor?.acertar()
+        return melhor != null
+    }
+
+    private fun criarModeloAlvo(): Model {
+        val atributos = (Usage.Position or Usage.Normal).toLong()
+        return ModelBuilder().createBox(
+            Constantes.ALVO_LADO,
+            Constantes.ALVO_LADO,
+            Constantes.ALVO_LADO,
+            Material(
+                ColorAttribute.createDiffuse(
+                    Constantes.ALVO_COR_R,
+                    Constantes.ALVO_COR_G,
+                    Constantes.ALVO_COR_B,
+                    1f
+                )
+            ),
+            atributos
+        )
     }
 
     private fun criarMaterial(r: Float, g: Float, b: Float): Material {
@@ -110,5 +169,6 @@ class Mundo : Disposable {
 
     override fun dispose() {
         modeloChao.dispose()
+        modeloAlvo.dispose()
     }
 }

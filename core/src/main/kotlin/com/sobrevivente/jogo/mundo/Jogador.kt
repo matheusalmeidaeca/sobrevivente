@@ -24,8 +24,17 @@ class Jogador : Disposable {
 
     private val modeloCorpo: Model
     private val modeloNariz: Model
+    private val modeloClarao: Model
     val corpo: ModelInstance
     val nariz: ModelInstance
+    val clarao: ModelInstance
+
+    /** True durante os 0,05 s do clarão no cano (Marco 1.4). */
+    var claraoVisivel = false
+        private set
+
+    private var tempoClarao = 0f
+    private var tempoEncarar = 0f
 
     init {
         val construtor = ModelBuilder()
@@ -60,8 +69,24 @@ class Jogador : Disposable {
             atributos
         )
 
+        modeloClarao = construtor.createBox(
+            Constantes.CLARAO_LADO,
+            Constantes.CLARAO_LADO,
+            Constantes.CLARAO_LADO,
+            Material(
+                ColorAttribute.createDiffuse(
+                    Constantes.CLARAO_COR_R,
+                    Constantes.CLARAO_COR_G,
+                    Constantes.CLARAO_COR_B,
+                    1f
+                )
+            ),
+            atributos
+        )
+
         corpo = ModelInstance(modeloCorpo)
         nariz = ModelInstance(modeloNariz)
+        clarao = ModelInstance(modeloClarao)
         atualizarTransformacao()
     }
 
@@ -90,14 +115,40 @@ class Jogador : Disposable {
             Constantes.MAPA_LIMITE
         )
 
-        // O corpo vira suavemente para a direção do movimento.
-        val yawAlvo = MathUtils.atan2(-direcaoX, -direcaoZ) * MathUtils.radiansToDegrees
-        yaw = MathUtils.lerpAngleDeg(
-            yaw,
-            yawAlvo,
-            minOf(1f, Constantes.JOGADOR_VELOCIDADE_GIRO * dt)
-        )
+        // O corpo vira suavemente para a direção do movimento
+        // (a não ser que esteja encarando a mira logo após atirar).
+        if (tempoEncarar <= 0f) {
+            val yawAlvo = MathUtils.atan2(-direcaoX, -direcaoZ) * MathUtils.radiansToDegrees
+            yaw = MathUtils.lerpAngleDeg(
+                yaw,
+                yawAlvo,
+                minOf(1f, Constantes.JOGADOR_VELOCIDADE_GIRO * dt)
+            )
+        }
 
+        atualizarTransformacao()
+    }
+
+    /**
+     * Chamar todo frame com o jogo rodando. Ao atirar: encara a direção da mira por
+     * PISTOLA_TEMPO_ENCARAR_S (seção 11) e mostra o clarão por CLARAO_DURACAO_S. Sem alocação.
+     */
+    fun atualizarTiro(dt: Float, yawCamera: Float, atirou: Boolean) {
+        if (!atirou && tempoEncarar <= 0f && !claraoVisivel) return
+
+        if (atirou) {
+            tempoEncarar = Constantes.PISTOLA_TEMPO_ENCARAR_S
+            tempoClarao = Constantes.CLARAO_DURACAO_S
+            claraoVisivel = true
+        }
+        if (tempoEncarar > 0f) {
+            tempoEncarar -= dt
+            yaw = yawCamera
+        }
+        if (tempoClarao > 0f) {
+            tempoClarao -= dt
+            if (tempoClarao <= 0f) claraoVisivel = false
+        }
         atualizarTransformacao()
     }
 
@@ -112,10 +163,15 @@ class Jogador : Disposable {
             .setToTranslation(posicao.x, posicao.y + Constantes.NARIZ_ALTURA_DO_CHAO, posicao.z)
             .rotate(Vector3.Y, yaw)
             .translate(0f, 0f, -Constantes.NARIZ_DESLOCAMENTO_FRENTE)
+        clarao.transform
+            .setToTranslation(posicao.x, posicao.y + Constantes.CLARAO_ALTURA_DO_CHAO, posicao.z)
+            .rotate(Vector3.Y, yaw)
+            .translate(0f, 0f, -Constantes.CLARAO_DESLOCAMENTO_FRENTE)
     }
 
     override fun dispose() {
         modeloCorpo.dispose()
         modeloNariz.dispose()
+        modeloClarao.dispose()
     }
 }

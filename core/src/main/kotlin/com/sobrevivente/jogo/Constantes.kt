@@ -155,4 +155,51 @@ object Constantes {
     // Pausa
     const val PAUSA_ALFA_FUNDO = 0.55f
     const val PAUSA_ESPACO_DP = 12f
+
+    // Pistola placeholder (seção 12 do mapa)
+    const val PISTOLA_CADENCIA = 2.5f // tiros por segundo
+    const val PISTOLA_CARREGADOR = 12
+    const val PISTOLA_RESERVA_INICIAL = 36
+    const val PISTOLA_RECARGA_S = 1.5f
+    const val PISTOLA_ALCANCE = 30f // metros, a partir da câmera
+    const val PISTOLA_TEMPO_ENCARAR_S = 0.5f // jogador encara a mira depois de atirar (seção 11)
+
+    // Clarão no cano (cubo amarelo)
+    const val CLARAO_DURACAO_S = 0.05f
+    const val CLARAO_LADO = 0.15f
+    const val CLARAO_ALTURA_DO_CHAO = 1.4f
+    const val CLARAO_DESLOCAMENTO_FRENTE = 0.9f
+    const val CLARAO_COR_R = 1.0f
+    const val CLARAO_COR_G = 0.90f
+    const val CLARAO_COR_B = 0.10f
+
+    // Alvos fixos de teste (Marco 1.4)
+    const val ALVO_LADO = 1.5f
+    const val ALVO_COR_R = 0.35f
+    const val ALVO_COR_G = 0.45f
+    const val ALVO_COR_B = 0.75f
+    const val ALVO_FLASH_COR_R = 1.0f
+    const val ALVO_FLASH_COR_G = 0.25f
+    const val ALVO_FLASH_COR_B = 0.20f
+    const val ALVO_FLASH_S = 0.15f
+    /** Posições (x, z) dos cubos, em metros; o jogador começa em (0, 0) olhando para -Z. */
+    val ALVOS_XZ = floatArrayOf(
+        0f, -8f,
+        -5f, -14f,
+        6f, -18f,
+        -2f, -26f
+    )
+
+    // Marcador de acerto na mira
+    const val ACERTO_DURACAO_S = 0.15f
+    const val ACERTO_FOLGA_DP = 6f
+    const val ACERTO_COMPRIMENTO_DP = 8f
+    const val ACERTO_ESPESSURA_DP = 2.5f
+    const val ACERTO_COR_R = 1.0f
+    const val ACERTO_COR_G = 0.20f
+    const val ACERTO_COR_B = 0.20f
+
+    // Texto de munição (ao lado esquerdo do botão RECARREGAR)
+    const val MUNICAO_LARGURA_DP = 160f
+    const val MUNICAO_ESPACO_DP = 8f
 }

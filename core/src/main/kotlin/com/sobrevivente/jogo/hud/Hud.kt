@@ -11,10 +11,11 @@ import com.sobrevivente.jogo.entrada.ControlesToque
 
 /**
  * Marco 1.3: reúne tudo que fica sobre o jogo 3D (menos o joystick, que tem classe própria):
- * barra de vida, minimapa placeholder, mira, 3 botões, overlay de debug e tela de pausa.
+ * barra de vida, minimapa placeholder, mira, marcador de acerto, munição, 3 botões,
+ * overlay de debug e tela de pausa.
  * Só desenha; não decide nada de jogo.
  */
-class Hud(controles: ControlesToque) : Disposable {
+class Hud(private val controles: ControlesToque) : Disposable {
 
     private val fonte = BitmapFont()
     private val barraVida = BarraVida()
@@ -24,6 +25,21 @@ class Hud(controles: ControlesToque) : Disposable {
 
     var pausado = false
     var inimigosVivos = 0
+
+    // Munição (Marco 1.4)
+    private var carregador = 0
+    private var reserva = 0
+    private var recarregando = false
+    private val textoMunicao = StringBuilder(24) // reutilizado: zero alocação por frame
+    private var municaoX = 0f
+    private var municaoY = 0f
+    private var municaoLargura = 0f
+
+    // Marcador de acerto na mira
+    private var tempoAcerto = 0f
+    private var acertoFolga = 0f
+    private var acertoComprimento = 0f
+    private var acertoEspessura = 0f
 
     private var largura = 1f
     private var altura = 1f
@@ -43,6 +59,21 @@ class Hud(controles: ControlesToque) : Disposable {
         barraVida.vidaMaxima = vidaMaxima
     }
 
+    fun definirMunicao(carregadorAtual: Int, reservaAtual: Int, emRecarga: Boolean) {
+        carregador = carregadorAtual
+        reserva = reservaAtual
+        recarregando = emRecarga
+    }
+
+    fun mostrarAcerto() {
+        tempoAcerto = Constantes.ACERTO_DURACAO_S
+    }
+
+    /** Chamar todo frame com o jogo rodando. */
+    fun atualizar(dt: Float) {
+        if (tempoAcerto > 0f) tempoAcerto -= dt
+    }
+
     fun alternarDebug() {
         overlayDebug.alternar()
     }
@@ -60,6 +91,18 @@ class Hud(controles: ControlesToque) : Disposable {
         miraEspessura = Constantes.MIRA_ESPESSURA_DP * densidadeTela
         miraFolga = Constantes.MIRA_FOLGA_DP * densidadeTela
 
+        acertoFolga = Constantes.ACERTO_FOLGA_DP * densidadeTela
+        acertoComprimento = Constantes.ACERTO_COMPRIMENTO_DP * densidadeTela
+        acertoEspessura = Constantes.ACERTO_ESPESSURA_DP * densidadeTela
+
+        // Munição: à esquerda do botão RECARREGAR, alinhada à direita e centrada na altura dele
+        municaoLargura = Constantes.MUNICAO_LARGURA_DP * densidadeTela
+        val direita = controles.acaoX(ControlesToque.ACAO_RECARREGAR) -
+            controles.acaoRaio(ControlesToque.ACAO_RECARREGAR) -
+            Constantes.MUNICAO_ESPACO_DP * densidadeTela
+        municaoX = direita - municaoLargura
+        municaoY = controles.acaoY(ControlesToque.ACAO_RECARREGAR)
+
         debugX = Constantes.MARGEM_SEGURA_DP * densidadeTela
         debugYTopo = barraVida.baseY() - Constantes.DEBUG_TEXTO_DESLOCAMENTO_DP * densidadeTela
     }
@@ -69,6 +112,7 @@ class Hud(controles: ControlesToque) : Disposable {
         minimapa.desenhar(forma)
         barraVida.desenharFormas(forma)
         desenharMira(forma)
+        desenharMarcadorAcerto(forma)
         botoes.desenharFormas(forma)
         if (pausado) {
             forma.setColor(0f, 0f, 0f, Constantes.PAUSA_ALFA_FUNDO)
@@ -85,7 +129,45 @@ class Hud(controles: ControlesToque) : Disposable {
         definirEscala(Constantes.FONTE_ESCALA_HUD)
         barraVida.desenharTexto(lote, fonte)
         overlayDebug.desenhar(lote, fonte, fps, inimigosVivos, debugX, debugYTopo)
+        desenharMunicao(lote)
         botoes.desenharTextos(lote)
+    }
+
+    private fun desenharMunicao(lote: SpriteBatch) {
+        textoMunicao.setLength(0)
+        if (recarregando) {
+            textoMunicao.append("Recarregando...")
+        } else {
+            textoMunicao.append(carregador).append(" / ").append(reserva)
+        }
+        fonte.draw(
+            lote,
+            textoMunicao,
+            municaoX,
+            municaoY + fonte.capHeight * 0.5f,
+            municaoLargura,
+            Align.right,
+            false
+        )
+    }
+
+    /** X vermelho em volta do centro da mira, por ACERTO_DURACAO_S depois de acertar. */
+    private fun desenharMarcadorAcerto(forma: ShapeRenderer) {
+        if (tempoAcerto <= 0f) return
+        val cx = largura * 0.5f
+        val cy = altura * 0.5f
+        val f = acertoFolga
+        val c = acertoComprimento
+        forma.setColor(
+            Constantes.ACERTO_COR_R,
+            Constantes.ACERTO_COR_G,
+            Constantes.ACERTO_COR_B,
+            1f
+        )
+        forma.rectLine(cx + f, cy + f, cx + f + c, cy + f + c, acertoEspessura)
+        forma.rectLine(cx - f, cy + f, cx - f - c, cy + f + c, acertoEspessura)
+        forma.rectLine(cx + f, cy - f, cx + f + c, cy - f - c, acertoEspessura)
+        forma.rectLine(cx - f, cy - f, cx - f - c, cy - f - c, acertoEspessura)
     }
 
     private fun desenharMira(forma: ShapeRenderer) {

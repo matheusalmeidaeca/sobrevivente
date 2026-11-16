@@ -56,6 +56,7 @@ class ControlesToque : InputAdapter() {
     private val acoesRaio = FloatArray(NUM_ACOES)
     private val acoesAlvo = FloatArray(NUM_ACOES)
     private val acoesPonteiro = IntArray(NUM_ACOES) { SEM_PONTEIRO }
+    private val acoesPressionadas = BooleanArray(NUM_ACOES) // "apertou agora", lido uma vez
 
     // Zona e toque longo do overlay de debug
     private var debugLargura = 0f
@@ -122,6 +123,13 @@ class ControlesToque : InputAdapter() {
     fun acaoRaio(indice: Int): Float = acoesRaio[indice]
     fun acaoPressionada(indice: Int): Boolean = acoesPonteiro[indice] != SEM_PONTEIRO
 
+    /** True uma única vez a cada novo aperto do botão (para ações de um toque, como recarregar). */
+    fun consumirPressao(indice: Int): Boolean {
+        val valor = acoesPressionadas[indice]
+        acoesPressionadas[indice] = false
+        return valor
+    }
+
     /** Pausa: bloqueia toques novos e solta todos os dedos que estavam em uso. */
     fun definirBloqueado(valor: Boolean) {
         bloqueado = valor
@@ -172,6 +180,7 @@ class ControlesToque : InputAdapter() {
         giroY = 0f
         for (i in 0 until NUM_ACOES) {
             acoesPonteiro[i] = SEM_PONTEIRO
+            acoesPressionadas[i] = false
         }
         ponteiroDebug = SEM_PONTEIRO
         tempoDebug = 0f
@@ -246,7 +255,10 @@ class ControlesToque : InputAdapter() {
         // 2) Botões de ação: nunca viram câmera.
         val acao = acaoEm(x, y)
         if (acao >= 0) {
-            if (acoesPonteiro[acao] == SEM_PONTEIRO) acoesPonteiro[acao] = pointer
+            if (acoesPonteiro[acao] == SEM_PONTEIRO) {
+                acoesPonteiro[acao] = pointer
+                acoesPressionadas[acao] = true
+            }
             return true
         }
 
