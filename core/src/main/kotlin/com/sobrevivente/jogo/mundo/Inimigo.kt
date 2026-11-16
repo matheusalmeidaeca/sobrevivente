@@ -12,12 +12,13 @@ import kotlin.math.sqrt
 
 /**
  * Inimigo básico (seção 13 do mapa). Lógica no plano XZ.
- * Estados: PARADO -> PERSEGUINDO -> ATACANDO -> MORTO.
+ * Estados: PARADO (espera) <-> VAGANDO (anda sem rumo perto da origem) -> PERSEGUINDO (A* ao redor das paredes)
+ * -> ATACANDO (so com visao livre) -> MORTO.
  * A cor muda conforme o estado (ajuda a testar no celular) e pisca ao levar tiro.
  */
 class Inimigo(modelo: Model, x: Float, z: Float, private val animado: Boolean = false) {
 
-    enum class Estado { PARADO, PERSEGUINDO, ATACANDO, MORTO }
+    enum class Estado { PARADO, VAGANDO, PERSEGUINDO, ATACANDO, MORTO }
 
     val instancia = ModelInstance(modelo)
     val caixa = BoundingBox()
@@ -45,6 +46,15 @@ class Inimigo(modelo: Model, x: Float, z: Float, private val animado: Boolean = 
     private val pontoMaximo = Vector3()
     private var tempoAtaque = 0f
     private var tempoFlash = 0f
+
+    // Trajeto atual (copia propria: a Navegacao reaproveita os mesmos arrays para todos)
+    private val trajetoX = FloatArray(MAX_TRAJETO)
+    private val trajetoZ = FloatArray(MAX_TRAJETO)
+    private var trajetoN = 0
+    private var trajetoI = 0
+    private var tempoReplano = 0f
+    private var tempoEspera = MathUtils.random(Constantes.ENIMIGO_ESPERA_MIN_S, Constantes.ENIMIGO_ESPERA_MAX_S)
+    private var rumoYaw = 0f // para onde o corpo quer olhar andando
 
     init {
         // Cada ModelInstance tem cópia própria do material: a cor não afeta os outros inimigos.
@@ -85,29 +95,51 @@ class Inimigo(modelo: Model, x: Float, z: Float, private val animado: Boolean = 
         val dz = jogador.posicao.z - posicao.z
         val distancia = sqrt(dx * dx + dz * dz)
 
-        if (animado && (estado == Estado.PERSEGUINDO || estado == Estado.ATACANDO)) {
-            val alvo = MathUtils.atan2(-dx, -dz) * MathUtils.radiansToDegrees
-            yaw = MathUtils.lerpAngleDeg(yaw, alvo, minOf(1f, Constantes.ENIMIGO_VELOCIDADE_GIRO * dt))
-            atualizarTransformacao()
-        }
-
         when (estado) {
             Estado.PARADO -> {
-                if (distancia <= Constantes.ENIMIGO_VISAO) mudarEstado(Estado.PERSEGUINDO)
+                if (distancia <= Constantes.ENIMIGO_VISAO) {
+                    iniciarPerseguicao()
+                } else {
+                    tempoEspera -= dt
+                    if (tempoEspera <= 0f) iniciarVagar()
+                }
+            }
+            Estado.VAGANDO -> {
+                if (distancia <= Constantes.ENIMIGO_VISAO) {
+                    iniciarPerseguicao()
+                } else if (!seguirTrajeto(dt, Constantes.ENIMIGO_VELOCIDADE_VAGAR)) {
+                    mudarEstado(Estado.PARADO)
+                    tempoEspera = MathUtils.random(Constantes.ENIMIGO_ESPERA_MIN_S, Constantes.ENIMIGO_ESPERA_MAX_S)
+                }
             }
             Estado.PERSEGUINDO -> {
                 if (distancia > Constantes.ENIMIGO_PERDE_JOGADOR) {
                     mudarEstado(Estado.PARADO)
-                } else if (distancia <= Constantes.ENIMIGO_ALCANCE_ATAQUE) {
+                    tempoEspera = MathUtils.random(Constantes.ENIMIGO_ESPERA_MIN_S, Constantes.ENIMIGO_ESPERA_MAX_S)
+                } else if (distancia <= Constantes.ENIMIGO_ALCANCE_ATAQUE &&
+                    !Navegacao.paredeEntre(posicao.x, posicao.z, jogador.posicao.x, jogador.posicao.z)
+                ) {
                     mudarEstado(Estado.ATACANDO)
-                    tempoAtaque = 0f // o primeiro golpe sai ao chegar
+                    tempoAtaque = Constantes.ENIMIGO_ATAQUE_IMPACTO_S // o golpe acerta quando o braco chega
                 } else {
-                    perseguir(dt, dx, dz, distancia)
+                    tempoReplano -= dt
+                    if (tempoReplano <= 0f) {
+                        tempoReplano = Constantes.ENIMIGO_REPLANEJAR_S + MathUtils.random(0f, 0.1f)
+                        planejar(jogador.posicao.x, jogador.posicao.z)
+                    }
+                    if (!seguirTrajeto(dt, Constantes.ENIMIGO_VELOCIDADE)) {
+                        // sem caminho (ou chegou ao fim): encara o jogador e tenta de novo no proximo replano
+                        rumoYaw = MathUtils.atan2(-dx, -dz) * MathUtils.radiansToDegrees
+                        tempoReplano = 0f
+                    }
                 }
             }
             Estado.ATACANDO -> {
-                if (distancia > Constantes.ENIMIGO_ALCANCE_ATAQUE) {
-                    mudarEstado(Estado.PERSEGUINDO)
+                rumoYaw = MathUtils.atan2(-dx, -dz) * MathUtils.radiansToDegrees
+                if (distancia > Constantes.ENIMIGO_ALCANCE_ATAQUE * 1.15f ||
+                    Navegacao.paredeEntre(posicao.x, posicao.z, jogador.posicao.x, jogador.posicao.z)
+                ) {
+                    iniciarPerseguicao()
                 } else {
                     tempoAtaque -= dt
                     if (tempoAtaque <= 0f) {
@@ -118,6 +150,74 @@ class Inimigo(modelo: Model, x: Float, z: Float, private val animado: Boolean = 
             }
             Estado.MORTO -> Unit
         }
+
+        if (animado) {
+            yaw = MathUtils.lerpAngleDeg(yaw, rumoYaw, minOf(1f, Constantes.ENIMIGO_VELOCIDADE_GIRO * dt))
+            atualizarTransformacao()
+        }
+    }
+
+    private fun iniciarPerseguicao() {
+        if (estado != Estado.PERSEGUINDO) mudarEstado(Estado.PERSEGUINDO)
+        tempoReplano = 0f
+        trajetoN = 0
+        trajetoI = 0
+    }
+
+    /** Escolhe um ponto livre perto da origem e calcula o caminho ate la. Sem ponto/caminho: fica esperando mais um pouco. */
+    private fun iniciarVagar() {
+        for (tentativa in 0 until 6) {
+            val ang = MathUtils.random(0f, MathUtils.PI2)
+            val r = MathUtils.random(2f, Constantes.ENIMIGO_VAGAR_RAIO)
+            val alvoX = inicioX + MathUtils.cos(ang) * r
+            val alvoZ = inicioZ + MathUtils.sin(ang) * r
+            if (!Navegacao.livre(alvoX, alvoZ)) continue
+            planejar(alvoX, alvoZ)
+            if (trajetoN > 0) {
+                mudarEstado(Estado.VAGANDO)
+                return
+            }
+        }
+        tempoEspera = MathUtils.random(Constantes.ENIMIGO_ESPERA_MIN_S, Constantes.ENIMIGO_ESPERA_MAX_S)
+    }
+
+    private fun planejar(alvoX: Float, alvoZ: Float) {
+        val n = Navegacao.buscar(posicao.x, posicao.z, alvoX, alvoZ)
+        trajetoN = minOf(n, MAX_TRAJETO)
+        trajetoI = 0
+        for (i in 0 until trajetoN) {
+            trajetoX[i] = Navegacao.caminhoX[i]
+            trajetoZ[i] = Navegacao.caminhoZ[i]
+        }
+    }
+
+    /** Anda ate o proximo ponto do trajeto na velocidade dada. Devolve false quando nao ha mais para onde ir. */
+    private fun seguirTrajeto(dt: Float, velocidade: Float): Boolean {
+        while (trajetoI < trajetoN) {
+            val px = trajetoX[trajetoI] - posicao.x
+            val pz = trajetoZ[trajetoI] - posicao.z
+            val d = sqrt(px * px + pz * pz)
+            val ultimo = trajetoI == trajetoN - 1
+            if (d <= Constantes.ENIMIGO_PONTO_CHEGADA && !(ultimo && estado == Estado.PERSEGUINDO)) {
+                trajetoI++
+                continue
+            }
+            if (d < 0.001f) {
+                trajetoI++
+                continue
+            }
+            val passo = minOf(velocidade * dt, d)
+            val antesX = posicao.x
+            val antesZ = posicao.z
+            posicao.x = MathUtils.clamp(posicao.x + px / d * passo, -Constantes.MAPA_LIMITE, Constantes.MAPA_LIMITE)
+            posicao.z = MathUtils.clamp(posicao.z + pz / d * passo, -Constantes.MAPA_LIMITE, Constantes.MAPA_LIMITE)
+            Colisao.resolver(posicao, Constantes.ENIMIGO_RAIO)
+            val mx = posicao.x - antesX
+            val mz = posicao.z - antesZ
+            if (mx * mx + mz * mz > 1e-8f) rumoYaw = MathUtils.atan2(-mx, -mz) * MathUtils.radiansToDegrees
+            return true
+        }
+        return false
     }
 
     /** Volta à posição inicial, com vida cheia e parado. Usado ao reiniciar depois da morte do jogador. */
@@ -129,6 +229,10 @@ class Inimigo(modelo: Model, x: Float, z: Float, private val animado: Boolean = 
         tempoFlash = 0f
         tempoMorto = 0f
         yaw = 0f
+        rumoYaw = 0f
+        trajetoN = 0
+        trajetoI = 0
+        tempoEspera = MathUtils.random(Constantes.ENIMIGO_ESPERA_MIN_S, Constantes.ENIMIGO_ESPERA_MAX_S)
         aplicarCor()
         atualizarTransformacao()
         if (animado) {
@@ -151,23 +255,6 @@ class Inimigo(modelo: Model, x: Float, z: Float, private val animado: Boolean = 
         return false
     }
 
-    private fun perseguir(dt: Float, dx: Float, dz: Float, distancia: Float) {
-        // Perseguição direta (sem pathfinding na Fase 1), deslizando nas paredes (Marco 1.8).
-        val fator = Constantes.ENIMIGO_VELOCIDADE * dt / distancia
-        posicao.x = MathUtils.clamp(
-            posicao.x + dx * fator,
-            -Constantes.MAPA_LIMITE,
-            Constantes.MAPA_LIMITE
-        )
-        posicao.z = MathUtils.clamp(
-            posicao.z + dz * fator,
-            -Constantes.MAPA_LIMITE,
-            Constantes.MAPA_LIMITE
-        )
-        Colisao.resolver(posicao, Constantes.ENIMIGO_RAIO)
-        atualizarTransformacao()
-    }
-
     private fun mudarEstado(novo: Estado) {
         estado = novo
         aplicarCor()
@@ -175,8 +262,11 @@ class Inimigo(modelo: Model, x: Float, z: Float, private val animado: Boolean = 
         val t = Constantes.ANIM_TRANSICAO_S
         when (novo) {
             Estado.PARADO -> animador.tocar("parado", -1, 1f, t)
-            Estado.PERSEGUINDO -> animador.tocar("correr", -1, Constantes.ZUMBI_ANIM_VELOCIDADE, t)
-            Estado.ATACANDO -> animador.tocar("atacar", -1, 1f, t)
+            Estado.VAGANDO -> animador.tocar(
+                "andar", -1, Constantes.ENIMIGO_VELOCIDADE_VAGAR / Constantes.ENIMIGO_VAGAR_REF, Constantes.ANIM_TRANSICAO_MARCHA_S
+            )
+            Estado.PERSEGUINDO -> animador.tocar("correr", -1, Constantes.ZUMBI_ANIM_VELOCIDADE, Constantes.ANIM_TRANSICAO_MARCHA_S)
+            Estado.ATACANDO -> animador.tocar("atacar", -1, Constantes.ENIMIGO_ATAQUE_ANIM_VEL, t)
             Estado.MORTO -> animador.tocar("morrer", 1, 1f, t)
         }
     }
@@ -193,7 +283,7 @@ class Inimigo(modelo: Model, x: Float, z: Float, private val animado: Boolean = 
             return
         }
         when (estado) {
-            Estado.PARADO -> c.color.set(1f, 1f, 1f, 1f)
+            Estado.PARADO, Estado.VAGANDO -> c.color.set(1f, 1f, 1f, 1f)
             Estado.PERSEGUINDO -> c.color.set(
                 Constantes.ZUMBI_TINTA_PERSEGUINDO_R,
                 Constantes.ZUMBI_TINTA_PERSEGUINDO_G,
@@ -226,7 +316,7 @@ class Inimigo(modelo: Model, x: Float, z: Float, private val animado: Boolean = 
             return
         }
         when (estado) {
-            Estado.PARADO -> atributo.color.set(
+            Estado.PARADO, Estado.VAGANDO -> atributo.color.set(
                 Constantes.ENIMIGO_COR_PARADO_R,
                 Constantes.ENIMIGO_COR_PARADO_G,
                 Constantes.ENIMIGO_COR_PARADO_B,
@@ -246,6 +336,10 @@ class Inimigo(modelo: Model, x: Float, z: Float, private val animado: Boolean = 
             )
             Estado.MORTO -> Unit
         }
+    }
+
+    private companion object {
+        const val MAX_TRAJETO = 96
     }
 
     private fun atualizarTransformacao() {

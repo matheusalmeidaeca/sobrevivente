@@ -52,7 +52,7 @@ ANIMACOES = {
     "jogador": [("parado", 90, True), ("andar", 36, True), ("correr", 22, True),
                 ("atirar", 24, False), ("morrer", 54, False)],
     "zumbi": [("parado", 90, True), ("andar", 42, True), ("correr", 26, True),
-              ("atacar", 36, True), ("morrer", 60, False)],
+              ("atacar", 72, True), ("morrer", 60, False)],
 }
 
 # Quadros mostrados na folha de preview (1 por animacao).
@@ -339,17 +339,17 @@ MARCHA = {
 # SH = encolher de ombros; SALTO = quicada (m)
 MARCHA_PARAM = {
     ("jogador", "andar"): dict(esc_esq=1.0, esc_dir=1.0, joelho=1.0, pe_esq=0.0, pe_dir=0.0, h0=0.0,
-                               BR=19, BR0=4, CO=14, CV=12, HM=7, PY=4.0, SY=7.0, PR=3.2, PX=0.022,
-                               INC=-4.0, SH=2.2, SALTO=0.0, loll=0.0, lat=0.0),
+                               BR=17, BR0=4, CO=14, CV=10, HM=5, PY=2.2, SY=3.6, PR=2.0, PX=0.010,
+                               INC=-4.0, SH=1.2, SALTO=0.0, loll=0.0, lat=0.0),
     ("jogador", "correr"): dict(esc_esq=1.0, esc_dir=1.0, joelho=1.0, pe_esq=0.0, pe_dir=0.0, h0=2.0,
-                                BR=34, BR0=10, CO=76, CV=8, HM=12, PY=7.0, SY=11.0, PR=4.0, PX=0.016,
-                                INC=-13.0, SH=3.0, SALTO=0.06, loll=0.0, lat=0.0),
+                                BR=32, BR0=10, CO=76, CV=8, HM=8, PY=3.8, SY=6.0, PR=2.4, PX=0.008,
+                                INC=-13.0, SH=1.5, SALTO=0.06, loll=0.0, lat=0.0),
     ("zumbi", "andar"): dict(esc_esq=0.7, esc_dir=0.95, joelho=0.8, pe_esq=-10.0, pe_dir=-2.0, h0=6.0,
-                             BR=6, BR0=58, CO=24, CV=6, HM=14, PY=5.0, SY=9.0, PR=5.0, PX=0.035,
-                             INC=-22.0, SH=2.0, SALTO=0.0, loll=1.0, lat=3.0),
+                             BR=6, BR0=58, CO=24, CV=6, HM=9, PY=3.0, SY=5.0, PR=3.2, PX=0.018,
+                             INC=-22.0, SH=1.2, SALTO=0.0, loll=0.7, lat=2.0),
     ("zumbi", "correr"): dict(esc_esq=0.85, esc_dir=1.0, joelho=0.85, pe_esq=-8.0, pe_dir=0.0, h0=8.0,
-                              BR=13, BR0=60, CO=28, CV=8, HM=16, PY=7.0, SY=10.0, PR=5.5, PX=0.04,
-                              INC=-28.0, SH=2.5, SALTO=0.03, loll=1.0, lat=4.0),
+                              BR=13, BR0=60, CO=28, CV=8, HM=10, PY=4.0, SY=6.0, PR=3.6, PX=0.022,
+                              INC=-28.0, SH=1.5, SALTO=0.03, loll=0.7, lat=2.5),
 }
 
 
@@ -371,12 +371,12 @@ def _pose_marcha(estilo, tipo, q, n):
         # braco do lado oposto da perna: avanca quando a perna oposta esta a frente
         oposta = (f + 0.5) % 1.0 if lado == "esq" else f
         bal = math.cos(tau * (oposta - 0.04))
-        _somar(p, "braco_" + lado, P["BR0"] + P["BR"] * bal, 0.0, sinal * 5.0)
+        _somar(p, "braco_" + lado, P["BR0"] + P["BR"] * bal, 0.0, sinal * 3.0)
         flex = 0.5 + 0.5 * math.cos(tau * (oposta - 0.12))
         _somar(p, "antebraco_" + lado, P["CO"] + P["CV"] * flex)
         _somar(p, "mao_" + lado, 6.0 + P["HM"] * math.cos(tau * (oposta - 0.22)))
         shr = P["SH"] * (0.5 + 0.5 * math.cos(tau * (oposta - 0.10)))
-        _somar(p, "ombro_" + lado, 0.0, sinal * 3.2 * bal, sinal * shr)
+        _somar(p, "ombro_" + lado, 0.0, sinal * 0.8 * bal, sinal * shr)
     c, s = math.cos(tau * f), math.sin(tau * f)
     c2, s2 = math.cos(2 * tau * f), math.sin(2 * tau * f)
     cl = math.cos(tau * (f - 0.04))
@@ -387,10 +387,10 @@ def _pose_marcha(estilo, tipo, q, n):
     _somar(p, "cabeca", -0.45 * P["INC"] - 3.0 + 1.1 * math.sin(2 * tau * (f - 0.12)),
            -0.5 * P["SY"] * math.cos(tau * (f - 0.11)), -0.25 * P["PR"] * s)
     if P["loll"] > 0.0:  # zumbi: cabeca caida e balancando
-        _somar(p, "cabeca", -9.0 + 3.0 * math.sin(tau * (f - 0.2)), 7.0 * math.sin(tau * (f - 0.3)),
-               8.0 + 7.0 * math.cos(tau * (f - 0.15)))
+        _somar(p, "cabeca", -9.0 + 2.0 * math.sin(tau * (f - 0.2)), 4.0 * math.sin(tau * (f - 0.3)),
+               8.0 + 4.0 * math.cos(tau * (f - 0.15)))
         _somar(p, "pescoco", -4.0, 0.0, 3.0)
-        _somar(p, "braco_esq", 8.0 * math.sin(tau * (f + 0.3)))  # um braco desgovernado
+        _somar(p, "braco_esq", 4.0 * math.sin(tau * (f + 0.3)))  # um braco desgovernado
     p["salto"] = P["SALTO"] * (0.5 + 0.5 * math.cos(2 * tau * (f - 0.05))) ** 2
     return p
 
@@ -484,33 +484,55 @@ def _pose_atirar(estilo, q):
 
 
 # ---------------------------------------------------------------------------
-# Atacar (zumbi): prepara, ergue, golpeia com o corpo todo e recupera. Ciclo de 36 quadros.
+# Atacar (zumbi): golpe com UM braco por vez (alterna direita/esquerda). Ciclo de 72 quadros = 2 golpes de 36.
+# O braco livre fica recolhido na guarda; a pose "pronto" e simetrica, entao a troca de lado nao da pulo.
 # ---------------------------------------------------------------------------
+def _golpe_um_braco(q, ativo):
+    """q em 0..36 (periodico); `ativo` = 'dir' ou 'esq' (braco que bate)."""
+    outro = "esq" if ativo == "dir" else "dir"
+    sg = 1.0 if ativo == "dir" else -1.0  # lado do braco ativo (+X = direita)
+    pr = {"quadril": (4.0, 0.0, 0.0), "coluna": (-16.0, 0.0, 3.0), "pescoco": (-6.0, 0.0, 3.0), "cabeca": (-9.0, 0.0, 9.0),
+          "coxa_esq": (8.0, 0.0, -3.0), "canela_esq": (-14.0, 0.0, 0.0), "pe_esq": (6.0, 0.0, 0.0),
+          "coxa_dir": (8.0, 0.0, 3.0), "canela_dir": (-14.0, 0.0, 0.0), "pe_dir": (6.0, 0.0, 0.0),
+          "braco_esq": (60.0, -6.0, -8.0), "antebraco_esq": (24.0, 0.0, 0.0), "mao_esq": (18.0, 0.0, 0.0),
+          "braco_dir": (60.0, 6.0, 8.0), "antebraco_dir": (24.0, 0.0, 0.0), "mao_dir": (18.0, 0.0, 0.0),
+          "ombro_esq": (0.0, 0.0, 0.0), "ombro_dir": (0.0, 0.0, 0.0)}
+
+    def variante(mudar):
+        d = dict(pr)
+        d.update(mudar)
+        return d
+
+    a, o = "_" + ativo, "_" + outro
+    ergue = variante({
+        "quadril": (-2.0, -sg * 5.0, 0.0), "coluna": (6.0, -sg * 12.0, 0.0), "pescoco": (4.0, sg * 4.0, 0.0),
+        "cabeca": (12.0, sg * 6.0, 6.0),
+        "braco" + a: (104.0, sg * 6.0, sg * 18.0), "antebraco" + a: (30.0, 0.0, 0.0), "mao" + a: (-8.0, 0.0, 0.0),
+        "ombro" + a: (0.0, 0.0, sg * 3.0),
+        "braco" + o: (52.0, -sg * 8.0, -sg * 12.0), "antebraco" + o: (58.0, 0.0, 0.0), "mao" + o: (14.0, 0.0, 0.0),
+        "coxa_esq": (6.0, 0.0, -3.0), "coxa_dir": (6.0, 0.0, 3.0)})
+    golpe = variante({
+        "quadril": (8.0, sg * 6.0, 0.0), "coluna": (-30.0, sg * 14.0, 2.0), "pescoco": (-10.0, -sg * 4.0, 0.0),
+        "cabeca": (-14.0, -sg * 6.0, 6.0),
+        "braco" + a: (26.0, -sg * 10.0, -sg * 4.0), "antebraco" + a: (10.0, 0.0, 0.0), "mao" + a: (30.0, 0.0, 0.0),
+        "ombro" + a: (0.0, 0.0, -sg * 2.0),
+        "braco" + o: (46.0, -sg * 8.0, -sg * 14.0), "antebraco" + o: (66.0, 0.0, 0.0), "mao" + o: (16.0, 0.0, 0.0),
+        "coxa" + a: (-12.0, 0.0, sg * 3.0), "canela" + a: (-12.0, 0.0, 0.0),
+        "coxa" + o: (28.0, 0.0, -sg * 3.0), "canela" + o: (-32.0, 0.0, 0.0)})
+    chaves = [(0.0, pr, (0.0, 0.0)), (11.0, ergue, (0.0, 0.05)), (17.0, golpe, (0.0, -0.16)),
+              (27.0, pr, (0.0, -0.02))]
+    atrasos = {"coluna": 0.0, "pescoco": 1.5, "cabeca": 2.5, "braco" + a: 1.0, "antebraco" + a: 2.2,
+               "mao" + a: 3.4, "braco" + o: 1.8, "antebraco" + o: 2.6, "mao" + o: 3.4}
+    return _avaliar(chaves, q, 36.0, atrasos)
+
+
 def _pose_atacar(estilo, q):
-    pronto = _aplicar_lados({
-        "quadril": (4.0, 0.0, 0.0), "coluna": (-16.0, 0.0, 3.0), "pescoco": (-6.0, 0.0, 3.0), "cabeca": (-9.0, 0.0, 9.0),
-        "ombro*": (0.0, 0.0, 0.0), "braco*": (60.0, 6.0, 8.0), "antebraco*": (24.0, 0.0, 0.0), "mao*": (18.0, 0.0, 0.0),
-        "coxa*": (8.0, 0.0, 3.0), "canela*": (-14.0, 0.0, 0.0), "pe*": (6.0, 0.0, 0.0),
-    })
-    ergue = _aplicar_lados({
-        "quadril": (-3.0, 0.0, 0.0), "coluna": (10.0, 0.0, 0.0), "pescoco": (6.0, 0.0, 0.0), "cabeca": (16.0, 0.0, 6.0),
-        "ombro*": (0.0, 0.0, -2.0), "braco*": (112.0, 8.0, 14.0), "antebraco*": (26.0, 0.0, 0.0), "mao*": (-10.0, 0.0, 0.0),
-        "coxa*": (4.0, 0.0, 3.0), "canela*": (-8.0, 0.0, 0.0), "pe*": (4.0, 0.0, 0.0),
-    })
-    golpe = _aplicar_lados({
-        "quadril": (10.0, 0.0, 0.0), "coluna": (-36.0, -6.0, 2.0), "pescoco": (-10.0, 0.0, 0.0), "cabeca": (-16.0, 0.0, 6.0),
-        "ombro*": (0.0, 0.0, 2.0), "braco*": (24.0, 4.0, 8.0), "antebraco*": (8.0, 0.0, 0.0), "mao*": (32.0, 0.0, 0.0),
-        "coxa*": (30.0, 0.0, 3.0), "canela*": (-34.0, 0.0, 0.0), "pe*": (8.0, 0.0, 0.0),
-    })
-    # as pernas do golpe: a esquerda avanca, a direita fica
-    golpe["coxa_dir"] = (-14.0, 0.0, 3.0)
-    golpe["canela_dir"] = (-12.0, 0.0, 0.0)
-    chaves = [(0.0, pronto, (0.0, 0.0)), (11.0, ergue, (0.0, 0.07)), (17.0, golpe, (0.0, -0.20)),
-              (26.0, pronto, (0.0, -0.02))]
-    atrasos = {"coluna": 0.0, "pescoco": 1.5, "cabeca": 2.5, "braco_esq": 1.0, "braco_dir": 1.4,
-               "antebraco_esq": 2.2, "antebraco_dir": 2.6, "mao_esq": 3.4, "mao_dir": 3.8}
-    p = _avaliar(chaves, q, 36.0, atrasos)
-    _somar(p, "cabeca", 2.0 * math.sin(2 * math.pi * q / 36.0 * 3))
+    f = q % 72.0
+    if f < 36.0:
+        p = _golpe_um_braco(f, "dir")
+    else:
+        p = _golpe_um_braco(f - 36.0, "esq")
+    _somar(p, "cabeca", 1.5 * math.sin(2 * math.pi * q / 36.0 * 3))
     return p
 
 

@@ -45,6 +45,10 @@ class Jogador : Disposable {
     private var tempoClarao = 0f
     private var tempoEncarar = 0f
     private var intensidadeMovimento = 0f
+    private var intensidadeSuave = 0f   // filtrada: evita tremer entre andar/correr
+    private var andando = false           // histerese parado <-> andar
+    private var correndo = false          // histerese andar <-> correr
+    private var fatorAnim = 1f            // velocidade de reproducao suavizada
     private val animador: Animador
 
     init {
@@ -192,20 +196,30 @@ class Jogador : Disposable {
             animador.tocarSe("morrer", 1, 1f, t)
         } else if (tempoEncarar > 0f) {
             animador.tocarSe("atirar", 1, 1f, Constantes.ANIM_TRANSICAO_TIRO_S)
-        } else if (intensidadeMovimento >= Constantes.JOGADOR_LIMIAR_CORRER) {
-            val v = MathUtils.clamp(
-                intensidadeMovimento * Constantes.JOGADOR_VELOCIDADE / Constantes.JOGADOR_ANIM_REF_CORRER, 0.8f, 1.6f
-            )
-            animador.tocarSe("correr", -1, v, t)
-            animador.definirVelocidade(v)
-        } else if (intensidadeMovimento > 0f) {
-            val v = MathUtils.clamp(
-                intensidadeMovimento * Constantes.JOGADOR_VELOCIDADE / Constantes.JOGADOR_ANIM_REF_ANDAR, 0.6f, 1.8f
-            )
-            animador.tocarSe("andar", -1, v, t)
-            animador.definirVelocidade(v)
         } else {
-            animador.tocarSe("parado", -1, 1f, t)
+            intensidadeSuave += (intensidadeMovimento - intensidadeSuave) * minOf(1f, Constantes.ANIM_FILTRO_ENTRADA * dt)
+            if (!andando && intensidadeMovimento > Constantes.ANIM_LIMIAR_INICIAR) andando = true
+            if (andando && intensidadeSuave < Constantes.ANIM_LIMIAR_PARAR && intensidadeMovimento < 0.01f) andando = false
+            if (!correndo && intensidadeSuave >= Constantes.JOGADOR_LIMIAR_CORRER + 0.1f) correndo = true
+            if (correndo && intensidadeSuave < Constantes.JOGADOR_LIMIAR_CORRER - 0.1f) correndo = false
+            if (!andando) {
+                correndo = false
+                animador.tocarSe("parado", -1, 1f, t)
+            } else if (correndo) {
+                val alvo = MathUtils.clamp(
+                    intensidadeSuave * Constantes.JOGADOR_VELOCIDADE / Constantes.JOGADOR_ANIM_REF_CORRER, 0.8f, 1.5f
+                )
+                fatorAnim += (alvo - fatorAnim) * minOf(1f, Constantes.ANIM_FILTRO_VELOCIDADE * dt)
+                animador.tocarSe("correr", -1, fatorAnim, Constantes.ANIM_TRANSICAO_MARCHA_S)
+                animador.definirVelocidade(fatorAnim)
+            } else {
+                val alvo = MathUtils.clamp(
+                    intensidadeSuave * Constantes.JOGADOR_VELOCIDADE / Constantes.JOGADOR_ANIM_REF_ANDAR, 0.6f, 1.6f
+                )
+                fatorAnim += (alvo - fatorAnim) * minOf(1f, Constantes.ANIM_FILTRO_VELOCIDADE * dt)
+                animador.tocarSe("andar", -1, fatorAnim, Constantes.ANIM_TRANSICAO_MARCHA_S)
+                animador.definirVelocidade(fatorAnim)
+            }
         }
         animador.atualizar(dt)
     }

@@ -1,10 +1,17 @@
-# MAPA DE CRIAÇÃO v2.15 — Jogo 3D de Sobrevivência (Kotlin + Python de bastidor / Android)
+# MAPA DE CRIAÇÃO v2.16 — Jogo 3D de Sobrevivência (Kotlin + Python de bastidor / Android)
 
-**Versão do documento:** 2.15 | **Data:** 16/11/2026 | **Substitui:** v2.14
+**Versão do documento:** 2.16 | **Data:** 16/11/2026 | **Substitui:** v2.15
 **Nome provisório:** PROJETO_SOBREVIVENTE (nome final: em aberto)
 
 > Cole este arquivo inteiro no início de qualquer conversa com uma IA.
 > Ele é a **fonte única da verdade**. O que não estiver aqui, a IA **pergunta**; ela não decide.
+
+### Mudanças da v2.15 para a v2.16 (F3c — pedidos do dono depois do vídeo da F3b)
+- **Decisão do dono:** os zumbis agora **contornam paredes (A* em grade)** e **vagam livremente** pelo cenário (isso substitui "sem pathfinding na Fase 1" e "inimigos sem pathfinding" das seções 13, 20 e 22).
+- Novo arquivo `mundo/Navegacao.kt` (fora da seção 9): grade 0,5 m (120×120) sobre o chão de 60 m, paredes engordadas por `ENIMIGO_RAIO + NAV_MARGEM`, A* de 8 vizinhos sem cortar quina, "puxar o fio" (linha livre) e tudo pré-alocado. O vão sul do prédio (3 m) continua passável (verificado em Python com a mesma grade).
+- `Inimigo.kt`: estados `PARADO` (espera 1,5–4 s) → `VAGANDO` (ponto livre a até 7 m da origem, 0,9 m/s, animação `andar`) → `PERSEGUINDO` (replaneja o caminho a cada ~0,35 s) → `ATACANDO` (só com **visão livre**: sem parede entre os dois). O despertar continua por distância (12 m), mesmo atrás de parede, mas ele **dá a volta** em vez de empurrar a parede.
+- **Ataque do zumbi com UM braço**, alternando direita/esquerda (animação `atacar` de 72 quadros = 2 golpes); o dano sai quando o braço acerta (0,47 s depois do início).
+- **Movimento mais suave:** amplitudes secundárias reduzidas (giro da pelve/ombros, queda do quadril, deslocamento lateral, abertura dos braços, cabeça do zumbi); no jogador, joystick filtrado + histerese (parado↔andar↔correr), velocidade de reprodução suavizada e transições de 0,25 s.
 
 ### Mudanças da v2.14 para a v2.15
 - **F3 aprovado pelo dono (vídeo, 16/11/2026):** boneco e zumbi animados no jogo; a correção da pose de repouso dos ossos no `.g3dj` funcionou (`GRAVAR_POSE_INVERSA = False`).
@@ -528,9 +535,9 @@ Placeholder: cápsula de cor distinta, raio 0,4 m.
 | Alcance de ataque | 1,2 m |
 | Dano / intervalo | 10 / 1,0 s |
 
-**Máquina de estados:** `PARADO` → (jogador a ≤ 12 m) `PERSEGUINDO` → (≤ 1,2 m) `ATACANDO` → (vida ≤ 0) `MORTO`. Volta a `PERSEGUINDO` se o jogador se afastar; volta a `PARADO` se passar de 18 m.
+**Máquina de estados (v2.16):** `PARADO` (espera) ⇄ `VAGANDO` (anda sem rumo perto da origem); jogador a ≤ 12 m → `PERSEGUINDO`; ≤ 1,2 m **e sem parede entre** → `ATACANDO` (um braço por golpe); vida ≤ 0 → `MORTO`. Volta a `PERSEGUINDO` se o jogador se afastar ou se houver parede no meio; volta a `PARADO` se passar de 18 m.
 
-**Movimento:** perseguição direta com deslizamento em paredes. **Sem pathfinding na Fase 1** (A* em grade fica para decisão futura).
+**Movimento (v2.16):** caminho por **A* em grade** (`mundo/Navegacao.kt`) ao redor das paredes, com deslizamento (`Colisao.resolver`) como segurança. Vagar: ponto livre aleatório a até 7 m da origem.
 
 **Mapa de teste:** 3 inimigos iniciais; sem respawn.
 
@@ -682,14 +689,14 @@ Não implementar nem detalhar agora. Quando o dono liberar, esta seção será p
 - **Python é a única linguagem adicional** (somente ferramentas de ativos). GLSL e demais linguagens: não por enquanto.
 
 ### Interpretações/escolhas técnicas adotadas (podem ser trocadas pelo dono)
-- LibGDX como engine; Groovy DSL; colisão própria no plano XZ (sem gdx-bullet); hitscan; sem pathfinding.
+- LibGDX como engine; Groovy DSL; colisão própria no plano XZ (sem gdx-bullet); hitscan; com pathfinding A* em grade (v2.16).
 - Pistola, inimigo e maleta com os valores das seções 12 a 14 (iniciais, para testar e ajustar).
 - Abrir a maleta **pausa** o jogo (estilo sobrevivência clássico). **Confirmar.**
 - **"Mapa fundido":** a ideia original era fundir o mapa de um jogo de sobrevivência com o de um jogo de tiro mobile. Como o modo é história e não battle royale, o mapa será **original**, de ambiente de sobrevivência, com **minimapa estilo mobile**. **Confirmar se é isso que o dono quer.**
 
 - Marco 1.7 (a confirmar): usar MUNICAO joga a pilha na reserva da arma; item só entra se couber inteiro; reinício esvazia a maleta; `ItemMundo.kt` fora da seção 9.
 
-- Marco 1.8 (a confirmar): portas como vãos; inimigos sem linha de visão e sem pathfinding; tiro bloqueado por parede; câmera aproxima ao encostar; minimapa norte fixo.
+- Marco 1.8 (a confirmar): portas como vãos; inimigos acordam por distância e (v2.16) contornam paredes com A*; tiro bloqueado por parede; câmera aproxima ao encostar; minimapa norte fixo.
 
 ### Em aberto (a IA PERGUNTA, não decide)
 - Nome final do jogo (e então o pacote).
@@ -759,12 +766,12 @@ RELATÓRIO
 
 ## 22. ESTADO ATUAL (atualizar ao fim de cada sessão)
 
-- Marco atual: **1.8 (dono informou "deu certo"; caixas a marcar por ele)**; trilha ativa de ferramentas: **F0 e F1 (rodaram no CI), F2 (rodou no CI; poses a aprovar) e F3 (entregue, em teste)**
+- Marco atual: **F3c entregue (v2.16: suavidade, ataque com um braço, vagar e A*; não compilado pela IA)**; antes: **1.8 (dono informou "deu certo"; caixas a marcar por ele)**; trilha ativa de ferramentas: **F0 e F1 (rodaram no CI), F2 (rodou no CI; poses a aprovar) e F3 (entregue, em teste)**
 - Último build verde confirmado: run #9 (código dos Marcos 1.7 e 1.8). F0 enviado (`ebb5ef4`); "Gerar modelo" ainda não rodado
 - Versões congeladas: **sim** (seção 6)
 - Arquivos existentes no repositório: tudo até o Marco 1.7 + 1 novo no 1.8 (`mundo/Colisao.kt`) e 8 alterados (depois do push)
 - Problemas conhecidos: faixa preta lateral (recorte da câmera) ainda a confirmar na tela cheia; os Marcos 1.7 e 1.8 não foram compilados pela IA (sem compilador no ambiente da conversa)
-- Observações: HUD sem Scene2D (ver v2.4); Voltar do Android vira pausa (ou fecha a maleta, se aberta); acentos na fonte padrão não verificados (textos do 1.7 sem acento); inimigos sem linha de visão nem pathfinding
+- Observações: HUD sem Scene2D (ver v2.4); Voltar do Android vira pausa (ou fecha a maleta, se aberta); acentos na fonte padrão não verificados (textos do 1.7 sem acento); inimigos acordam por distância mas contornam paredes (A*, v2.16)
 - Marcos de ferramentas (seção 24): **F0 rodou no CI** (dentro da etapa `f2`; correção de faces entregue com o F2); **F1** não rodou isolado, mas o mesmo Blender 4.5.11 rodou no F2; **F2 rodou no CI** (orçamento OK; falta aprovar as poses); **F3 em teste** (código entregue, **não compilado pela IA**: sem LibGDX no ambiente)
 
 - Envio ao GitHub: caminhos e comandos verificados em 15/11/2026 estão na seção 25.

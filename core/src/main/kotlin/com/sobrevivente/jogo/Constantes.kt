@@ -182,6 +182,18 @@ object Constantes {
     const val ENIMIGO_ALCANCE_ATAQUE = 1.2f
     const val ENIMIGO_DANO = 10
     const val ENIMIGO_INTERVALO_ATAQUE = 1.0f // segundos entre golpes
+    // Navegacao e vagar dos inimigos (pedido do dono, v2.16)
+    const val NAV_CELULA = 0.5f // tamanho da celula da grade do A* (m)
+    const val NAV_MARGEM = 0.08f // folga extra alem do raio do inimigo ao engordar as paredes (m)
+    const val ENIMIGO_REPLANEJAR_S = 0.35f // de quanto em quanto tempo recalcula o caminho ate o jogador
+    const val ENIMIGO_PONTO_CHEGADA = 0.3f // distancia para considerar que chegou a um ponto do caminho (m)
+    const val ENIMIGO_VELOCIDADE_VAGAR = 0.9f // m/s andando sem rumo
+    const val ENIMIGO_VAGAR_RAIO = 7f // vaga ate 7 m do ponto de origem
+    const val ENIMIGO_ESPERA_MIN_S = 1.5f
+    const val ENIMIGO_ESPERA_MAX_S = 4.0f
+    const val ENIMIGO_VAGAR_REF = 1.0f // m/s que a animacao "andar" do zumbi cobre com 1x
+    const val ENIMIGO_ATAQUE_ANIM_VEL = 1.2f // 72 quadros / 30 fps / 1,2 = 2,0 s para 2 golpes (1 golpe por segundo)
+    const val ENIMIGO_ATAQUE_IMPACTO_S = 0.47f // tempo do inicio do golpe ate acertar (quadro 17 / 30 / 1,2)
     const val ENIMIGO_RAIO = 0.4f
     const val ENIMIGO_ALTURA = 1.8f
     const val ENIMIGO_DIVISOES = 16
@@ -351,7 +363,12 @@ object Constantes {
     const val MODELO_ZUMBI = "modelos/zumbi.g3dj"
     /** Ossos por modelo no shader (o boneco tem 18; o padrao do LibGDX e 12). */
     const val NUM_OSSOS_SHADER = 20
-    const val ANIM_TRANSICAO_S = 0.18f
+    const val ANIM_TRANSICAO_MARCHA_S = 0.25f   // fusao andar <-> correr <-> parado (mais longa = mais suave)
+    const val ANIM_FILTRO_ENTRADA = 9f          // filtro do joystick (1/s)
+    const val ANIM_FILTRO_VELOCIDADE = 6f       // filtro da velocidade de reproducao (1/s)
+    const val ANIM_LIMIAR_INICIAR = 0.12f
+    const val ANIM_LIMIAR_PARAR = 0.05f
+    const val ANIM_TRANSICAO_S = 0.22f
     const val ANIM_TRANSICAO_TIRO_S = 0.04f
     /** Joystick acima disto = correr; abaixo = andar. */
     const val JOGADOR_LIMIAR_CORRER = 0.6f
