@@ -1,12 +1,23 @@
 # .github/workflows/gerar-modelo.yml
-# Manual (workflow_dispatch). Gera o boneco do marco F0 e entrega como artefato baixavel.
+# Manual (workflow_dispatch). Escolha a etapa ao rodar:
+#   f0 = gerador Kotlin do boneco (OBJ + texturas + preview)
+#   f1 = Blender sem tela roda no CI (cubo + preview + versao)
 name: Gerar modelo
 
 on:
   workflow_dispatch:
+    inputs:
+      etapa:
+        description: 'Qual etapa gerar'
+        type: choice
+        options:
+          - f0
+          - f1
+        default: f0
 
 jobs:
-  gerar:
+  f0:
+    if: ${{ inputs.etapa == 'f0' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -29,4 +40,35 @@ jobs:
         with:
           name: boneco-f0
           path: ferramentas/gerador-boneco-kotlin/saida
+          retention-days: 14
+
+  f1:
+    if: ${{ inputs.etapa == 'f1' }}
+    runs-on: ubuntu-latest
+    env:
+      BLENDER_SERIE: '4.5'
+      BLENDER_VERSAO: '4.5.11'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Bibliotecas do sistema que o Blender carrega
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libxi6 libxxf86vm1 libxfixes3 libxrender1 libgl1 libegl1 libxkbcommon0 libsm6 libice6
+
+      - name: Baixar e extrair o Blender
+        run: |
+          curl -fL --retry 3 -o blender.tar.xz "https://download.blender.org/release/Blender${BLENDER_SERIE}/blender-${BLENDER_VERSAO}-linux-x64.tar.xz"
+          mkdir -p "$HOME/blender"
+          tar -xf blender.tar.xz -C "$HOME/blender" --strip-components=1
+          "$HOME/blender/blender" --version
+
+      - name: Rodar o teste F1
+        run: |
+          "$HOME/blender/blender" --background --factory-startup --python ferramentas/blender/teste_f1.py -- ferramentas/blender/saida
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: blender-f1
+          path: ferramentas/blender/saida
           retention-days: 14

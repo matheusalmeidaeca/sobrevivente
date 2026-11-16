@@ -1,10 +1,20 @@
-# MAPA DE CRIAÇÃO v2.10 — Jogo 3D de Sobrevivência (Kotlin + Python de bastidor / Android)
+# MAPA DE CRIAÇÃO v2.11 — Jogo 3D de Sobrevivência (Kotlin + Python de bastidor / Android)
 
-**Versão do documento:** 2.10 | **Data:** 15/11/2026 | **Substitui:** v2.9
+**Versão do documento:** 2.11 | **Data:** 15/11/2026 | **Substitui:** v2.10
 **Nome provisório:** PROJETO_SOBREVIVENTE (nome final: em aberto)
 
 > Cole este arquivo inteiro no início de qualquer conversa com uma IA.
 > Ele é a **fonte única da verdade**. O que não estiver aqui, a IA **pergunta**; ela não decide.
+
+### Mudanças da v2.10 para a v2.11
+- **F0 enviado ao GitHub** (commit `ebb5ef4`); o workflow "Gerar modelo" ainda **não foi rodado/confirmado** pelo dono.
+- **Build verde confirmado** (Actions, run #9) para o código dos Marcos 1.7 e 1.8 (o run #8 tinha falhado; o #9 corrigiu).
+- O dono concordou em avançar para o **Marco F1** (Blender sem tela no CI). **F1 em teste** (não executado pela IA: sem Blender no ambiente da conversa).
+- **Blender: a proposta anterior (4.2 LTS) foi trocada.** O 4.2 LTS saiu de suporte em julho/2026; a LTS ativa é a **4.5** (suporte até julho/2027). Proposta (a confirmar): **Blender 4.5.11 LTS**, baixado do site oficial (`download.blender.org`) como tarball Linux x64.
+- `gerar-modelo.yml` agora tem uma **escolha de etapa** (`f0` ou `f1`) ao rodar; dois jobs separados.
+- Novos: `ferramentas/blender/teste_f1.py` e `ferramentas/blender/LEIAME.md`. Alterado: `.github/workflows/gerar-modelo.yml`.
+- **Arquivo fora da estrutura da seção 9 (a confirmar):** `ferramentas/blender/teste_f1.py` (a seção 9 só prevê `gerar_boneco.py`, `exportar.py` e `LEIAME.md` nessa pasta).
+- Escolhas (a confirmar): render com **Cycles em CPU** (o EEVEE precisa de GPU/OpenGL, que o runner sem tela não garante); sem denoise; bibliotecas do sistema instaladas por `apt-get` antes de rodar o Blender; versão do Blender gravada em `versao_blender.txt` e no log.
 
 ### Mudanças da v2.9 para a v2.10
 - O dono deu **"ok"** para iniciar o **Marco F0** (gerador Kotlin do boneco). **F0 em teste** (não compilado pela IA: sem compilador Kotlin no ambiente da conversa; só um protótipo descartável em Python validou geometria, UV e textura).
@@ -240,7 +250,7 @@ O aparelho alvo chegou a 120 FPS em cena vazia (tela de 120 Hz). A meta de 30 FP
 
 | Componente | Valor |
 |---|---|
-| Blender (sem tela) | versão LTS a confirmar (candidata: 4.2 LTS) |
+| Blender (sem tela) | **4.5.11 LTS (proposta, a confirmar; o 4.2 LTS saiu de suporte em julho/2026)** |
 | Python do Blender | o que vem embutido no Blender (usado para `bpy`) |
 | Python do sistema no CI | só se algum script fora do Blender precisar; versão a confirmar |
 | Formato de saída com esqueleto | **em aberto** (seção 19) |
@@ -659,7 +669,7 @@ Não implementar nem detalhar agora. Quando o dono liberar, esta seção será p
 - (Resolvido em 15/11/2026) Gradle instalado pelo CI, sem wrapper: ver seção 20.
 - Sons/música (por padrão: nenhum na Fase 1).
 - **Como carregar modelo com esqueleto no LibGDX:** gdx-gltf (dependência extra; versão compatível com LibGDX 1.12.1 a confirmar) ou outra via. Sem decisão, o jogo segue com cápsula/OBJ.
-- Versão do Blender e método de instalação no CI.
+- Versão do Blender e método de instalação no CI: **proposta 4.5.11 LTS, tarball oficial** (a confirmar pelo resultado do F1).
 - Convenção de **frente do modelo**: proposta no F0 = **-Z** (a confirmar pelo dono ao ver o preview).
 - (Resolvido em 15/11/2026) Marcos F0 a F3 correm agora, em paralelo aos 1.x.
 
@@ -678,6 +688,7 @@ Não implementar nem detalhar agora. Quando o dono liberar, esta seção será p
 | 15/11/2026 | Inimigos: humanos infectados (zumbis) | Dono | Escolha do dono |
 | 15/11/2026 | Boneco com textura simples de roupa 512x512 (gerada por código) | Dono | Escolha do dono |
 | 15/11/2026 | Marcos F0 a F3 liberados agora, em paralelo aos 1.x | Dono (pedido de foco na estética) | Prioridade do dono |
+| 15/11/2026 | Blender 4.5.11 LTS (tarball oficial) para o F1 | Proposta da IA (a confirmar) | 4.2 LTS fora de suporte; 4.5 LTS ativo até 07/2027 |
 | 15/11/2026 | Gradle 8.5 instalado pelo CI (sem wrapper); versões da seção 6 congeladas | Dono (validou no teste) | Build verde e app rodando no aparelho alvo |
 
 ---
@@ -713,13 +724,13 @@ RELATÓRIO
 
 ## 22. ESTADO ATUAL (atualizar ao fim de cada sessão)
 
-- Marco atual: **1.8 (dono informou "deu certo"; caixas a marcar por ele)**; trilha ativa de ferramentas: **F0 (em teste)**
-- Último build verde confirmado: o do código do Marco 1.6; os builds do 1.7 e do 1.8 ainda não foram confirmados
+- Marco atual: **1.8 (dono informou "deu certo"; caixas a marcar por ele)**; trilha ativa de ferramentas: **F0 (em teste) e F1 (em teste)**
+- Último build verde confirmado: run #9 (código dos Marcos 1.7 e 1.8). F0 enviado (`ebb5ef4`); "Gerar modelo" ainda não rodado
 - Versões congeladas: **sim** (seção 6)
 - Arquivos existentes no repositório: tudo até o Marco 1.7 + 1 novo no 1.8 (`mundo/Colisao.kt`) e 8 alterados (depois do push)
 - Problemas conhecidos: faixa preta lateral (recorte da câmera) ainda a confirmar na tela cheia; os Marcos 1.7 e 1.8 não foram compilados pela IA (sem compilador no ambiente da conversa)
 - Observações: HUD sem Scene2D (ver v2.4); Voltar do Android vira pausa (ou fecha a maleta, se aberta); acentos na fonte padrão não verificados (textos do 1.7 sem acento); inimigos sem linha de visão nem pathfinding
-- Marcos de ferramentas (seção 24): **F0 em teste** (código entregue, ainda não compilado nem rodado no CI)
+- Marcos de ferramentas (seção 24): **F0 em teste** (enviado, ainda não rodado no CI); **F1 em teste** (código entregue, não executado)
 
 ---
 
@@ -748,10 +759,10 @@ RELATÓRIO
 - [ ] **Teste:** rodar o workflow "Gerar modelo", baixar o artefato `boneco-f0` e ver `preview.png` no celular; `relatorio.txt` deve mostrar altura 1,8 m e yMin 0 (o programa falha sozinho se não bater)
 - [ ] A IA verifica (NÃO presumir) se o `ObjLoader` do LibGDX preserva as partes separadas
 
-**F1: Blender sem tela roda no CI**
+**F1: Blender sem tela roda no CI (EM TESTE)**
 - [ ] Workflow instala/baixa o Blender (método registrado na seção 20)
 - [ ] Script Python mínimo cria um cubo e renderiza `preview.png`
-- [ ] **Teste:** artefato com o PNG; o log mostra a versão do Blender
+- [ ] **Teste:** rodar "Gerar modelo" com etapa `f1`; baixar o artefato `blender-f1` (PNG + `versao_blender.txt`); o log mostra a versão do Blender
 
 **F2: Boneco com esqueleto e animações**
 - [ ] `gerar_boneco.py` cria malha low-poly, esqueleto e vínculo malha-ossos
