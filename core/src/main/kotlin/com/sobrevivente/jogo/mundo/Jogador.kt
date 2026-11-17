@@ -468,6 +468,8 @@ class Jogador : Disposable {
 
         if (vida <= 0) {
             animador.tocarSe("morrer", 1, 1f, t)
+        } else if (tempoDeslize > 0f && noChao && corpo.getAnimation("deslizar") != null) {
+            animador.tocarSe("deslizar", 1, 0.667f / Constantes.DESLIZE_S, 0.08f) // clipe de 20 quadros (0,667 s) esticado ao deslize
         } else if (!noChao) {
             // pulo em fases pela fisica: subida -> apice/queda (clipes seguram a ultima pose)
             if (velY > Constantes.PULO_LIMIAR_SUBIDA) animador.tocarSe(nomeAnimOu("pular", "parado"), 1, 1f, Constantes.PULO_TRANSICAO_SUBIDA_S)

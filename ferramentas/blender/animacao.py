@@ -51,14 +51,14 @@ PIVO = {o[0]: o[2] for o in OSSOS}
 ANIMACOES = {
     "jogador": [("parado", 90, True), ("andar", 36, True), ("correr", 22, True),
                 ("atirar", 24, False), ("morrer", 54, False),
-                ("pular", 12, False), ("cair", 12, False), ("pousar", 16, False)],
+                ("pular", 12, False), ("cair", 12, False), ("pousar", 16, False), ("deslizar", 20, False)],
     "zumbi": [("parado", 180, True), ("andar", 42, True), ("correr", 26, True),
               ("atacar", 72, True), ("morrer", 60, False)],
 }
 
 # Quadros mostrados na folha de preview (1 por animacao).
 QUADRO_PREVIA = {
-    "parado": 0, "andar": 6, "correr": 4, "atirar": 3, "atacar": 14, "morrer": 54, "pular": 8, "cair": 8, "pousar": 4,
+    "parado": 0, "andar": 6, "correr": 4, "atirar": 3, "atacar": 14, "morrer": 54, "pular": 8, "cair": 8, "pousar": 4, "deslizar": 10,
 }
 
 # Velocidade (m/s) do corpo que cada ciclo cobre com 1x de reproducao (medida pela velocidade do pe de apoio).
@@ -374,11 +374,11 @@ MARCHA = {
 # SH = encolher de ombros; SALTO = quicada (m)
 MARCHA_PARAM = {
     ("jogador", "andar"): dict(esc_esq=1.0, esc_dir=1.0, joelho=1.0, pe_esq=0.0, pe_dir=0.0, h0=0.0,
-                               BR=17, BR0=4, CO=14, CV=10, HM=5, PY=2.4, SY=3.8, PR=2.6, PX=0.013,
-                               INC=-4.0, SH=1.2, SALTO=0.0, loll=0.0, lat=0.0),
+                               BR=19, BR0=4, CO=18, CV=10, HM=5, PY=2.4, SY=3.8, PR=2.6, PX=0.013,
+                               INC=-3.0, SH=1.2, SALTO=0.0, loll=0.0, lat=0.0),
     ("jogador", "correr"): dict(esc_esq=1.0, esc_dir=1.0, joelho=1.0, pe_esq=0.0, pe_dir=0.0, h0=2.0,
-                                BR=32, BR0=10, CO=76, CV=8, HM=8, PY=3.8, SY=6.0, PR=2.4, PX=0.008,
-                                INC=-15.0, SH=1.5, SALTO=0.08, loll=0.0, lat=0.0),
+                                BR=36, BR0=8, CO=86, CV=8, HM=8, PY=3.0, SY=5.0, PR=2.2, PX=0.008,
+                                INC=-9.0, SH=1.3, SALTO=0.05, loll=0.0, lat=0.0),
     ("zumbi", "andar"): dict(esc_esq=0.62, esc_dir=0.95, joelho=0.8, pe_esq=-12.0, pe_dir=-2.0, h0=7.0,
                              BR=11, BR0=16, CO=20, CV=9, HM=10, PY=3.0, SY=5.0, PR=3.4, PX=0.018,
                              INC=-26.0, SH=1.2, SALTO=0.0, loll=1.0, lat=2.0),
@@ -733,6 +733,25 @@ def _pose_salto(fase, q):
 
 
 # ---------------------------------------------------------------------------
+# Deslizar (F12, 20 q): corre -> joga o corpo para tras, perna da frente esticada, a de tras dobrada, bracos para tras/abertos;
+# segura a pose ate ~q 14 e comeca a levantar (o jogo corta quando o deslize acaba).
+# ---------------------------------------------------------------------------
+def _pose_deslizar(q):
+    base = _junta(_pernas_s(52, -34, 12, 18, -118, -30), _tronco_s(2, -10, 4, 2, 0.0), _bracos_s(20, 14, 40))
+    fundo = _junta(_pernas_s(86, -4, 24, 34, -122, -34), _tronco_s(18, 14, -6, -10, -3.0),
+                   _junta(_bracos_s(-30, 34, 26, 6), {"braco_dir": (-30, 0.0, 34), "braco_esq": (-18, 0.0, -34)}))
+    chaves = [
+        (0.0, base, (0.0, 0.0)),
+        (6.0, fundo, (0.0, 0.0)),
+        (14.0, fundo, (0.0, 0.0)),
+        (20.0, _junta(_pernas_s(40, -60, 10, 16, -90, -10), _tronco_s(0, -8, 3, 1), _bracos_s(14, 10, 40)), (0.0, 0.0)),
+    ]
+    p = _avaliar(chaves, q, None, ATRASO_SALTO)
+    p["ar"] = 0.0
+    return p
+
+
+# ---------------------------------------------------------------------------
 # Interface do modulo
 # ---------------------------------------------------------------------------
 def pose_sem_chao(estilo, animacao, q):
@@ -743,6 +762,8 @@ def pose_sem_chao(estilo, animacao, q):
         return pegada.pose_armada(arma, base, q)
     if animacao in ("pular", "cair", "pousar"):
         return _pose_salto(animacao, q)
+    if animacao == "deslizar":
+        return _pose_deslizar(q)
     if animacao == "parado":
         return _pose_parado(estilo, q)
     if animacao in ("andar", "correr"):
