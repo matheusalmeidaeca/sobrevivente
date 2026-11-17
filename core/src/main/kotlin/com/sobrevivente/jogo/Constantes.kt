@@ -507,13 +507,34 @@ object Constantes {
         3.7f, 13.7f, 4.3f, 14.3f,
         -14.3f, 17.7f, -13.7f, 18.3f,
         61.7f, 3.7f, 62.3f, 4.3f,
-        -44.3f, 59.7f, -43.7f, 60.3f
+        -44.3f, 59.7f, -43.7f, 60.3f,
+        39f, -18.25f, 45f, -15.75f,
+        46f, -18.25f, 52f, -15.75f,
+        39f, -14.25f, 45f, -11.75f,
+        -53.25f, -33f, -50.75f, -27f,
+        -53.25f, -25f, -50.75f, -19f,
+        -57.25f, -29f, -54.75f, -23f,
+        -9.5f, 13.65f, -6.5f, 14.35f,
+        -6f, 13.65f, -3f, 14.35f,
+        19.65f, -3.5f, 20.35f, -0.5f,
+        19.65f, 0f, 20.35f, 3f,
+        -19.5f, -8.35f, -16.5f, -7.65f,
+        4.5f, 19.65f, 7.5f, 20.35f,
+        12.4f, -14.45f, 15.6f, -13.55f,
+        -14.45f, 2.4f, -13.55f, 5.6f,
+        28.4f, -28.45f, 31.6f, -27.55f,
+        11.55f, -17.45f, 12.45f, -16.55f,
+        12.65f, -17.05f, 13.55f, -16.15f,
+        -30.45f, 5.55f, -29.55f, 6.45f,
+        -31.45f, 6.35f, -30.55f, 7.25f,
+        51.55f, 1.55f, 52.45f, 2.45f,
+        2.55f, -30.45f, 3.45f, -29.55f
     )
     /** Altura da base de cada parede (0 = chao; 3,2 = guarda-corpo do andar alto). */
-    val PAREDES_BASE = floatArrayOf(0f, 0f, 0f, 0f, 0f, 3.2f, 3.2f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f)
-    val PAREDES_ALTURA = floatArrayOf(6.4f, 6.4f, 6.4f, 6.4f, 6.4f, 1f, 1f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 5f, 5f, 5f, 5f, 5f, 4.5f, 4.5f, 4.5f, 4.5f, 4.5f, 11f, 1.2f, 1.4f, 1.4f, 1.4f, 1.4f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f)
+    val PAREDES_BASE = floatArrayOf(0f, 0f, 0f, 0f, 0f, 3.2f, 3.2f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f)
+    val PAREDES_ALTURA = floatArrayOf(6.4f, 6.4f, 6.4f, 6.4f, 6.4f, 1f, 1f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 5f, 5f, 5f, 5f, 5f, 4.5f, 4.5f, 4.5f, 4.5f, 4.5f, 11f, 1.2f, 1.4f, 1.4f, 1.4f, 1.4f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 2.6f, 2.6f, 2.6f, 2.6f, 2.6f, 2.6f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 0.9f, 0.9f, 0.9f, 0.9f, 0.9f, 0.9f)
     /** 0 casa, 1 pedra, 2 cerca, 3 celeiro, 4 guarda-corpo, 5 tronco, 6-8 reboco, 9 caixote/barril, 10 poco, 11 fardo (2, 5, 9, 10, 11 so colisao: o desenho vem da decoracao). */
-    val PAREDES_TIPO = intArrayOf(0, 0, 0, 0, 0, 4, 9, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 0, 0, 0, 0, 0, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 0, 0, 0, 0, 0, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 3, 3, 3, 3, 3, 1, 10, 11, 11, 11, 11, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5)
+    val PAREDES_TIPO = intArrayOf(0, 0, 0, 0, 0, 4, 9, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 0, 0, 0, 0, 0, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 0, 0, 0, 0, 0, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 3, 3, 3, 3, 3, 1, 10, 11, 11, 11, 11, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9)
     /** Piso interno das casas (minX, minZ, maxX, maxZ). */
     val PISOS = floatArrayOf(-33.6f, -31.6f, -18.4f, -18.4f, 14.4f, -31.6f, 27.6f, -22.4f, -31.6f, 10.4f, -20.4f, 19.6f, 18.4f, 12.4f, 29.6f, 23.6f, -55.6f, -5.6f, -47.4f, 1.6f, 40.4f, -7.6f, 49.6f, 0.6f, -9.6f, 40.4f, 3.6f, 49.6f, 30.4f, 36.4f, 39.6f, 45.6f, -47.6f, 36.4f, -37.4f, 44.6f, 55.4f, 30.4f, 63.6f, 37.6f, -59.6f, -47.6f, -50.4f, -39.4f, 58.4f, -29.6f, 66.6f, -21.4f, -11.6f, -61.6f, 11.6f, -46.4f, 38.4f, -51.6f, 57.6f, -38.4f)
     /** Andares altos: (minX, minZ, maxX, maxZ) e altura. */
@@ -588,7 +609,7 @@ object Constantes {
     const val ZUMBI_TINTA_FLASH = 2.2f
 
     // ---- F5: movimento estilo CoD Mobile (sem deslizar), vila e respawn ----
-    const val JOGADOR_SPRINT_FATOR = 1.3f // corrida automatica com o joystick no maximo
+    const val JOGADOR_SPRINT_FATOR = 1.45f // corrida automatica com o joystick no maximo
     const val JOGADOR_SPRINT_LIMIAR = 0.92f
     const val JOGADOR_FATOR_AGACHADO = 0.5f
     const val JOGADOR_FATOR_ATIRANDO = 0.7f // andar atirando/recarregando
@@ -716,4 +737,12 @@ object Constantes {
     const val MALETA_ARMA_LONGA_A = 2
     const val MALETA_FACA_L = 1
     const val MALETA_FACA_A = 2
+
+    // ===== F11: menu inicial, menu de pausa, icone de menu, mobilidade =====
+    const val PAUSA_BOTAO_LARGURA_DP = 240f
+    const val PAUSA_BOTAO_ALTURA_DP = 50f
+    const val PAUSA_BOTAO_FOLGA_DP = 14f
+    const val MENU_ICONE_DIAMETRO_DP = 40f
+    const val DESLIZE_S = 0.75f      // duracao do deslize (correr + AGACHAR)
+    const val DESLIZE_VEL = 1.1f     // reforco inicial da velocidade, decai a zero
 }

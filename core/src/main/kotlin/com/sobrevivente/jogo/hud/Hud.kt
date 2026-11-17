@@ -184,13 +184,47 @@ class Hud(
         desenharMarcadorAcerto(forma)
         botoes.desenharFormas(forma)
         desenharSlotsArma(forma)
+        desenharIconeMenu(forma)
         if (pausado) {
-            forma.setColor(0f, 0f, 0f, Constantes.PAUSA_ALFA_FUNDO)
-            forma.rect(0f, 0f, largura, altura)
+            desenharFormasPausa(forma)
         } else if (morto) {
             desenharFormasMorte(forma)
         } else if (maletaAberta) {
             desenharFormasMaleta(forma)
+        }
+    }
+
+    // ---------- F11: icone de menu (start) e menu de pausa ----------
+
+    /** Botao redondo com 3 barras (hamburguer), no topo, no centro: toca para abrir o menu de pausa. */
+    private fun desenharIconeMenu(forma: ShapeRenderer) {
+        val i = ControlesToque.ACAO_MENU
+        val r = controles.acaoRaio(i) * (if (controles.acaoPressionada(i)) 0.92f else 1f)
+        val x = controles.acaoX(i)
+        val y = controles.acaoY(i)
+        forma.setColor(1f, 1f, 1f, 0.55f)
+        forma.circle(x, y, r * 1.04f, 28)
+        forma.setColor(0.08f, 0.09f, 0.12f, 0.80f)
+        forma.circle(x, y, r * 0.92f, 28)
+        forma.setColor(1f, 1f, 1f, 0.95f)
+        val w = r * 0.9f
+        val h = r * 0.14f
+        for (k in -1..1) forma.rect(x - w * 0.5f, y + k * r * 0.32f - h * 0.5f, w, h)
+    }
+
+    private fun desenharFormasPausa(forma: ShapeRenderer) {
+        forma.setColor(0f, 0f, 0f, Constantes.PAUSA_ALFA_FUNDO)
+        forma.rect(0f, 0f, largura, altura)
+        for (i in 0 until ControlesToque.NUM_PAUSA) {
+            val e = if (controles.pausaApertadoIndice() == i) Constantes.BOTAO_ESCURECER else 1f
+            val x = controles.pausaEsq(i)
+            val y = controles.pausaBas(i)
+            val w = controles.pausaLargura
+            val h = controles.pausaAltura
+            forma.setColor(1f, 1f, 1f, 0.75f)
+            forma.rect(x, y, w, h)
+            if (i == 0) forma.setColor(0.18f * e, 0.45f * e, 0.22f * e, 0.95f) else forma.setColor(0.45f * e, 0.18f * e, 0.16f * e, 0.95f)
+            forma.rect(x + 2f * densidade, y + 2f * densidade, w - 4f * densidade, h - 4f * densidade)
         }
     }
 
@@ -576,20 +610,17 @@ class Hud(
 
     private fun desenharTextoPausa(lote: SpriteBatch) {
         definirEscala(Constantes.ESCALA_FONTE)
-        val meioY = altura * 0.5f
-        fonte.draw(lote, "PAUSADO", 0f, meioY + fonte.capHeight, largura, Align.center, false)
-
-        definirEscala(Constantes.FONTE_ESCALA_HUD)
-        val espaco = Constantes.PAUSA_ESPACO_DP * densidade
-        fonte.draw(
-            lote,
-            "Aperte VOLTAR para continuar",
-            0f,
-            meioY - espaco,
-            largura,
-            Align.center,
-            false
-        )
+        val topo = controles.pausaBas(0) + controles.pausaAltura
+        fonte.draw(lote, "PAUSADO", 0f, topo + 56f * densidade, largura, Align.center, false)
+        definirEscala(Constantes.FONTE_ESCALA_HUD * 1.2f)
+        val nomes = arrayOf("CONTINUAR", "MENU PRINCIPAL")
+        for (i in 0 until ControlesToque.NUM_PAUSA) {
+            fonte.draw(
+                lote, nomes[i], controles.pausaEsq(i),
+                controles.pausaBas(i) + controles.pausaAltura * 0.5f + fonte.capHeight * 0.5f,
+                controles.pausaLargura, Align.center, false
+            )
+        }
     }
 
     private fun desenharTextosMorte(lote: SpriteBatch) {

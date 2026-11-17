@@ -29,7 +29,7 @@ import com.sobrevivente.jogo.mundo.Jogador
 import com.sobrevivente.jogo.mundo.Mundo
 
 /** Marco F3: personagens animados (F2) no lugar das capsulas. Marco 1.8: mapa de teste (paredes, colisão, minimapa), sobre maleta (1.7), morte/reinício (1.6), inimigos (1.5), tiro (1.4) e HUD (1.3). */
-class TelaJogo : ScreenAdapter() {
+class TelaJogo(private val jogo: com.badlogic.gdx.Game) : ScreenAdapter() {
 
     private val mundo = Mundo()
     private var jogador = Jogador() // var: é recriado ao reiniciar depois da morte
@@ -53,6 +53,7 @@ class TelaJogo : ScreenAdapter() {
     private var pausado = false
     private var morto = false
     private var maletaAberta = false
+    private var voltarAoMenu = false
 
     init {
         cameraJogo.seguir(jogador.posicao)
@@ -335,6 +336,12 @@ class TelaJogo : ScreenAdapter() {
     }
 
     override fun render(delta: Float) {
+        if (voltarAoMenu) { // menu de pausa -> MENU PRINCIPAL: troca de tela e descarta esta
+            voltarAoMenu = false
+            jogo.setScreen(TelaMenu(jogo))
+            dispose()
+            return
+        }
         val dt = minOf(delta, Constantes.DELTA_MAXIMO)
         val densidade = Gdx.graphics.density
 
@@ -345,6 +352,10 @@ class TelaJogo : ScreenAdapter() {
             if (maletaAberta) alternarMaleta() // Voltar fecha a maleta
             else if (!morto) alternarPausa() // morto: Voltar não pausa
         }
+        val botaoPausa = controles.consumirPausa()
+        if (pausado && botaoPausa == 0) alternarPausa()
+        if (pausado && botaoPausa == 1) voltarAoMenu = true
+        if (controles.consumirPressao(ControlesToque.ACAO_MENU) && !pausado && !morto && !maletaAberta) alternarPausa()
         if (controles.consumirAlternarDebug()) hud.alternarDebug()
         if (controles.consumirAlternarMaleta() && !pausado && !morto) alternarMaleta()
         val slotUsado = controles.consumirUsarSlot()

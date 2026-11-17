@@ -73,6 +73,12 @@ class Jogador : Disposable {
     var agachado = false
         private set
     private var fatorMov = 1f
+    // Deslize (F11): correndo + AGACHAR = desliza ~0,75 s na direcao da corrida, rapido e baixo (estilo shooter mobile)
+    private var tempoDeslize = 0f
+    private var ultDirX = 0f
+    private var ultDirZ = -1f
+    val deslizando: Boolean
+        get() = tempoDeslize > 0f
     private var recargaTravada = false
     private var recargaAndando = false
 
@@ -310,7 +316,17 @@ class Jogador : Disposable {
             }
         }
 
-        if (temEntrada) {
+        if (tempoDeslize > 0f) {
+            tempoDeslize -= dt
+            val k = MathUtils.clamp(tempoDeslize / Constantes.DESLIZE_S, 0f, 1f)
+            val v = Constantes.JOGADOR_VELOCIDADE * Constantes.JOGADOR_SPRINT_FATOR * (0.55f + Constantes.DESLIZE_VEL * k)
+            posicao.x = MathUtils.clamp(posicao.x + ultDirX * v * dt, -Constantes.MAPA_LIMITE, Constantes.MAPA_LIMITE)
+            posicao.z = MathUtils.clamp(posicao.z + ultDirZ * v * dt, -Constantes.MAPA_LIMITE, Constantes.MAPA_LIMITE)
+            Colisao.resolver(posicao, Constantes.JOGADOR_RAIO)
+            val yawAlvo = MathUtils.atan2(-ultDirX, -ultDirZ) * MathUtils.radiansToDegrees
+            yaw = MathUtils.lerpAngleDeg(yaw, yawAlvo, minOf(1f, Constantes.JOGADOR_VELOCIDADE_GIRO * dt))
+            if (tempoDeslize <= 0f) agachado = false
+        } else if (temEntrada) {
             val radianos = yawCamera * MathUtils.degreesToRadians
             val seno = MathUtils.sin(radianos)
             val cosseno = MathUtils.cos(radianos)
@@ -318,6 +334,11 @@ class Jogador : Disposable {
             val direcaoX = -seno * entradaY + cosseno * entradaX
             val direcaoZ = -cosseno * entradaY - seno * entradaX
             val v = Constantes.JOGADOR_VELOCIDADE * fatorMov
+            val dl = sqrt(direcaoX * direcaoX + direcaoZ * direcaoZ)
+            if (dl > 0.01f) {
+                ultDirX = direcaoX / dl
+                ultDirZ = direcaoZ / dl
+            }
 
             posicao.x = MathUtils.clamp(posicao.x + direcaoX * v * dt, -Constantes.MAPA_LIMITE, Constantes.MAPA_LIMITE)
             posicao.z = MathUtils.clamp(posicao.z + direcaoZ * v * dt, -Constantes.MAPA_LIMITE, Constantes.MAPA_LIMITE)
@@ -348,7 +369,7 @@ class Jogador : Disposable {
             }
         }
         if (noChao && chaoY < posicao.y - 0.01f) noChao = false // saiu da borda: cai
-        if (temEntrada || !noChao || empurrando) Colisao.resolver(posicao, Constantes.JOGADOR_RAIO)
+        if (temEntrada || !noChao || empurrando || tempoDeslize > 0f) Colisao.resolver(posicao, Constantes.JOGADOR_RAIO)
 
         atualizarTransformacao()
     }
@@ -366,6 +387,10 @@ class Jogador : Disposable {
 
     /** PULAR: so no chao e em pe. */
     fun pular() {
+        if (tempoDeslize > 0f) { // pular saindo do deslize: levanta e salta, mantendo o impulso
+            tempoDeslize = 0f
+            agachado = false
+        }
         if (noChao && !agachado && vida > 0) {
             velY = Constantes.JOGADOR_PULO_VELOCIDADE
             noChao = false
@@ -374,6 +399,12 @@ class Jogador : Disposable {
 
     /** AGACHAR: liga/desliga (so no chao). */
     fun alternarAgachar() {
+        if (tempoDeslize > 0f) return
+        if (sprintando && vida > 0) { // correndo: em vez de agachar parado, desliza
+            tempoDeslize = Constantes.DESLIZE_S
+            agachado = true
+            return
+        }
         if (noChao) agachado = !agachado
     }
 

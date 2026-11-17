@@ -111,6 +111,46 @@ class ControlesToque : InputAdapter() {
     private val acoesPonteiro = IntArray(NUM_ACOES) { SEM_PONTEIRO }
     private val acoesPressionadas = BooleanArray(NUM_ACOES) // "apertou agora", lido uma vez
 
+    // Menu de pausa (F11): botoes CONTINUAR e MENU PRINCIPAL (retangulos, canto inferior esquerdo + tamanho)
+    var pausaLargura = 1f
+        private set
+    var pausaAltura = 1f
+        private set
+    private val pausaEsquerda = FloatArray(NUM_PAUSA)
+    private val pausaBase = FloatArray(NUM_PAUSA)
+    private var ponteiroPausa = SEM_PONTEIRO
+    private var pausaApertado = SEM_SLOT
+    private var pausaPendente = SEM_SLOT
+
+    fun pausaEsq(i: Int): Float = pausaEsquerda[i]
+    fun pausaBas(i: Int): Float = pausaBase[i]
+    fun pausaApertadoIndice(): Int = pausaApertado
+
+    /** Botao do menu de pausa tocado (0 = continuar, 1 = menu principal), ou -1. Lido uma unica vez. */
+    fun consumirPausa(): Int {
+        val v = pausaPendente
+        pausaPendente = SEM_SLOT
+        return v
+    }
+
+    private fun pausaEm(x: Float, y: Float): Int {
+        for (i in 0 until NUM_PAUSA) {
+            if (x >= pausaEsquerda[i] && x <= pausaEsquerda[i] + pausaLargura &&
+                y >= pausaBase[i] && y <= pausaBase[i] + pausaAltura) return i
+        }
+        return SEM_SLOT
+    }
+
+    private fun calcularPausa(densidade: Float) {
+        pausaLargura = Constantes.PAUSA_BOTAO_LARGURA_DP * densidade
+        pausaAltura = Constantes.PAUSA_BOTAO_ALTURA_DP * densidade
+        val folga = Constantes.PAUSA_BOTAO_FOLGA_DP * densidade
+        for (i in 0 until NUM_PAUSA) {
+            pausaEsquerda[i] = (largura - pausaLargura) * 0.5f
+            pausaBase[i] = altura * 0.5f - i * (pausaAltura + folga) - pausaAltura * 0.3f
+        }
+    }
+
     // Zona e toque longo do overlay de debug
     private var debugLargura = 0f
     private var debugAltura = 0f
@@ -132,6 +172,7 @@ class ControlesToque : InputAdapter() {
         centroY = margem + raioBase
         calcularAcoes(densidade)
         calcularReiniciar(densidade)
+        calcularPausa(densidade)
         densidadeTela = densidade
         calcularMaleta(densidade)
         debugLargura = Constantes.DEBUG_ZONA_LARGURA_DP * densidade
@@ -176,6 +217,9 @@ class ControlesToque : InputAdapter() {
         for (k in 0..3) {
             definirAcao(ACAO_ARMA0 + k, largura * 0.5f + (k - 1.5f) * passoSlot, ySlot, raioSlot, raioSlot)
         }
+        // icone do menu (start): topo, centro da tela
+        val raioMenu = Constantes.MENU_ICONE_DIAMETRO_DP * 0.5f * densidade
+        definirAcao(ACAO_MENU, largura * 0.5f, altura - margem - raioMenu, raioMenu, alvoMinimo)
         val raioCura = Constantes.CURAR_RAPIDO_DIAMETRO_DP * 0.5f * densidade
         definirAcao(ACAO_CURAR, largura * 0.5f - 2.5f * passoSlot, ySlot, raioCura, alvoMinimo)
     }
@@ -363,6 +407,8 @@ class ControlesToque : InputAdapter() {
         tempoDebug = 0f
         debugDisparado = false
         ponteiroReiniciar = SEM_PONTEIRO
+        ponteiroPausa = SEM_PONTEIRO
+        pausaApertado = SEM_SLOT
         ponteiroSlot = SEM_PONTEIRO
         slotApertado = SEM_SLOT
         ponteiroBotaoMaleta = SEM_PONTEIRO
@@ -420,9 +466,19 @@ class ControlesToque : InputAdapter() {
     }
 
     override fun touchDown(screenX: Int, screenY: Int, pointer: Int, button: Int): Boolean {
-        if (bloqueado) return false
         val x = screenX.toFloat()
         val y = altura - screenY
+        if (bloqueado) { // pausa: so os botoes do menu de pausa respondem
+            if (ponteiroPausa == SEM_PONTEIRO) {
+                val b = pausaEm(x, y)
+                if (b != SEM_SLOT) {
+                    ponteiroPausa = pointer
+                    pausaApertado = b
+                    return true
+                }
+            }
+            return false
+        }
 
         // 0) Morto: só o botão REINICIAR responde.
         if (morto) {
@@ -519,6 +575,13 @@ class ControlesToque : InputAdapter() {
     }
 
     override fun touchUp(screenX: Int, screenY: Int, pointer: Int, button: Int): Boolean {
+        if (pointer == ponteiroPausa) {
+            val solto = pausaEm(screenX.toFloat(), altura - screenY)
+            if (solto != SEM_SLOT && solto == pausaApertado) pausaPendente = solto
+            ponteiroPausa = SEM_PONTEIRO
+            pausaApertado = SEM_SLOT
+            return true
+        }
         if (pointer == ponteiroReiniciar) {
             ponteiroReiniciar = SEM_PONTEIRO
             // Só vale se soltar o dedo ainda em cima do botão.
@@ -584,7 +647,9 @@ class ControlesToque : InputAdapter() {
         const val ACAO_ATIRAR_ESQ = 7
         const val ACAO_ARMA0 = 8 // 8..11 = slots de arma (pistola, fuzil, escopeta, faca)
         const val NUM_BOTOES_CIRCULARES = 8 // 0..7 sao desenhados por BotoesAcao; 8..11 pelo Hud
-        const val NUM_ACOES = 12
+        const val ACAO_MENU = 12 // icone de menu (start) no topo; desenhado pelo Hud
+        const val NUM_ACOES = 13
+        const val NUM_PAUSA = 2
         private const val SEM_PONTEIRO = -1
         private const val SEM_SLOT = -1
     }

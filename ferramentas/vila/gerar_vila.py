@@ -140,6 +140,24 @@ arvs = [(-45, -22), (-48, -20), (-70, -10), (-72, 20), (-66, 42), (-60, 60), (-3
 for x, z in arvs:
     arvore(x, z)
 
+# ---- ESTILO BLOODY STRIKE: patios de conteineres, barreiras de concreto, sacos de areia, pilhas de pneus (colisao tipo 9; desenho em decor)
+conteineres = []   # (cx, cz, sx, sz, cor)
+VERM, AZUL, VERDE, AMAR = (0.62, 0.17, 0.13), (0.14, 0.28, 0.52), (0.18, 0.42, 0.24), (0.78, 0.60, 0.16)
+for (cx, cz, sx, sz, cor) in [(42, -17, 6.0, 2.5, VERM), (49, -17, 6.0, 2.5, AZUL), (42, -13.0, 6.0, 2.5, VERDE),
+                              (-52, -30, 2.5, 6.0, VERDE), (-52, -22, 2.5, 6.0, AMAR), (-56, -26, 2.5, 6.0, VERM)]:
+    caixa(cx - sx / 2, cz - sz / 2, cx + sx / 2, cz + sz / 2, 9, 2.6)
+    conteineres.append((cx, cz, sx, sz, cor))
+barreiras = [(-8, 14, 3.0, 0.7), (-4.5, 14, 3.0, 0.7), (20, -2, 0.7, 3.0), (20, 1.5, 0.7, 3.0), (-18, -8, 3.0, 0.7), (6, 20, 3.0, 0.7)]
+for (cx, cz, sx, sz) in barreiras:
+    caixa(cx - sx / 2, cz - sz / 2, cx + sx / 2, cz + sz / 2, 9, 1.0)
+sacos = [(14, -14, 3.2, 0.9), (-14, 4, 0.9, 3.2), (30, -28, 3.2, 0.9)]
+for (cx, cz, sx, sz) in sacos:
+    caixa(cx - sx / 2, cz - sz / 2, cx + sx / 2, cz + sz / 2, 9, 1.0)
+pneus = [(12, -17), (13.1, -16.6), (-30, 6), (-31.0, 6.8), (52, 2), (3, -30)]
+for (cx, cz) in pneus:
+    caixa(cx - 0.45, cz - 0.45, cx + 0.45, cz + 0.45, 9, 0.9)
+postes = [(-16, -6), (-16, 14), (16, 6), (16, -14), (44, 10), (-44, 16), (0, 30), (0, -28)]  # so desenho
+
 # itens (cura 0, municao 1, fuzil 2)
 itens += [
     (0.0, 3.0, 0.0, 0), (3.0, 3.0, 0.0, 1), (-3.0, 3.0, 0.0, 1),
@@ -321,6 +339,57 @@ for k, (cx, cz, base) in enumerate(caixotes):
         for sx_ in (-0.4, 0.4):
             dec(cx + sx_, base + 0.5, cz, 0.1, 0.98, 0.98, (0.30, 0.21, 0.12), 0)
         dec(cx, base + 0.5, cz, 0.98, 0.1, 0.98, (0.30, 0.21, 0.12), 0)
+
+# conteineres: corpo, nervuras verticais, porta, teto e cantoneiras
+for (cx, cz, sx, sz, cor) in conteineres:
+    dec(cx, 1.3, cz, sx, 2.6, sz, cor)
+    escuro = (cor[0] * 0.7, cor[1] * 0.7, cor[2] * 0.7)
+    dec(cx, 2.64, cz, sx - 0.05, 0.08, sz - 0.05, escuro)
+    comp = max(sx, sz)
+    n = int(comp / 0.45)
+    for k in range(n):
+        o = -comp / 2 + 0.3 + k * (comp - 0.6) / (n - 1)
+        if sx > sz:
+            for lado in (-1, 1):
+                dec(cx + o, 1.3, cz + lado * (sz / 2 + 0.02), 0.1, 2.4, 0.05, escuro)
+        else:
+            for lado in (-1, 1):
+                dec(cx + lado * (sx / 2 + 0.02), 1.3, cz + o, 0.05, 2.4, 0.1, escuro)
+    if sx > sz:
+        dec(cx + sx / 2 + 0.03, 1.3, cz, 0.06, 2.3, sz - 0.2, (0.25, 0.25, 0.27))
+        dec(cx + sx / 2 + 0.06, 1.3, cz, 0.04, 2.3, 0.05, (0.1, 0.1, 0.1))
+    else:
+        dec(cx, 1.3, cz + sz / 2 + 0.03, sx - 0.2, 2.3, 0.06, (0.25, 0.25, 0.27))
+        dec(cx, 1.3, cz + sz / 2 + 0.06, 0.05, 2.3, 0.04, (0.1, 0.1, 0.1))
+    for ex in (-1, 1):
+        for ez in (-1, 1):
+            dec(cx + ex * (sx / 2 - 0.08), 0.1, cz + ez * (sz / 2 - 0.08), 0.18, 0.2, 0.18, (0.15, 0.15, 0.16))
+# barreiras de concreto (base larga + corpo + faixa de aviso), sacos de areia, pneus, postes de luz
+for (cx, cz, sx, sz) in barreiras:
+    dec(cx, 0.18, cz, sx + 0.1, 0.36, sz + 0.25, (0.58, 0.58, 0.56))
+    dec(cx, 0.68, cz, sx, 0.64, sz, (0.64, 0.64, 0.62))
+    if sx > sz:
+        dec(cx, 0.9, cz, sx * 0.6, 0.1, sz + 0.02, (0.85, 0.65, 0.12))
+    else:
+        dec(cx, 0.9, cz, sx + 0.02, 0.1, sz * 0.6, (0.85, 0.65, 0.12))
+for (cx, cz, sx, sz) in sacos:
+    comp = max(sx, sz)
+    for fil in range(3):
+        for k in range(int(comp / 0.55)):
+            o = -comp / 2 + 0.3 + k * 0.55 + (0.27 if fil % 2 else 0.0)
+            tom = rnd.uniform(0.0, 0.06)
+            if sx > sz:
+                dec(cx + o, 0.17 + fil * 0.3, cz, 0.55, 0.28, 0.5, (0.62 + tom, 0.55 + tom, 0.38), 0, 1)
+            else:
+                dec(cx, 0.17 + fil * 0.3, cz + o, 0.5, 0.28, 0.55, (0.62 + tom, 0.55 + tom, 0.38), 0, 1)
+for (cx, cz) in pneus:
+    for k in range(3):
+        dec(cx, 0.16 + k * 0.3, cz, 0.9, 0.3, 0.9, (0.07, 0.07, 0.08), 0, 2)
+        dec(cx, 0.16 + k * 0.3, cz, 0.45, 0.32, 0.45, (0.2, 0.2, 0.2), 0, 2)
+for (cx, cz) in postes:
+    dec(cx, 3.0, cz, 0.22, 6.0, 0.22, (0.30, 0.22, 0.14), 0, 2)
+    dec(cx, 5.6, cz, 1.6, 0.12, 0.12, (0.28, 0.2, 0.12))
+    dec(cx, 5.8, cz, 0.3, 0.14, 0.3, (0.9, 0.85, 0.6))
 
 # poco (anel de pedra, agua escura, dois postes e telhadinho) e fardos de feno
 for (tipo, ox, oz) in objetos:
