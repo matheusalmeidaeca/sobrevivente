@@ -120,8 +120,10 @@ def _transformacao_no(pose, nome):
     return t, q
 
 
-def montar_g3dj(id_modelo, tris, textura, estilo, passo_chaves=1):
-    """Dicionario g3dj completo (malha + material + esqueleto + animacoes)."""
+def montar_g3dj(id_modelo, tris, textura, estilo, passo_chaves=1, textura_cabeca=None):
+    """Dicionario g3dj completo (malha + material + esqueleto + animacoes).
+    textura_cabeca (F13): se informada, os triangulos do grupo "cabeca" vao para um segundo material
+    ("material_cabeca") com essa textura; o G3dModelLoader carrega as duas sozinho."""
     vertices, indices = montar_vertices(tris)
     indice_osso = {n: i for i, n in enumerate(an.NOMES_OSSOS)}
 
@@ -138,41 +140,51 @@ def montar_g3dj(id_modelo, tris, textura, estilo, passo_chaves=1):
                 float(indice_osso[pes[1][0]]), _rm(pes[1][1])]
 
     # Malhas de ate LIMITE_VERTICES vertices (indices de 16 bits): modelos grandes viram varias malhas/partes.
-    meshes, partes_no = [], []
+    meshes, partes_no = [], []   # partes_no = [(id da parte, id do material)]
     local, dados, idx_local = {}, [], []
 
-    def fechar():
+    def fechar(material):
         i = len(meshes)
         pid = "malha_parte" if i == 0 else "malha_parte_%d" % i
         meshes.append({"attributes": ["POSITION", "NORMAL", "TEXCOORD0", "BLENDWEIGHT0", "BLENDWEIGHT1"],
                        "vertices": dados[:], "parts": [{"id": pid, "type": "TRIANGLES", "indices": idx_local[:]}]})
-        partes_no.append(pid)
+        partes_no.append((pid, material))
 
-    for t in range(0, len(indices), 3):
-        tri = indices[t:t + 3]
-        novos = len({g for g in tri if g not in local})
-        if len(local) + novos > LIMITE_VERTICES:
-            fechar()
-            local, dados, idx_local = {}, [], []
-        for g in tri:
-            if g not in local:
-                local[g] = len(local)
-                dados += linha(vertices[g])
-            idx_local.append(local[g])
-    fechar()
-    modelo = {
-        "version": [0, 1], "id": id_modelo,
-        "meshes": meshes,
-        "materials": [{"id": "material", "diffuse": [1.0, 1.0, 1.0],
-                       "textures": [{"id": "textura", "filename": textura, "type": "DIFFUSE"}]}],
-    }
+    def e_cabeca(t):
+        return textura_cabeca is not None and vertices[indices[t]]["grupo"] == "cabeca"
+
+    lotes = [("material", [t for t in range(0, len(indices), 3) if not e_cabeca(t)])]
+    if textura_cabeca is not None:
+        lotes.append(("material_cabeca", [t for t in range(0, len(indices), 3) if e_cabeca(t)]))
+    for material, lista in lotes:
+        if not lista:
+            continue
+        local, dados, idx_local = {}, [], []
+        for t in lista:
+            tri = indices[t:t + 3]
+            novos = len({g for g in tri if g not in local})
+            if len(local) + novos > LIMITE_VERTICES:
+                fechar(material)
+                local, dados, idx_local = {}, [], []
+            for g in tri:
+                if g not in local:
+                    local[g] = len(local)
+                    dados += linha(vertices[g])
+                idx_local.append(local[g])
+        fechar(material)
+    materiais = [{"id": "material", "diffuse": [1.0, 1.0, 1.0],
+                  "textures": [{"id": "textura", "filename": textura, "type": "DIFFUSE"}]}]
+    if textura_cabeca is not None:
+        materiais.append({"id": "material_cabeca", "diffuse": [1.0, 1.0, 1.0],
+                          "textures": [{"id": "textura_cabeca", "filename": textura_cabeca, "type": "DIFFUSE"}]})
+    modelo = {"version": [0, 1], "id": id_modelo, "meshes": meshes, "materials": materiais}
     bones = []
     for nome in an.NOMES_OSSOS:  # pose de repouso T(+pivo); o LibGDX inverte ao carregar
         px, py, pz = an.PIVO[nome]
         sinal = -1.0 if GRAVAR_POSE_INVERSA else 1.0
         bones.append({"node": nome, "translation": [_r(sinal * px), _r(sinal * py), _r(sinal * pz)],
                       "rotation": [0.0, 0.0, 0.0, 1.0], "scale": [1.0, 1.0, 1.0]})
-    no_malha = {"id": "malha", "parts": [{"meshpartid": pid, "materialid": "material", "bones": bones} for pid in partes_no]}
+    no_malha = {"id": "malha", "parts": [{"meshpartid": pid, "materialid": mat, "bones": bones} for pid, mat in partes_no]}
     modelo["nodes"] = [_nos_do_esqueleto(), no_malha]
 
     pontos = [(v["p"][0], v["p"][1], v["p"][2], v["pesos"]) for v in vertices][::PASSO_PONTOS]

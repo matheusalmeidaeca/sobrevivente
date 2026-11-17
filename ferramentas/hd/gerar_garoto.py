@@ -1,7 +1,8 @@
 # ferramentas/hd/gerar_garoto.py
 """F9: gera o GAROTO (protagonista) pelo pipeline ALTA -> BAIXA -> BAKE.
 Uso: python3 gerar_garoto.py <pasta_saida> [--alta]   (--alta tambem gera a malha de alta poligonagem em .obj.gz)
-Saidas: jogador.g3dj + textura_jogador.png (difusa com AO/sujeira assados) + normal_jogador.png, ao_jogador.png, curv_jogador.png"""
+Saidas: jogador.g3dj + textura_jogador.png (difusa com AO/sujeira assados) + textura_rosto.png (F13: atlas da cabeca)
++ normal_jogador.png, ao_jogador.png, curv_jogador.png"""
 import gzip
 import os
 import sys
@@ -17,6 +18,7 @@ import bake  # noqa: E402
 import exportar as ex  # noqa: E402
 import garoto  # noqa: E402
 import kit  # noqa: E402
+import rosto  # noqa: E402
 import texturas  # noqa: E402
 import texturas_garoto as tg  # noqa: E402
 
@@ -58,7 +60,12 @@ if __name__ == "__main__":
     salvar_png(AO, os.path.join(saida, "ao_jogador.png"))
     salvar_png(CV, os.path.join(saida, "curv_jogador.png"))
     print("bake ok (%.0fs)" % (time.time() - t0))
-    modelo = ex.montar_g3dj("jogador", tris, "textura_jogador.png", "jogador")
+    tex_cabeca = None
+    if "cabeca_real" in g.tubos:   # F13: a cabeca realista tem atlas proprio
+        tex_cabeca = rosto.ARQUIVO_TEXTURA
+        salvar_png(rosto.pintar(g.tubos["cabeca_real"]), os.path.join(saida, tex_cabeca))
+        print("cabeca:", {k: v for k, v in g.m.contagem.items() if k in ("pele", "olho", "orelha", "cabelo", "mecha")})
+    modelo = ex.montar_g3dj("jogador", tris, "textura_jogador.png", "jogador", textura_cabeca=tex_cabeca)
     nv = sum(len(mm["vertices"]) // 12 for mm in modelo["meshes"])
     tam = ex.escrever_g3dj(os.path.join(saida, "jogador.g3dj"), modelo)
     print("jogador.g3dj:", len(modelo["meshes"]), "malhas,", nv, "vertices,", len(modelo["animations"]), "animacoes,", tam // 1024, "KB (%.0fs)" % (time.time() - t0))

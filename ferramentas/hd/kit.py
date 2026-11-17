@@ -143,12 +143,15 @@ class Tubo:
 
     def __init__(self, aneis, regiao, campo=None, ybase=None, ytop=None):
         a = np.array(aneis, float)
-        self.ys = a[:, 0]
-        self.a = a
         self.regiao = regiao
         self.campo = campo
         self.y0 = float(a[0, 0])
         self.y1 = float(a[-1, 0])
+        # F13: np.interp exige y crescente. Os bracos listam os aneis de cima para baixo e por isso saiam como
+        # cilindros de raio constante (sem ombro, sem afinar no punho). y0/y1 continuam sendo o 1o e o ultimo anel.
+        a = a[np.argsort(a[:, 0], kind="stable")]
+        self.ys = a[:, 0]
+        self.a = a
         self.ybase = ybase or (lambda th: np.full_like(np.asarray(th, float), self.y0))
         self.ytop = ytop or (lambda th: np.full_like(np.asarray(th, float), self.y1))
 

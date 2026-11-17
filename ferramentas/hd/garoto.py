@@ -11,8 +11,9 @@ import numpy as np
 
 import kit
 import personagem
+import rosto
 from kit import Campo, Tubo, remendo, elipsoide, tubo_caminho, caixa, rotz, uv_atlas, suave, norm
-from personagem import Personagem, R, TILES, TILE, COR, _aneis_tronco, _aneis_cabeca
+from personagem import Personagem, R, TILES, TILE, COR, XB, _aneis_tronco, _aneis_cabeca
 
 # ---------------------------------------------------------------------------------------------- registro no atlas
 R["casaco"] = (640, 544, 384, 224)
@@ -123,9 +124,14 @@ class Garoto(Personagem):
         self.lod = lod if lod is not None else (3.0 if alta else 0.62)
         self.n_cabelo = cabelo if cabelo is not None else (440 if alta else 46)
         self.fino = alta or self.lod > 1.5   # mais segmentos nos tubinhos (cabelo, tira, capuz)
+        self.rosto_real = not alta           # F13: a malha ALTA (so para bake) continua com a cabeca antiga
 
     # ------------------------------------------------------------------------------------ cabeca e cabelo
     def cabeca(self):
+        if self.rosto_real:   # F13: cabeca realista (rosto.py), com textura propria (textura_rosto.png)
+            leve = self.lod < 1.5
+            rosto.construir(self, 0.60 if leve else 0.92, 0.6 if leve else 1.0)
+            return
         l = self.lod
         self.lod = max(0.85, l)
         super().cabeca()
@@ -197,10 +203,11 @@ class Garoto(Personagem):
 
     # ------------------------------------------------------------------------------------ casaco, capuz, bolsa
     def _aneis_casaco(self):
-        return [(0.45, 0, 0.0, 0.232, 0.158, 2.2), (0.60, 0, 0.0, 0.222, 0.150, 2.2), (0.75, 0, 0.0, 0.208, 0.138, 2.2),
-                (0.90, 0, 0.0, 0.196, 0.128, 2.2), (1.02, 0, 0.0, 0.186, 0.120, 2.3), (1.12, 0, 0.0, 0.180, 0.116, 2.3),
-                (1.22, 0, 0.0, 0.188, 0.118, 2.3), (1.32, 0, -0.002, 0.212, 0.121, 2.4), (1.40, 0, -0.002, 0.238, 0.121, 2.5),
-                (1.450, 0, 0.004, 0.228, 0.106, 2.4), (1.482, 0, 0.008, 0.165, 0.094, 2.2), (1.495, 0, 0.010, 0.115, 0.086, 2.1)]
+        # F13: ombros arredondados e mais estreitos (acompanha o esqueleto novo)
+        return [(0.45, 0, 0.0, 0.214, 0.158, 2.2), (0.60, 0, 0.0, 0.206, 0.150, 2.2), (0.75, 0, 0.0, 0.198, 0.138, 2.2),
+                (0.90, 0, 0.0, 0.190, 0.128, 2.2), (1.02, 0, 0.0, 0.178, 0.120, 2.3), (1.12, 0, 0.0, 0.170, 0.116, 2.3),
+                (1.22, 0, 0.0, 0.174, 0.118, 2.3), (1.32, 0, -0.002, 0.186, 0.121, 2.3), (1.40, 0, -0.002, 0.196, 0.121, 2.3),
+                (1.450, 0, 0.004, 0.190, 0.106, 2.3), (1.482, 0, 0.008, 0.146, 0.094, 2.2), (1.495, 0, 0.010, 0.105, 0.086, 2.1)]
 
     def casaco(self):
         m = self.m
@@ -233,7 +240,7 @@ class Garoto(Personagem):
         UV = uv_atlas(R["casaco"], TH / (2 * math.pi), (Y - CASACO_Y0) / (CASACO_Y1 - CASACO_Y0))
         grade_malha(m, "tronco", P, UV, rad, "casaco")
         # forro interno (escuro) visivel pela abertura e pela barra
-        sl = slice(None, None, 1 if self.fino else 2)   # o forro tem metade da resolucao (so aparece pela abertura)
+        sl = slice(None, None, 2)   # o forro tem metade da resolucao (so aparece pela abertura)
         P2, _ = t.ponto(TH[sl, sl], Y[sl, sl], -0.009)
         UV2 = np.tile(uv_atlas(TILE["forro"], 0.5, 0.5), (P2.shape[0] * P2.shape[1], 1)).reshape(P2.shape[:2] + (2,))
         grade_malha(m, "tronco", P2, UV2, -rad[sl, sl], "forro")
@@ -294,17 +301,19 @@ class Garoto(Personagem):
 
     # ------------------------------------------------------------------------------------ bracos e pernas
     def _aneis_braco_g(self, s):
-        x = 0.246 * s
-        return [(1.462, 0.200 * s, 0, 0.040, 0.040, 2), (1.442, 0.228 * s, 0, 0.062, 0.062, 2),
-                (1.43, x, 0, 0.068, 0.068, 2), (1.35, x, 0, 0.062, 0.062, 2), (1.28, x, 0, 0.060, 0.060, 2),
-                (1.21, x, 0, 0.058, 0.058, 2), (1.15, x, 0, 0.057, 0.057, 2), (1.08, x, 0, 0.054, 0.054, 2),
-                (0.96, x, 0, 0.048, 0.048, 2), (0.90, x, 0, 0.040, 0.040, 2), (0.86, x, 0, 0.027, 0.026, 2),
+        x = XB * s
+        # topo em cupula (deltoide) que entra no ombro do casaco; manga mais justa
+        return [(1.470, (XB - 0.030) * s, 0, 0.014, 0.016, 2), (1.465, (XB - 0.025) * s, 0, 0.032, 0.036, 2),
+                (1.453, (XB - 0.015) * s, 0, 0.046, 0.051, 2), (1.435, (XB - 0.005) * s, 0, 0.053, 0.057, 2),
+                (1.41, x, 0, 0.055, 0.058, 2), (1.35, x, 0, 0.053, 0.055, 2), (1.28, x, 0, 0.052, 0.053, 2),
+                (1.21, x, 0, 0.052, 0.052, 2), (1.15, x, 0, 0.052, 0.052, 2), (1.08, x, 0, 0.050, 0.050, 2),
+                (0.96, x, 0, 0.046, 0.046, 2), (0.90, x, 0, 0.040, 0.040, 2), (0.86, x, 0, 0.027, 0.026, 2),
                 (0.79, x, 0, 0.026, 0.024, 2)]
 
     def braco(self, s):
         m = self.m
         nome = "braco_esq" if s < 0 else "braco_dir"
-        x = 0.246 * s
+        x = XB * s
         c = Campo()
         c.bossa(x, 1.44, 0.0, .04, .05, .06, .004)
         c.bossa(x, 1.20, 0.05, .02, .03, .03, .006)

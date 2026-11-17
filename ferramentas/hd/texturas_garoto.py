@@ -237,10 +237,11 @@ def pintar(p):
         A[:] = _c((120, 120, 120))
         T.pintar_tiles(p, A)
         tiles_extra(p, A)
-        T.pintar_olho(p, A)
-        T.pintar_cabelo(p, A)
-        T.pintar_cabeca(p, A)
-        sardas(p, A)
+        if "cabeca" in p.tubos:   # cabeca antiga; a nova (rosto.py) tem atlas proprio
+            T.pintar_olho(p, A)
+            T.pintar_cabelo(p, A)
+            T.pintar_cabeca(p, A)
+            sardas(p, A)
         pintar_tronco(p, A)
         pintar_casaco(p, A)
         for s in (-1, 1):

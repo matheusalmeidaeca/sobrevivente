@@ -22,19 +22,23 @@ FPS = 30
 # Esqueleto (18 ossos; orcamento da secao 24.3: ate 25). Pais sempre antes dos filhos.
 # nome, pai, pivo (cabeca do osso), ponta (so para desenhar o osso no Blender)
 # ---------------------------------------------------------------------------
+# F13: largura dos ombros. Antes 0.19 / 0.246 (61 cm de ombro a ombro com as mangas: cara de cabide).
+# Agora ~49 cm, proporcao de um adulto de 1,80 m. A malha (ferramentas/hd) le estes valores.
+X_OMBRO, X_BRACO = 0.155, 0.205
+
 OSSOS = [
     ("quadril", None, (0.0, 0.92, 0.0), (0.0, 1.00, 0.0)),
     ("coluna", "quadril", (0.0, 1.00, 0.0), (0.0, 1.50, 0.0)),
     ("pescoco", "coluna", (0.0, 1.50, 0.0), (0.0, 1.56, 0.0)),
     ("cabeca", "pescoco", (0.0, 1.56, 0.0), (0.0, 1.80, 0.0)),
-    ("ombro_esq", "coluna", (-0.19, 1.44, 0.0), (-0.246, 1.44, 0.0)),
-    ("braco_esq", "ombro_esq", (-0.246, 1.44, 0.0), (-0.246, 1.20, 0.0)),
-    ("antebraco_esq", "braco_esq", (-0.246, 1.20, 0.0), (-0.246, 0.84, 0.0)),
-    ("mao_esq", "antebraco_esq", (-0.246, 0.84, 0.0), (-0.246, 0.68, 0.0)),
-    ("ombro_dir", "coluna", (0.19, 1.44, 0.0), (0.246, 1.44, 0.0)),
-    ("braco_dir", "ombro_dir", (0.246, 1.44, 0.0), (0.246, 1.20, 0.0)),
-    ("antebraco_dir", "braco_dir", (0.246, 1.20, 0.0), (0.246, 0.84, 0.0)),
-    ("mao_dir", "antebraco_dir", (0.246, 0.84, 0.0), (0.246, 0.68, 0.0)),
+    ("ombro_esq", "coluna", (-X_OMBRO, 1.44, 0.0), (-X_BRACO, 1.44, 0.0)),
+    ("braco_esq", "ombro_esq", (-X_BRACO, 1.44, 0.0), (-X_BRACO, 1.20, 0.0)),
+    ("antebraco_esq", "braco_esq", (-X_BRACO, 1.20, 0.0), (-X_BRACO, 0.84, 0.0)),
+    ("mao_esq", "antebraco_esq", (-X_BRACO, 0.84, 0.0), (-X_BRACO, 0.68, 0.0)),
+    ("ombro_dir", "coluna", (X_OMBRO, 1.44, 0.0), (X_BRACO, 1.44, 0.0)),
+    ("braco_dir", "ombro_dir", (X_BRACO, 1.44, 0.0), (X_BRACO, 1.20, 0.0)),
+    ("antebraco_dir", "braco_dir", (X_BRACO, 1.20, 0.0), (X_BRACO, 0.84, 0.0)),
+    ("mao_dir", "antebraco_dir", (X_BRACO, 0.84, 0.0), (X_BRACO, 0.68, 0.0)),
     ("coxa_esq", "quadril", (-0.095, 0.91, 0.0), (-0.095, 0.50, 0.0)),
     ("canela_esq", "coxa_esq", (-0.095, 0.50, 0.0), (-0.095, 0.09, 0.0)),
     ("pe_esq", "canela_esq", (-0.095, 0.09, 0.0), (-0.095, 0.04, -0.13)),
@@ -265,7 +269,7 @@ def pesos_do_vertice(grupo, x, y, z):
             return [("quadril", 1.0 - k), ("coxa_dir" if x > 0 else "coxa_esq", k)]
         t = _suave((y - 0.90) / 0.22)  # cintura: quadril -> coluna
         lado = "esq" if x < 0 else "dir"
-        w = _suave((abs(x) - 0.10) / 0.09) * _suave((y - 1.30) / 0.10) * 0.5  # ombro acompanha a clavicula
+        w = _suave((abs(x) - 0.08) / 0.08) * _suave((y - 1.30) / 0.10) * 0.5  # ombro acompanha a clavicula
         if w > 0.0:
             return [("coluna", 1.0 - w), ("ombro_" + lado, w)]
         return [("quadril", 1.0 - t), ("coluna", t)]

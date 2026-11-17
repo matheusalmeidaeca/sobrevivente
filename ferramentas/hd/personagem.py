@@ -2,10 +2,14 @@
 """F8: constroi o jogador e o zumbi em ALTA DEFINICAO (malha + atlas de textura 1024x1024), 100% procedural.
 Mesmos ossos/pivos do esqueleto (animacao.py). Uso: m, atlas = personagem.construir("jogador" | "zumbi")."""
 import math
+import os
+import sys
 
 import numpy as np
 
-import kit
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "blender"))
+import animacao as an  # noqa: E402
+import kit  # noqa: E402
 from kit import (Campo, Malha, Tubo, remendo, elipsoide, tubo_caminho, caixa, rotx, roty, rotz, uv_atlas, fbm, ruido,
                  suave, norm)
 
@@ -21,6 +25,8 @@ R = {
 TILES = ["camisa", "jeans", "couro", "metal", "bota", "sola", "cadarco", "pele", "labio", "cabelo_t", "botao",
          "escuro", "dente", "sangue", "carne", "tecido", "unha", "bota_clara"]
 TILE = {n: (i % 16 * 64, 768 + (i // 16) * 64, 64, 64) for i, n in enumerate(TILES)}
+XB = an.X_BRACO            # x do eixo do braco (F13: vem do esqueleto)
+DXB = XB - 0.246           # deslocamento em relacao as medidas antigas
 
 COR = {
     "jogador": dict(pele=(226, 174, 140), camisa=(70, 104, 152), jeans=(52, 80, 124), couro=(104, 66, 38),
@@ -40,6 +46,9 @@ FERIDAS = [  # (x, y, z, raio, tipo)  tipo: 0 carne exposta, 1 rasgo de pano com
     (-0.090, 1.250, 0.100, 0.034, 1), (0.100, 0.500, -0.062, 0.038, 0), (-0.098, 0.700, -0.070, 0.030, 1),
     (0.260, 1.330, -0.052, 0.030, 0), (-0.255, 1.050, 0.040, 0.026, 0), (0.060, 1.610, -0.080, 0.016, 0),
 ]
+
+
+FERIDAS = [((x + math.copysign(DXB, x)) if abs(x) > 0.18 else x, y, z, r, t) for (x, y, z, r, t) in FERIDAS]
 
 
 def _campo_feridas(campo, y0, y1):
@@ -73,19 +82,22 @@ def _aneis_cabeca(z):
 
 
 def _aneis_tronco():
+    # F13: caixa toracica mais estreita em cima (os ombros agora sao o deltoide do braco, nao o tronco)
     return [(0.84, 0, 0.000, 0.146, 0.092, 2.3), (0.88, 0, 0.000, 0.158, 0.097, 2.3),
-            (0.95, 0, 0.000, 0.170, 0.102, 2.3), (1.02, 0, 0.000, 0.152, 0.096, 2.3),
-            (1.10, 0, -0.001, 0.150, 0.093, 2.3), (1.20, 0, -0.001, 0.160, 0.097, 2.3),
-            (1.30, 0, -0.003, 0.180, 0.104, 2.4), (1.38, 0, -0.004, 0.198, 0.108, 2.4),
-            (1.44, 0, -0.002, 0.204, 0.100, 2.5), (1.475, 0, 0.004, 0.150, 0.082, 2.3),
-            (1.495, 0, 0.010, 0.082, 0.066, 2.1), (1.507, 0, 0.012, 0.060, 0.060, 2.0),
-            (1.514, 0, 0.012, 0.056, 0.056, 2.0)]
+            (0.95, 0, 0.000, 0.168, 0.102, 2.3), (1.02, 0, 0.000, 0.150, 0.096, 2.3),
+            (1.10, 0, -0.001, 0.146, 0.093, 2.3), (1.20, 0, -0.001, 0.152, 0.097, 2.3),
+            (1.30, 0, -0.003, 0.162, 0.104, 2.3), (1.38, 0, -0.004, 0.172, 0.108, 2.3),
+            (1.44, 0, -0.002, 0.170, 0.100, 2.3), (1.475, 0, 0.004, 0.128, 0.082, 2.2),
+            (1.495, 0, 0.010, 0.078, 0.066, 2.1), (1.507, 0, 0.012, 0.058, 0.060, 2.0),
+            (1.514, 0, 0.012, 0.054, 0.056, 2.0)]
 
 
 def _aneis_braco(s):
-    x = 0.246 * s
-    return [(1.505, 0.214 * s, 0, 0.050, 0.050, 2), (1.475, 0.234 * s, 0, 0.064, 0.064, 2),
-            (1.43, x, 0, 0.060, 0.060, 2), (1.35, x, 0, 0.052, 0.054, 2), (1.28, x, 0, 0.050, 0.052, 2),
+    x = XB * s
+    # F13: topo em cupula (deltoide) apoiado no ombro do tronco, em vez de um cilindro com tampa
+    return [(1.478, (XB - 0.030) * s, 0, 0.014, 0.016, 2), (1.472, (XB - 0.025) * s, 0, 0.034, 0.038, 2),
+            (1.458, (XB - 0.015) * s, 0, 0.048, 0.052, 2), (1.44, (XB - 0.005) * s, 0, 0.056, 0.058, 2),
+            (1.41, x, 0, 0.058, 0.059, 2), (1.35, x, 0, 0.052, 0.054, 2), (1.28, x, 0, 0.050, 0.052, 2),
             (1.21, x, 0, 0.047, 0.047, 2), (1.15, x, 0, 0.047, 0.046, 2), (1.08, x, 0, 0.040, 0.040, 2),
             (0.96, x, 0, 0.035, 0.034, 2), (0.86, x, 0, 0.027, 0.026, 2), (0.79, x, 0, 0.026, 0.024, 2)]
 
@@ -350,7 +362,7 @@ class Personagem:
         m, z = self.m, self.z
         nome = "braco_esq" if s < 0 else "braco_dir"
         c = Campo()
-        x = 0.246 * s
+        x = XB * s
         c.bossa(x, 1.44, 0.0, .04, .05, .06, .004)                    # deltoide
         c.bossa(x, 1.34, -0.04, .03, .07, .03, .0040)                 # biceps
         c.bossa(x, 1.34, 0.04, .03, .06, .03, .0040)                  # triceps
@@ -380,7 +392,7 @@ class Personagem:
     def mao(self, s):
         m, z = self.m, self.z
         nome = "braco_esq" if s < 0 else "braco_dir"
-        x = 0.246 * s
+        x = XB * s
         reg = R["mao_esq" if s < 0 else "mao_dir"]
         # palma: largura em Z (rz), espessura em X (rx); a palma olha para dentro (-X para a mao direita)
         ac = [(0.830, x, 0.0, 0.0255, 0.0240, 2), (0.805, x, 0.0, 0.0240, 0.0255, 2), (0.785, x, 0.0, 0.0220, 0.0295, 2),

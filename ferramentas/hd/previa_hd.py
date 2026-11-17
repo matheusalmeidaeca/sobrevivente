@@ -35,6 +35,24 @@ def posar(vertices, pontos, estilo, animacao, quadro):
     return outP, outN, pose, W
 
 
+def atlas_duplo(vertices, textura, textura_cabeca, destino):
+    """F13: junta a textura do corpo e a da cabeca lado a lado (so para a previa) e devolve copias dos vertices
+    com o u remapeado: corpo na metade esquerda, grupo "cabeca" na direita."""
+    a = Image.open(textura).convert("RGB")
+    b = Image.open(textura_cabeca).convert("RGB").resize(a.size)
+    j = Image.new("RGB", (a.width * 2, a.height))
+    j.paste(a, (0, 0))
+    j.paste(b, (a.width, 0))
+    j.save(destino)
+    novos = []
+    for v in vertices:
+        u, w = v["uv"]
+        nv = dict(v)
+        nv["uv"] = (u * 0.5 + (0.5 if v["grupo"] == "cabeca" else 0.0), w)
+        novos.append(nv)
+    return novos
+
+
 def desenhar(vertices, idx, P, N, textura, ang=125.0, janela=(-0.7, -0.05, 0.7, 1.95), pxm=330, fundo=(0.78, 0.82, 0.86),
              extra=None):
     x0, y0, x1, y1 = janela
