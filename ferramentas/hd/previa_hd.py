@@ -35,20 +35,28 @@ def posar(vertices, pontos, estilo, animacao, quadro):
     return outP, outN, pose, W
 
 
-def atlas_duplo(vertices, textura, textura_cabeca, destino):
-    """F13: junta a textura do corpo e a da cabeca lado a lado (so para a previa) e devolve copias dos vertices
-    com o u remapeado: corpo na metade esquerda, grupo "cabeca" na direita."""
+def atlas_duplo(vertices, textura, textura_cabeca, destino, textura_mao=None):
+    """Junta as texturas (corpo, cabeca e, se houver, maos) numa grade 2x2 so para a previa e devolve copias dos
+    vertices com o uv remapeado: corpo em cima/esquerda, grupo "cabeca" em cima/direita, grupos mao_* embaixo/esquerda."""
     a = Image.open(textura).convert("RGB")
     b = Image.open(textura_cabeca).convert("RGB").resize(a.size)
-    j = Image.new("RGB", (a.width * 2, a.height))
+    j = Image.new("RGB", (a.width * 2, a.height * 2))
     j.paste(a, (0, 0))
     j.paste(b, (a.width, 0))
+    if textura_mao is not None:
+        j.paste(Image.open(textura_mao).convert("RGB").resize(a.size), (0, a.height))
     j.save(destino)
     novos = []
     for v in vertices:
-        u, w = v["uv"]
+        u, w = v["uv"]       # w: v do OBJ (1 = topo da imagem)
+        g = v["grupo"]
+        ox, oy = 0.0, 0.0
+        if g == "cabeca":
+            ox = 0.5
+        elif g.startswith("mao_") and textura_mao is not None:
+            oy = 0.5
         nv = dict(v)
-        nv["uv"] = (u * 0.5 + (0.5 if v["grupo"] == "cabeca" else 0.0), w)
+        nv["uv"] = (u * 0.5 + ox, w * 0.5 + (0.5 - oy))
         novos.append(nv)
     return novos
 

@@ -10,6 +10,7 @@ import numpy as np
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "blender"))
 import animacao as an  # noqa: E402
 import kit  # noqa: E402
+import rosto  # noqa: E402
 from kit import (Campo, Malha, Tubo, remendo, elipsoide, tubo_caminho, caixa, rotx, roty, rotz, uv_atlas, fbm, ruido,
                  suave, norm)
 
@@ -22,6 +23,9 @@ R = {
     "mao_esq": (384, 896, 96, 96), "mao_dir": (480, 896, 96, 96),
     "olho": (0, 896, 128, 128), "cabelo": (128, 896, 256, 128),
 }
+# F15: atlas proprio das maos (textura_maos_<estilo>.png, 1024x1024), 3o material "material_mao"
+RM = {"palma_esq": (0, 0, 512, 512), "palma_dir": (512, 0, 512, 512),
+      "dedos_esq": (0, 512, 256, 512), "dedos_dir": (256, 512, 256, 512), "unha": (512, 512, 128, 128)}
 TILES = ["camisa", "jeans", "couro", "metal", "bota", "sola", "cadarco", "pele", "labio", "cabelo_t", "botao",
          "escuro", "dente", "sangue", "carne", "tecido", "unha", "bota_clara"]
 TILE = {n: (i % 16 * 64, 768 + (i // 16) * 64, 64, 64) for i, n in enumerate(TILES)}
@@ -116,6 +120,7 @@ class Personagem:
         self.z = estilo == "zumbi"
         self.cor = COR[estilo]
         self.lod = 0.58 if self.z else 1.0
+        self.rosto_real = self.z   # F14: o zumbi usa a cabeca realista (rosto.py) com textura propria
         self.m = Malha()
         self.tubos = {}
         self.atlas = np.zeros((kit.ATLAS, kit.ATLAS, 3), np.float32)
@@ -129,6 +134,9 @@ class Personagem:
     # ------------------------------------------------------------------------------------ cabeca
     def cabeca(self):
         m, z = self.m, self.z
+        if z and self.rosto_real:
+            rosto.construir(self, 0.30, 0.20, zumbi=True)
+            return
         c = Campo()
         # rosto esculpido (bossas/covas gaussianas; frente = -Z)
         c.bossa(0, 1.676, -0.096, .0060, .024, .022, .0070)                 # ponte do nariz
@@ -390,47 +398,78 @@ class Personagem:
         self.mao(s)
 
     def mao(self, s):
+        """F14: mao realista - palma achatada com cabecas dos metacarpos, dedos com articulacoes e secao achatada,
+        unhas, polegar com eminencia tenar. Os ossos/angulos de curvatura dos dedos sao os de antes (a pegada nao muda)."""
         m, z = self.m, self.z
-        nome = "braco_esq" if s < 0 else "braco_dir"
+        nome = "mao_esq" if s < 0 else "mao_dir"   # grupo proprio (F15): material com textura das maos
         x = XB * s
-        reg = R["mao_esq" if s < 0 else "mao_dir"]
-        # palma: largura em Z (rz), espessura em X (rx); a palma olha para dentro (-X para a mao direita)
-        ac = [(0.830, x, 0.0, 0.0255, 0.0240, 2), (0.805, x, 0.0, 0.0240, 0.0255, 2), (0.785, x, 0.0, 0.0220, 0.0295, 2),
-              (0.760, x, 0.0, 0.0205, 0.0335, 2), (0.735, x, 0.0, 0.0190, 0.0362, 2), (0.715, x, 0.0, 0.0175, 0.0372, 2.1),
-              (0.700, x, 0.0, 0.0145, 0.0335, 2.1)]
+        reg = RM["palma_esq" if s < 0 else "palma_dir"]
+        rd = RM["dedos_esq" if s < 0 else "dedos_dir"]
+        sin_ = -s           # lado da palma (para onde os dedos fecham)
+        ac = [(0.830, x, 0.0, 0.0250, 0.0235, 2), (0.805, x, 0.0, 0.0238, 0.0255, 2), (0.785, x, 0.0, 0.0222, 0.0300, 2),
+              (0.760, x, 0.0, 0.0208, 0.0345, 2.2), (0.735, x, 0.0, 0.0196, 0.0382, 2.4), (0.718, x, 0.0, 0.0182, 0.0392, 2.5),
+              (0.706, x, 0.0, 0.0166, 0.0366, 2.2), (0.696, x, 0.0, 0.0140, 0.0320, 2.0), (0.688, x, 0.0, 0.0090, 0.0220, 2.0)]
         c = Campo()
-        sin_ = -s
-        c.bossa(x + sin_ * 0.014, 0.765, -0.030, .014, .022, .02, .0050)     # eminencia do polegar
-        c.bossa(x - sin_ * 0.012, 0.745, 0.0, .014, .025, .03, .0020)        # dorso
+        c.bossa(x + sin_ * 0.016, 0.768, -0.030, .016, .026, .022, .0075)    # eminencia tenar (base do polegar)
+        c.bossa(x + sin_ * 0.014, 0.752, 0.030, .014, .022, .016, .0050)     # eminencia hipotenar
+        c.bossa(x + sin_ * 0.012, 0.724, 0.0, .010, .008, .040, .0040)       # coxins sob os dedos
+        c.bossa(x + sin_ * 0.020, 0.758, -0.005, .012, .020, .010, -.0045)   # prega da palma
+        for zf in (-0.0285, -0.0095, 0.0095, 0.0275):
+            c.bossa(x - sin_ * 0.016, 0.719, zf, .008, .007, .008, .0045)    # nos dos dedos (cabeca dos metacarpos)
+        c.bossa(x - sin_ * 0.014, 0.770, 0.0, .006, .030, .034, .0030)       # dorso: tendoes
         t = Tubo(ac, reg, c)
-        t.malha(m, nome, self.ns(16), np.linspace(0, 1, 11), tampa_base=True, tampa_topo=True, nome="mao")
+        self.tubos[nome] = t
+        t.malha(m, nome, self.ns(20), np.linspace(0, 1, 17), tampa_base=True, tampa_topo=True, nome="mao")
         tile = TILE["pele"]
-        # dedos: curvam para dentro (sin_) em torno de um eixo Z (pegada de arma)
-        dedos = [(-0.0285, (0.034, 0.024, 0.021), 0.0090), (-0.0095, (0.038, 0.027, 0.022), 0.0092),
-                 (0.0095, (0.034, 0.025, 0.021), 0.0088), (0.0275, (0.026, 0.019, 0.017), 0.0078)]
-        for zf, comp, r in dedos:
+        # dedos: (z da base, y da base, comprimentos das 3 falanges, raio, abertura em z)
+        dedos = [(-0.0285, 0.717, (0.0325, 0.0235, 0.0200), 0.0094, -0.0010), (-0.0095, 0.713, (0.0365, 0.0262, 0.0210), 0.0097, -0.0004),
+                 (0.0095, 0.715, (0.0330, 0.0245, 0.0200), 0.0092, 0.0004), (0.0275, 0.721, (0.0255, 0.0185, 0.0165), 0.0080, 0.0012)]
+        for zf, yb, comp, r, spl in dedos:
             ang = [0.0, 24.0, 24.0 + 48.0, 24.0 + 48.0 + 38.0]
-            p = np.array([x + sin_ * 0.003, 0.714, zf])
+            p = np.array([x + sin_ * 0.003, yb, zf])
             pts = [p]
+            dirs = []
             for k in range(3):
                 a = math.radians((ang[k] + ang[k + 1]) / 2.0)
-                d = np.array([sin_ * math.sin(a), -math.cos(a), 0.0])
+                d = np.array([sin_ * math.sin(a), -math.cos(a), spl / 0.025])
+                d = norm(d)
+                dirs.append((d, a))
                 p = p + d * comp[k]
                 pts.append(p)
-            tubo_caminho(m, nome, pts, [r, r * 0.95, r * 0.86, r * 0.70], tile=tile, nseg=7, nn=8, nome="dedo")
-            # unha na ponta (dorso do dedo)
-            pe, pu = pts[-1], pts[-2]
-            elipsoide(m, nome, pe + np.array([-sin_ * 0.0042, 0.0012, 0.0]) , (0.0012, 0.0058, 0.0050), tile=TILE["unha"],
-                      nu=6, nv=3, nome="unha")
-        # polegar
-        base = np.array([x + sin_ * 0.014, 0.776, -0.030])
-        d0 = norm(np.array([sin_ * 0.35, -0.55, -0.75]))
-        d1 = norm(np.array([sin_ * 0.55, -0.70, -0.45]))
-        d2 = norm(np.array([sin_ * 0.80, -0.50, -0.30]))
-        p1 = base + d0 * 0.030
-        p2 = p1 + d1 * 0.026
-        p3 = p2 + d2 * 0.022
-        tubo_caminho(m, nome, [base, p1, p2, p3], [0.0105, 0.0095, 0.0082, 0.0068], tile=tile, nseg=7, nn=8, nome="polegar")
+            nn = 17
+            tt = np.linspace(0, 1, 13)
+            ra = r * (1.0 - 0.30 * tt) * (1 + 0.11 * np.exp(-((tt - 1 / 3.) / 0.07) ** 2) + 0.09 * np.exp(-((tt - 2 / 3.) / 0.07) ** 2))
+            ra[-1] *= 0.72
+            ra[-2] *= 0.92
+            tubo_caminho(m, nome, pts, list(ra), uv_regiao=rd, nseg=8, nn=nn, nome="dedo", achatar=(0.80, np.array([1.0, 0.0, 0.0])))
+            # unha: placa achatada sobre o dorso da ultima falange
+            d, a = dirs[-1]
+            dn = np.array([-sin_ * math.cos(a), -math.sin(a), 0.0])
+            pe = pts[-1]
+            rn = r * 0.70
+            u0 = pe - d * 0.0090 + dn * rn * 0.78
+            u1 = pe - d * 0.0040 + dn * rn * 0.80
+            u2 = pe - d * 0.0004 + dn * rn * 0.62
+            tubo_caminho(m, nome, [u0, u1, u2], [rn * 0.82, rn * 0.90, rn * 0.62], uv_regiao=RM["unha"], nseg=8, nn=6, nome="unha",
+                         achatar=(0.28, dn))
+        # polegar: metacarpo + 2 falanges, com articulacoes e secao achatada
+        base = np.array([x + sin_ * 0.013, 0.784, -0.031])
+        d0 = norm(np.array([sin_ * 0.30, -0.55, -0.78]))
+        d1 = norm(np.array([sin_ * 0.50, -0.68, -0.52]))
+        d2 = norm(np.array([sin_ * 0.78, -0.52, -0.34]))
+        p1 = base + d0 * 0.026
+        p2 = p1 + d1 * 0.024
+        p3 = p2 + d2 * 0.020
+        tt = np.linspace(0, 1, 10)
+        rt = 0.0122 * (1.0 - 0.34 * tt) * (1 + 0.10 * np.exp(-((tt - 1 / 3.) / 0.08) ** 2) + 0.10 * np.exp(-((tt - 2 / 3.) / 0.08) ** 2))
+        rt[-1] *= 0.74
+        tubo_caminho(m, nome, [base, p1, p2, p3], list(rt), uv_regiao=rd, nseg=8, nn=17, nome="polegar",
+                     achatar=(0.82, norm(np.cross(d1, np.array([0.0, 0.0, 1.0])))))
+        dn = norm(np.cross(np.array([0.0, 0.0, 1.0]), d2)) * (-1.0 if sin_ > 0 else 1.0)
+        dn = dn if np.dot(dn, np.array([-sin_, 0.3, 0.0])) > 0 else -dn
+        rn = 0.0086
+        tubo_caminho(m, nome, [p3 - d2 * 0.0105 + dn * rn * 0.85, p3 - d2 * 0.0050 + dn * rn * 0.88, p3 - d2 * 0.0005 + dn * rn * 0.66],
+                     [rn * 0.82, rn * 0.92, rn * 0.64], uv_regiao=RM["unha"], nseg=8, nn=6, nome="unha", achatar=(0.28, dn))
 
     # ------------------------------------------------------------------------------------ pernas e botas
     def perna(self, s):

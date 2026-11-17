@@ -120,7 +120,7 @@ def _transformacao_no(pose, nome):
     return t, q
 
 
-def montar_g3dj(id_modelo, tris, textura, estilo, passo_chaves=1, textura_cabeca=None):
+def montar_g3dj(id_modelo, tris, textura, estilo, passo_chaves=1, textura_cabeca=None, textura_mao=None):
     """Dicionario g3dj completo (malha + material + esqueleto + animacoes).
     textura_cabeca (F13): se informada, os triangulos do grupo "cabeca" vao para um segundo material
     ("material_cabeca") com essa textura; o G3dModelLoader carrega as duas sozinho."""
@@ -153,9 +153,14 @@ def montar_g3dj(id_modelo, tris, textura, estilo, passo_chaves=1, textura_cabeca
     def e_cabeca(t):
         return textura_cabeca is not None and vertices[indices[t]]["grupo"] == "cabeca"
 
-    lotes = [("material", [t for t in range(0, len(indices), 3) if not e_cabeca(t)])]
+    def e_mao(t):   # F15: maos com material/textura proprios (grupos mao_esq / mao_dir)
+        return textura_mao is not None and vertices[indices[t]]["grupo"].startswith("mao_")
+
+    lotes = [("material", [t for t in range(0, len(indices), 3) if not e_cabeca(t) and not e_mao(t)])]
     if textura_cabeca is not None:
         lotes.append(("material_cabeca", [t for t in range(0, len(indices), 3) if e_cabeca(t)]))
+    if textura_mao is not None:
+        lotes.append(("material_mao", [t for t in range(0, len(indices), 3) if e_mao(t)]))
     for material, lista in lotes:
         if not lista:
             continue
@@ -177,6 +182,9 @@ def montar_g3dj(id_modelo, tris, textura, estilo, passo_chaves=1, textura_cabeca
     if textura_cabeca is not None:
         materiais.append({"id": "material_cabeca", "diffuse": [1.0, 1.0, 1.0],
                           "textures": [{"id": "textura_cabeca", "filename": textura_cabeca, "type": "DIFFUSE"}]})
+    if textura_mao is not None:
+        materiais.append({"id": "material_mao", "diffuse": [1.0, 1.0, 1.0],
+                          "textures": [{"id": "textura_mao", "filename": textura_mao, "type": "DIFFUSE"}]})
     modelo = {"version": [0, 1], "id": id_modelo, "meshes": meshes, "materials": materiais}
     bones = []
     for nome in an.NOMES_OSSOS:  # pose de repouso T(+pivo); o LibGDX inverte ao carregar

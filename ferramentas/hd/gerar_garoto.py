@@ -18,6 +18,7 @@ import bake  # noqa: E402
 import exportar as ex  # noqa: E402
 import garoto  # noqa: E402
 import kit  # noqa: E402
+import maos  # noqa: E402
 import rosto  # noqa: E402
 import texturas  # noqa: E402
 import texturas_garoto as tg  # noqa: E402
@@ -65,7 +66,9 @@ if __name__ == "__main__":
         tex_cabeca = rosto.ARQUIVO_TEXTURA
         salvar_png(rosto.pintar(g.tubos["cabeca_real"]), os.path.join(saida, tex_cabeca))
         print("cabeca:", {k: v for k, v in g.m.contagem.items() if k in ("pele", "olho", "orelha", "cabelo", "mecha")})
-    modelo = ex.montar_g3dj("jogador", tris, "textura_jogador.png", "jogador", textura_cabeca=tex_cabeca)
+    tex_mao = "textura_maos_jogador.png"   # F15: maos com textura propria (3o material)
+    salvar_png(maos.pintar(g), os.path.join(saida, tex_mao))
+    modelo = ex.montar_g3dj("jogador", tris, "textura_jogador.png", "jogador", textura_cabeca=tex_cabeca, textura_mao=tex_mao)
     nv = sum(len(mm["vertices"]) // 12 for mm in modelo["meshes"])
     tam = ex.escrever_g3dj(os.path.join(saida, "jogador.g3dj"), modelo)
     print("jogador.g3dj:", len(modelo["meshes"]), "malhas,", nv, "vertices,", len(modelo["animations"]), "animacoes,", tam // 1024, "KB (%.0fs)" % (time.time() - t0))

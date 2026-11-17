@@ -274,7 +274,7 @@ def pesos_do_vertice(grupo, x, y, z):
             return [("coluna", 1.0 - w), ("ombro_" + lado, w)]
         return [("quadril", 1.0 - t), ("coluna", t)]
     lado = "esq" if grupo.endswith("_esq") else "dir"
-    if grupo.startswith("braco"):
+    if grupo.startswith("braco") or grupo.startswith("mao"):   # F15: a mao tem grupo/material proprios
         if y > 1.28:  # topo: ombro (clavicula) <-> braco
             s = _suave((y - 1.34) / 0.10) * 0.55
             return [("braco_" + lado, 1.0 - s), ("ombro_" + lado, s)]

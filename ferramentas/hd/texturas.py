@@ -423,7 +423,8 @@ def pintar(p):
     pintar_tiles(p, A)
     pintar_olho(p, A)
     pintar_cabelo(p, A)
-    pintar_cabeca(p, A)
+    if "cabeca" in p.tubos:   # F14: a cabeca realista tem atlas proprio
+        pintar_cabeca(p, A)
     pintar_tronco(p, A)
     for s in (-1, 1):
         pintar_braco(p, A, s)

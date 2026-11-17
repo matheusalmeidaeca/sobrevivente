@@ -10,18 +10,26 @@ sys.path.insert(0, AQUI)
 sys.path.insert(0, os.path.join(AQUI, "..", "blender"))
 import exportar as ex  # noqa: E402
 import personagem  # noqa: E402
+import rosto  # noqa: E402
 import texturas  # noqa: E402
 
 if __name__ == "__main__":
     saida = sys.argv[1]
     os.makedirs(saida, exist_ok=True)
-    for estilo in ("jogador", "zumbi"):
+    for estilo in (sys.argv[2:] or ("zumbi",)):   # F14: o jogador vem de gerar_garoto.py; aqui so o zumbi (ou liste os estilos)
         p = personagem.Personagem(estilo).tudo()
         atlas = texturas.pintar(p)
         png = os.path.join(saida, "textura_%s.png" % estilo)
         texturas.salvar(atlas, png)
         tris = p.m.triangulos()
-        modelo = ex.montar_g3dj(estilo, tris, "textura_%s.png" % estilo, estilo)
+        tex_cabeca = None
+        if "cabeca_real" in p.tubos:   # F14: o zumbi tambem tem rosto realista, com textura propria
+            tex_cabeca = "textura_%s_rosto.png" % estilo
+            rosto.salvar_png(rosto.pintar(p.tubos["cabeca_real"], zumbi=True), os.path.join(saida, tex_cabeca))
+        import maos   # F15: maos com textura propria
+        tex_mao = "textura_maos_%s.png" % estilo
+        rosto.salvar_png(maos.pintar(p), os.path.join(saida, tex_mao))
+        modelo = ex.montar_g3dj(estilo, tris, "textura_%s.png" % estilo, estilo, textura_cabeca=tex_cabeca, textura_mao=tex_mao)
         nv = len(modelo["meshes"][0]["vertices"]) // 12
         assert nv < 65000, "vertices demais para indices de 16 bits: %d" % nv
         destino = os.path.join(saida, estilo + ".g3dj")

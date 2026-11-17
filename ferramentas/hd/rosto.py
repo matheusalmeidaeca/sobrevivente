@@ -12,6 +12,7 @@ O que muda em relacao a cabeca antiga (personagem.Personagem.cabeca):
 Sistema do jogo: Y para cima, frente = -Z, direita = +X. Theta do tubo: 0 = costas, pi = frente.
 Grupo de pele: "cabeca" (pesos pescoco/cabeca calculados em animacao.pesos_do_vertice pela altura)."""
 import math
+import os
 
 import numpy as np
 
@@ -29,33 +30,44 @@ RR = {
     "orelha_esq": (512, 704, 160, 256), "orelha_dir": (672, 704, 160, 256),
     "olho": (832, 704, 192, 192),
     "cilio": (832, 896, 64, 64), "cab_t": (896, 896, 64, 64), "boca": (960, 896, 64, 64),
+    "rima": (832, 960, 64, 64),
 }
+
+# Perfil frontal medido na foto de perfil (y do modelo em m, z da superficie no plano central em m); extraido por segmentacao
+# do fundo (F16b). A escala/ancora: 0,4988 mm/px e testa em z = -0,0935.
+PERFIL_FOTO = [(1.7184, -0.0985), (1.7134, -0.0975), (1.7085, -0.0945), (1.7035, -0.0935), (1.6985, -0.0890), (1.6935, -0.0880),
+               (1.6885, -0.0860), (1.6835, -0.0865), (1.6785, -0.0890), (1.6735, -0.0920), (1.6686, -0.0950), (1.6636, -0.0985),
+               (1.6586, -0.1025), (1.6536, -0.1060), (1.6486, -0.1075), (1.6436, -0.1060), (1.6411, -0.1040), (1.6386, -0.1005),
+               (1.6361, -0.0945), (1.6336, -0.0925), (1.6287, -0.0925), (1.6237, -0.0930), (1.6187, -0.0945), (1.6137, -0.0915),
+               (1.6087, -0.0930), (1.6037, -0.0900), (1.5987, -0.0895), (1.5937, -0.0910), (1.5887, -0.0925), (1.5838, -0.0925),
+               (1.5788, -0.0905), (1.5738, -0.0865), (1.5713, -0.0825)]
+
 
 # ---------------------------------------------------------------------------------------------- medidas (metros)
 Y_BASE, Y_TOPO = 1.490, 1.808
 OLHO_X, OLHO_Y, OLHO_Z = 0.0318, 1.6925, -0.0655
 R_GLOBO, R_PALP = 0.0122, 0.0136
 NARIZ_NASION, NARIZ_PONTA = 1.6950, 1.6490
-BOCA_Y, BOCA_L = 1.6100, 0.0218
+BOCA_Y, BOCA_L = 1.6137, 0.0235
 COR_PELE = (208, 172, 150)
 COR_CABELO = (26, 23, 24)
 
 # aneis da cabeca + pescoco: (y, cx, cz, rx, rz, expoente). Frente = cz - rz, nuca = cz + rz.
 ANEIS = [
-    (1.490, 0.0, 0.0040, 0.0475, 0.0480, 2.00),
-    (1.530, 0.0, 0.0045, 0.0462, 0.0505, 2.00),
-    (1.553, 0.0, 0.0050, 0.0465, 0.0530, 2.00),
-    (1.560, 0.0, 0.0025, 0.0468, 0.0570, 1.95),
-    (1.566, 0.0, -0.0050, 0.0473, 0.0662, 1.80),
-    (1.573, 0.0, -0.0115, 0.0482, 0.0750, 1.70),
-    (1.580, 0.0, -0.0125, 0.0495, 0.0785, 1.70),
-    (1.592, 0.0, -0.0105, 0.0525, 0.0805, 1.75),
-    (1.608, 0.0, -0.0065, 0.0570, 0.0845, 1.85),
-    (1.635, 0.0, -0.0015, 0.0665, 0.0895, 1.90),
-    (1.665, 0.0, 0.0030, 0.0722, 0.0945, 1.94),
-    (1.692, 0.0, 0.0055, 0.0745, 0.0960, 1.97),
-    (1.715, 0.0, 0.0050, 0.0762, 0.0985, 2.00),
-    (1.745, 0.0, 0.0050, 0.0758, 0.0950, 2.02),
+    (1.490, 0.0, 0.0050, 0.0560, 0.0560, 2.00),
+    (1.530, 0.0, 0.0055, 0.0510, 0.0560, 2.00),
+    (1.553, 0.0, 0.0045, 0.0495, 0.0600, 2.00),
+    (1.560, 0.0, 0.0035, 0.0495, 0.0610, 1.95),
+    (1.566, 0.0, -0.0030, 0.0485, 0.0670, 1.85),
+    (1.573, 0.0, -0.0095, 0.0475, 0.0745, 1.80),
+    (1.580, 0.0, -0.0125, 0.0485, 0.0785, 1.80),
+    (1.592, 0.0, -0.0105, 0.0515, 0.0805, 1.80),
+    (1.608, 0.0, -0.0065, 0.0555, 0.0845, 1.85),
+    (1.635, 0.0, -0.0015, 0.0630, 0.0895, 1.90),
+    (1.665, 0.0, 0.0030, 0.0675, 0.0945, 1.94),
+    (1.692, 0.0, 0.0055, 0.0690, 0.0960, 1.97),
+    (1.715, 0.0, 0.0050, 0.0710, 0.0985, 2.00),
+    (1.745, 0.0, 0.0050, 0.0715, 0.0950, 2.02),
     (1.772, 0.0, 0.0055, 0.0690, 0.0840, 2.02),
     (1.792, 0.0, 0.0055, 0.0535, 0.0640, 2.00),
     (1.803, 0.0, 0.0055, 0.0340, 0.0400, 2.00),
@@ -93,8 +105,8 @@ def fenda(q, dy):
     tc = np.clip(t, 0.0, 1.0)
     arco = 4.0 * tc * (1.0 - tc)
     yc = -0.0010 + 0.0020 * tc
-    yu = yc + 0.0047 * arco ** 0.70 * (1.0 + 0.30 * (0.5 - tc))
-    yl = yc - 0.0041 * arco ** 0.85 * (1.0 - 0.30 * (0.5 - tc))
+    yu = yc + 0.0039 * arco ** 0.70 * (1.0 + 0.30 * (0.5 - tc))
+    yl = yc - 0.0034 * arco ** 0.85 * (1.0 - 0.30 * (0.5 - tc))
     dentro = (t > 0.0) & (t < 1.0) & (dy < yu) & (dy > yl)
     return dentro, yu, yl, t
 
@@ -122,7 +134,7 @@ def nariz(x, y):
     """Relevo do nariz (metros, para a frente)."""
     t = np.clip((NARIZ_NASION - y) / (NARIZ_NASION - NARIZ_PONTA), 0.0, 1.0)
     acima = y >= NARIZ_PONTA
-    alt = np.where(acima, 0.0010 + 0.0125 * t ** 1.10, 0.0135 * _g((y - NARIZ_PONTA) / 0.0062))
+    alt = np.where(acima, 0.0008 + 0.0098 * t ** 1.10, 0.0108 * _g((y - NARIZ_PONTA) / 0.0062))
     larg = 0.0052 + 0.0034 * t ** 1.5
     rel = alt * _g(x / larg)
     rel += 0.0088 * _g(x / 0.0088) * _g((y - 1.6508) / 0.0078)                          # ponta (bola)
@@ -147,13 +159,40 @@ def linha_cabelo(th):
     return base + rag
 
 
-def _campo_rosto():
+_CORR = {}
+
+
+def _corr_perfil():
+    """Correcao que leva o perfil do plano central (testa, nariz, labios, queixo) a medida da foto de perfil."""
+    if "f" not in _CORR:
+        ys = np.array([p[0] for p in PERFIL_FOTO])[::-1]
+        zf = np.array([p[1] for p in PERFIL_FOTO])[::-1]
+        from scipy.signal import medfilt
+        zf = medfilt(np.concatenate([[zf[0]] * 2, zf, [zf[-1]] * 2]), 5)[2:-2]
+        t0 = TuboCabeca(ANEIS, RR["pele"], _campo_rosto(False, corrigir=False))
+        P, _ = t0.ponto(np.full_like(ys, PI), ys)
+        delta = P[:, 2] - zf                      # >0: o modelo esta mais para tras que a foto
+        delta = delta * suave((ys - 1.572) / 0.006) * suave((1.728 - ys) / 0.010)
+        from scipy.ndimage import gaussian_filter1d
+        yy = np.linspace(ys.min(), ys.max(), 160)
+        dd = np.interp(yy, ys, delta)
+        dd = gaussian_filter1d(dd, 5.0 / (yy[1] - yy[0]) / 1000.0 * 1.0, mode="nearest")   # ~5 mm: sem ondulacao
+        _CORR["ys"], _CORR["d"] = yy, np.clip(dd, -0.012, 0.012)
+
+    def corr(P, th, y):
+        d = np.interp(P[:, 1], _CORR["ys"], _CORR["d"], left=0.0, right=0.0)
+        w = suave((-P[:, 2] - 0.045) / 0.025) * _g(P[:, 0] / 0.034)
+        return d * w
+    return corr
+
+
+def _campo_rosto(zumbi=False, corrigir=True):
     c = Campo()
     f = -0.090  # z aproximado do plano do rosto (as bossas da frente usam sz grande)
     c.bossa(0.0300, 1.7130, f, .0220, .0070, .03, .0050, True)       # arcada superciliar
     c.bossa(0.0, 1.7090, f, .0110, .0080, .03, .0026)                # glabela
     c.bossa(0.0270, 1.7480, f, .0240, .0180, .03, .0018, True)       # bossa frontal
-    c.bossa(OLHO_X + 0.001, 1.6925, f, .0170, .0120, .03, -.0085, True)   # orbita
+    c.bossa(OLHO_X + 0.001, 1.6925, f, .0170, .0120, .03, -.0050, True)   # orbita
     c.bossa(0.0150, 1.6860, f, .0060, .0100, .03, -.0030, True)      # canto interno / parede do nariz
     c.bossa(0.0285, 1.6760, f, .0130, .0050, .03, -.0009, True)      # olheira
     c.bossa(0.0520, 1.6660, -0.068, .0170, .0120, .028, .0042, True)  # maca do rosto
@@ -179,6 +218,18 @@ def _campo_rosto():
         rel -= 0.0010 * _g(x / 0.0026) * _g((y - 1.6280) / 0.0055)                      # filtro
         return rel * w
     c.fn(frente)
+    for k, (yy, xx, zz) in enumerate(((1.557, .031, -.026), (1.538, .027, -.031), (1.518, .022, -.037), (1.498, .018, -.043))):
+        c.bossa(xx, yy, zz, .0085, .0150, .020, .0034, True)          # esternocleidomastoideo
+    c.bossa(0.0, 1.528, -.056, .0120, .0150, .020, -.0022)            # fossa da garganta
+    c.bossa(0.0, 1.541, -.058, .0060, .0090, .014, .0030)             # pomo de adao
+    if corrigir and not zumbi:
+        c.fn(_corr_perfil())
+    if zumbi:   # F14: caveira de morto-vivo - macas e bochechas fundas, orbitas fundas, nariz afilado, boca entreaberta
+        c.bossa(0.0470, 1.6330, -0.066, .0200, .0200, .028, -.0075, True)   # bochechas fundas
+        c.bossa(OLHO_X + 0.001, 1.6925, f, .0200, .0140, .03, -.0075, True)  # orbitas mais fundas
+        c.bossa(0.0420, 1.7000, -0.075, .0110, .0080, .03, .0030, True)     # arcada mais marcada
+        c.bossa(0.0730, 1.6600, -0.040, .0140, .0220, .030, -.0045, True)   # temporas/maxilar encovados
+        c.bossa(0.0, 1.6090, f, .0170, .0070, .03, -.0095)                  # boca entreaberta (fenda funda)
     return c
 
 
@@ -317,8 +368,43 @@ def globos(m):
                                               0.5 + P[..., 1] / (2.0 * R_GLOBO) * 0.96))
 
 
+def palpebras(m):
+    """F15: borda das palpebras (tubinho rosado), linha dos cilios, caruncula e cilios individuais - escondem o serrilhado
+    da fenda e dao espessura as palpebras."""
+    for s in (-1, 1):
+        t = np.linspace(0.0, 1.0, 15)
+        q = -0.0150 + 0.0292 * t
+        _, yu, yl, _ = fenda(q, np.zeros_like(q))
+        pts = {}
+        for nome, yy in (("sup", yu), ("inf", yl)):
+            r = np.hypot(q, yy)
+            zb = OLHO_Z - np.sqrt(np.maximum((R_GLOBO + 0.0003) ** 2 - r * r, 1e-10))
+            pts[nome] = np.stack([s * (OLHO_X + q), OLHO_Y + yy, zb - 0.0002], axis=-1)
+        tubo_caminho(m, "cabeca", list(pts["sup"]), [0.0003, 0.0007, 0.0009, 0.0009, 0.0009, 0.0008, 0.0004], tile=RR["rima"],
+                     nseg=5, nn=24, tampas=False, nome="palpebra")
+        tubo_caminho(m, "cabeca", list(pts["inf"]), [0.0003, 0.0006, 0.0008, 0.0008, 0.0008, 0.0007, 0.0003], tile=RR["rima"],
+                     nseg=5, nn=24, tampas=False, nome="palpebra")
+        lin = pts["sup"] + np.array([0.0, 0.0004, -0.0003])
+        tubo_caminho(m, "cabeca", list(lin[1:-1]), [0.00055] * 7, tile=RR["cilio"], nseg=4, nn=24, tampas=False, nome="cilios")
+        # caruncula (cantinho rosado do olho)
+        elipsoide(m, "cabeca", (s * (OLHO_X - 0.0138), OLHO_Y - 0.0002, OLHO_Z - R_GLOBO * 0.94), (0.0010, 0.0011, 0.0006),
+                  tile=RR["rima"], nu=8, nv=5, nome="caruncula")
+        # cilios individuais (pente curvo para cima e para fora)
+        for tt in np.linspace(0.08, 0.97, 24):
+            k = int(round(tt * 14))
+            base = pts["sup"][k] + np.array([0.0, 0.0003, -0.0003])
+            fora = s * (tt - 0.25)
+            d1 = norm(np.array([fora * 0.55, 0.85, -0.62]))
+            d2 = norm(np.array([fora * 0.95, 0.60, -0.55]))
+            comp = 0.0017 + 0.0020 * math.sin(math.pi * min(1.0, tt * 1.05)) * (1.0 if tt > 0.3 else 0.7)
+            p1 = base + d1 * comp * 0.55
+            p2 = p1 + d2 * comp * 0.50
+            tubo_caminho(m, "cabeca", [base, p1, p2], [0.00016, 0.00013, 0.00004], tile=RR["cilio"], nseg=3, nn=4, tampas=False,
+                         nome="cilio")
+
+
 # ---------------------------------------------------------------------------------------------- orelhas
-ORELHA_A, ORELHA_B = 0.0158, 0.0295
+ORELHA_A, ORELHA_B = 0.0135, 0.0215
 
 
 def _orelha_relevo(an, bn):
@@ -355,7 +441,7 @@ def orelhas(m):
     a, b, c, d = idx[:-1, :-1].ravel(), idx[:-1, 1:].ravel(), idx[1:, 1:].ravel(), idx[1:, :-1].ravel()
     T = np.concatenate([np.stack([a, b, c], 1), np.stack([a, c, d], 1)])
     for s in (-1, 1):
-        O = np.array([s * 0.0715, 1.6760, -0.0040])
+        O = np.array([s * 0.0640, 1.6670, -0.0040])
         A = norm(np.array([s * 0.33, 0.0, 0.94]))                      # para tras e para fora (~19 graus)
         B = norm(np.array([0.0, 0.990, 0.140]))                        # para cima, levemente inclinada para tras
         B = norm(B - A * np.dot(A, B))
@@ -428,6 +514,7 @@ def cabelo(m, t, f=1.0, n_mechas=1.0):
     rs = np.random.RandomState(33)
 
     def mecha(th0, y0, comp, dth, alt0, lev, larg, nn=9, ponta=0.004):
+        larg = larg * 0.66          # F15: mechas mais finas e mais numerosas (menos cara de capacete)
         pts, r0 = [], None
         for k_ in range(5):
             s = k_ / 4.0
@@ -437,17 +524,17 @@ def cabelo(m, t, f=1.0, n_mechas=1.0):
             pts.append(Pk.reshape(3))
             if r0 is None:
                 r0 = rk.reshape(3)
-        tubo_caminho(m, "cabeca", pts, [larg * 0.80, larg, larg * 0.96, larg * 0.74, larg * 0.26], uv_regiao=reg,
+        tubo_caminho(m, "cabeca", pts, [larg * 0.85, larg, larg * 0.92, larg * 0.62, larg * 0.14], uv_regiao=reg,
                      nseg=6, nn=nn, tampas=False, nome="mecha", achatar=(0.42, r0), angulo=85.0)
 
     def qtd(n):
-        return max(3, int(round(n * n_mechas)))
+        return max(3, int(round(n * n_mechas * 1.5)))
 
     for k_ in range(qtd(30)):                                            # franja (duas camadas)
         th0 = PI + rs.uniform(-0.85, 0.85)
         y0 = float(linha_cabelo(th0)) + rs.uniform(0.006, 0.024)
         curto = k_ % 3 == 0
-        mecha(th0, y0, rs.uniform(0.016, 0.028) if curto else rs.uniform(0.028, 0.048), rs.normal(0.06, 0.20), 0.0105,
+        mecha(th0, y0, rs.uniform(0.012, 0.022) if curto else rs.uniform(0.020, 0.036), rs.normal(0.03, 0.09), 0.0105,
               rs.uniform(0.002, 0.007), rs.uniform(0.0085, 0.0125), ponta=rs.uniform(0.004, 0.009))
     for lado in (-1, 1):                                                 # tempora, costeleta e por cima da orelha
         for _ in range(qtd(11)):
@@ -468,14 +555,19 @@ def cabelo(m, t, f=1.0, n_mechas=1.0):
 
 
 # ---------------------------------------------------------------------------------------------- construcao
-def construir(p, f=1.0, n_mechas=1.0):
+def construir(p, f=1.0, n_mechas=1.0, zumbi=False):
     """Monta a cabeca na malha do personagem `p` (p.m) e guarda o tubo em p.tubos['cabeca_real']."""
-    t = TuboCabeca(ANEIS, RR["pele"], _campo_rosto())
+    t = TuboCabeca(ANEIS, RR["pele"], _campo_rosto(zumbi))
     p.tubos["cabeca_real"] = t
     pele(p.m, t, f)
     globos(p.m)
+    palpebras(p.m)
     orelhas(p.m)
+    k0 = len(p.m.P)
     cabelo(p.m, t, f, n_mechas)
+    if os.path.exists(FOTO_ARQ):        # F16: o cabelo usa a foto (projecao frontal)
+        for k in range(k0, len(p.m.P)):
+            p.m.UV[k] = _uv_cabelo_foto(p.m.P[k])
     return t
 
 
@@ -503,7 +595,153 @@ def _mix(cor, alvo, m):
     return cor * (1.0 - m[..., None]) + np.asarray(alvo, np.float32) * m[..., None]
 
 
-def _pintar_pele(t, A):
+# ---------------------------------------------------------------------------------------------- foto de referencia (F16)
+FOTO_ARQ = os.path.join(os.path.dirname(os.path.abspath(__file__)), "referencia", "rosto_frente.png")
+FOTO_MM = 0.0004988          # metros por pixel (distancia entre pupilas da foto = 63,6 mm)
+FOTO_CX, FOTO_CY = 845.5 - 640.0, 267.0     # pixel da foto (recortada) que corresponde a x=0 e a y=OLHO_Y
+_FOTO = {}
+
+
+def _borra(a, sig):
+    from scipy.ndimage import gaussian_filter
+    return gaussian_filter(a.astype(np.float32), sig)
+
+
+def _foto():
+    """Foto frontal 'sem luz': tira o sombreado de grande escala (iluminacao de estudio assimetrica), guarda so metade
+    do sombreado simetrico. Mantem poros, sardas, sobrancelhas, labios e cor."""
+    if "a" in _FOTO:
+        return _FOTO["a"]
+    from PIL import Image
+    a = np.asarray(Image.open(FOTO_ARQ).convert("RGB"), np.float32) / 255.0
+    h, w = a.shape[:2]
+    L = a @ np.array([0.299, 0.587, 0.114], np.float32)
+    yy, xx = np.mgrid[0:h, 0:w]
+    m = ((((xx - FOTO_CX) / 150.0) ** 2 + ((yy - 330.0) / 250.0) ** 2) < 1.0) & (L > 0.24)
+    m = m.astype(np.float32)
+    bm = _borra(m, 20)
+    Lb = _borra(L * m, 20) / np.maximum(bm, 1e-3)
+    Lb = np.where(bm > 0.05, Lb, L[m > 0].mean())
+    esp = np.clip(np.round(2 * FOTO_CX - np.arange(w)).astype(int), 0, w - 1)
+    Lbs = 0.5 * (Lb + Lb[:, esp])
+    Lm = float(Lb[(m > 0) & (bm > 0.5)].mean())
+    k = 0.45
+    fator = np.clip(Lm * (1.0 - k) / Lb + k * Lbs / Lb, 0.5, 2.0)
+    alb = a * fator[..., None]
+    lu = (alb @ np.array([0.299, 0.587, 0.114], np.float32))[..., None]
+    alb = np.clip((lu + (alb - lu) * 0.86) * 1.36, 0.0, 1.0)      # um pouco menos saturada e mais clara (o jogo escurece com a luz)
+    _FOTO["a"] = alb
+    return alb
+
+
+def _amostra_foto(x, y):
+    """RGB da foto (bilinear) para pontos do modelo (metros); x>0 = lado esquerdo de quem olha de frente."""
+    alb = _foto()
+    h, w = alb.shape[:2]
+    px = FOTO_CX - x / FOTO_MM
+    py = FOTO_CY + (OLHO_Y - y) / FOTO_MM
+    px = np.clip(px, 0, w - 1.001)
+    py = np.clip(py, 0, h - 1.001)
+    x0, y0 = np.floor(px).astype(int), np.floor(py).astype(int)
+    fx, fy = (px - x0)[..., None], (py - y0)[..., None]
+    return (alb[y0, x0] * (1 - fx) * (1 - fy) + alb[y0, x0 + 1] * fx * (1 - fy) + alb[y0 + 1, x0] * (1 - fx) * fy
+            + alb[y0 + 1, x0 + 1] * fx * fy)
+
+
+PERFIL_ARQ = os.path.join(os.path.dirname(os.path.abspath(__file__)), "referencia", "rosto_perfil.png")
+PERFIL_X0 = 1130.0           # x (na imagem original) do canto do recorte do perfil
+PERFIL_ANC = 1577.0          # pixel da testa (z = -0,0935 m)
+
+
+def _foto_perfil():
+    """Foto de perfil 'sem luz' (pele do lado direito do rosto) + mascara de pele (cabelo/fundo = 0)."""
+    if "p" in _FOTO:
+        return _FOTO["p"]
+    from PIL import Image
+    a = np.asarray(Image.open(PERFIL_ARQ).convert("RGB"), np.float32) / 255.0
+    h, w = a.shape[:2]
+    L = a @ np.array([0.299, 0.587, 0.114], np.float32)
+    yy, xx = np.mgrid[0:h, 0:w]
+    ok = ((L > 0.26) & (a[..., 0] > a[..., 2] + 0.04)).astype(np.float32)       # pele: clara e mais quente que o fundo azulado
+    from scipy.ndimage import minimum_filter
+    ok = _borra(minimum_filter(ok, size=15), 2.0)          # afasta da borda do cabelo/orelha
+    bm = _borra(ok, 18)
+    Lb = _borra(L * ok, 18) / np.maximum(bm, 1e-3)
+    Lm = float(Lb[(ok > 0.9) & (bm > 0.6)].mean())
+    fator = np.clip(Lm * 0.65 / Lb + 0.35, 0.5, 2.0)
+    alb = a * fator[..., None]
+    lu = (alb @ np.array([0.299, 0.587, 0.114], np.float32))[..., None]
+    alb = (lu + (alb - lu) * 0.86)
+    # mesma luminancia media da pele da foto frontal
+    af = _foto()
+    lf = float((af[300:340, 95:130] @ np.array([0.299, 0.587, 0.114], np.float32)).mean())
+    lp = float((alb[(ok > 0.9)] @ np.array([0.299, 0.587, 0.114], np.float32)).mean())
+    alb = np.clip(alb * (lf / max(lp, 1e-3)), 0.0, 1.0)
+    _FOTO["p"] = (alb, ok)
+    return _FOTO["p"]
+
+
+def _amostra_perfil(y, z):
+    alb, ok = _foto_perfil()
+    h, w = ok.shape
+    px = np.clip(PERFIL_ANC + (-z - 0.0935) / FOTO_MM - PERFIL_X0, 0, w - 1.001)
+    py = np.clip(FOTO_CY + (OLHO_Y - y) / FOTO_MM, 0, h - 1.001)
+    x0, y0 = np.floor(px).astype(int), np.floor(py).astype(int)
+    fx, fy = (px - x0), (py - y0)
+    cor = (alb[y0, x0] * ((1 - fx) * (1 - fy))[..., None] + alb[y0, x0 + 1] * (fx * (1 - fy))[..., None]
+           + alb[y0 + 1, x0] * ((1 - fx) * fy)[..., None] + alb[y0 + 1, x0 + 1] * (fx * fy)[..., None])
+    m = ok[y0, x0] * (1 - fx) * (1 - fy) + ok[y0, x0 + 1] * fx * (1 - fy) + ok[y0 + 1, x0] * (1 - fx) * fy + ok[y0 + 1, x0 + 1] * fx * fy
+    return cor, m
+
+
+def _cor_pele_foto():
+    try:
+        alb = _foto()
+        reg = np.concatenate([alb[300:340, 95:130].reshape(-1, 3), alb[300:340, 215:250].reshape(-1, 3)]).mean(0)
+        return tuple(int(round(v * 255)) for v in reg)
+    except Exception:       # sem a foto: cor antiga
+        return (208, 172, 150)
+
+
+FOTO_HAIR_H = 205.0        # linhas da foto (de cima) usadas como textura do cabelo
+
+
+def _foto_cabelo():
+    """Textura do cabelo = parte de cima da foto; o que nao e cabelo (testa, fundo) e trocado pelo cabelo mais proximo."""
+    if "cab" in _FOTO:
+        return _FOTO["cab"]
+    from PIL import Image
+    from scipy.ndimage import distance_transform_edt
+    a = np.asarray(Image.open(FOTO_ARQ).convert("RGB"), np.float32)[:int(FOTO_HAIR_H)] / 255.0
+    L = a @ np.array([0.299, 0.587, 0.114], np.float32)
+    ok = L < 0.34
+    ok[:, :6] = ok[:, 6:7]
+    _, (iy, ix) = distance_transform_edt(~ok, return_indices=True)
+    f = a[iy, ix]
+    Lf = f @ np.array([0.299, 0.587, 0.114], np.float32)
+    Lp = np.minimum(0.045 + 0.60 * Lf, 0.20)           # cabelo preto: sem o brilho cinza da foto, sem tom alaranjado
+    f = Lp[..., None] * np.array([0.96, 0.98, 1.08], np.float32) / 0.98
+    im = Image.fromarray((np.clip(f, 0, 1) * 255).astype(np.uint8)).resize((512, 320), Image.LANCZOS)
+    _FOTO["cab"] = np.asarray(im, np.float32) / 255.0
+    return _FOTO["cab"]
+
+
+def _uv_cabelo_foto(P):
+    """UV planar (de frente) do cabelo dentro da regiao RR['cabelo'], que guarda a foto do cabelo."""
+    w = _foto().shape[1]
+    u = (FOTO_CX - P[:, 0] / FOTO_MM) / w
+    v = ((FOTO_CY + (OLHO_Y - P[:, 1]) / FOTO_MM) / FOTO_HAIR_H)
+    wt = np.clip((P[:, 1] - 1.762) / 0.020, 0.0, 1.0)           # no topo da cabeca: projecao por cima
+    v = v + 0.30 * wt * np.clip((P[:, 2] + 0.06) / 0.16, 0.0, 1.0) - 0.10 * wt
+    atras = P[:, 2] > 0.005                                      # atras: mapeamento cilindrico repetido (sem esticar)
+    uc = np.mod(0.5 + np.arctan2(P[:, 0], -P[:, 2]) / (2 * PI) * 2.2, 1.0) * 0.96 + 0.02
+    u = np.where(atras, uc, u)
+    u = np.clip(u, 0.01, 0.99)
+    v = np.clip(v, 0.01, 0.99)
+    return uv_atlas(RR["cabelo"], u, 1.0 - v)
+
+
+def _pintar_pele(t, A, usar_foto=True):
     x0, y0, w, h = RR["pele"]
     u = (np.arange(w) + 0.5) / w
     v = 1.0 - (np.arange(h) + 0.5) / h
@@ -625,6 +863,17 @@ def _pintar_pele(t, A):
     cav = (df - _box(df, 3)) * 1.4 + (df - _box(df, 12)) * 0.45
     oc = np.clip(1.0 + 44.0 * np.minimum(cav, 0.0) + 14.0 * np.maximum(cav, 0.0), 0.70, 1.08)
     cor = cor * (1.0 - (1.0 - oc)[..., None] * np.array([0.72, 1.0, 1.06], np.float32))
+    # ---- F16b: lateral da foto de perfil (lado direito do rosto, espelhado para o esquerdo): bochecha, mandibula, pescoco
+    if usar_foto and os.path.exists(PERFIL_ARQ):
+        nxs = np.abs(rad[..., 0])
+        cp, mp = _amostra_perfil(y, z)
+        ws = suave((nxs - 0.80) / 0.12) * mp * suave((y - 1.585) / 0.030) * suave((1.700 - y) / 0.02) * suave((z + 0.040) / 0.020)
+        cor = _mix(cor, cp, np.clip(ws, 0.0, 1.0) * 0.92)
+    # ---- F16: rosto da foto de referencia (sem a luz de estudio) projetado de frente, em cima da pele procedural
+    if usar_foto:
+        nzf = -rad[..., 2]
+        wf = fr * suave((0.066 - ax) / 0.014) * suave((y - 1.526) / 0.012) * suave((1.790 - y) / 0.012) * suave((nzf - 0.30) / 0.25)
+        cor = _mix(cor, _amostra_foto(x, y), np.clip(wf, 0.0, 1.0) * 0.97)
     # ---- couro cabeludo: cabelo pintado por baixo da casca (com borda de fiozinhos)
     dh = y - linha_cabelo(TH)
     fn_ = fbm(h, w, 3, 80, 3)
@@ -636,6 +885,12 @@ def _pintar_pele(t, A):
 
 def _pintar_cabelo(A):
     x0, y0, w, h = RR["cabelo"]
+    if os.path.exists(FOTO_ARQ):
+        A[y0:y0 + h, x0:x0 + w] = _foto_cabelo()
+        for nome, c in (("cab_t", COR_CABELO), ("cilio", (30, 22, 20)), ("boca", (60, 26, 28)), ("rima", (176, 118, 108))):
+            tx, ty, tw, th_ = RR[nome]
+            A[ty:ty + th_, tx:tx + tw] = _c(c)
+        return
     rs = np.random.RandomState(90)
     fios = np.repeat(rs.rand(1, w), h, axis=0)
     fios = 0.6 * fios + 0.4 * np.repeat(rs.rand(1, w // 4 + 1), 4, axis=1)[:, :w]
@@ -647,7 +902,7 @@ def _pintar_cabelo(A):
     cor = _c(COR_CABELO)[None, None, :] * tom[..., None]
     cor = cor + (brilho * (0.4 + 0.8 * fios))[..., None] * np.array([0.085, 0.090, 0.110], np.float32)
     A[y0:y0 + h, x0:x0 + w] = np.clip(cor, 0, 1)
-    for nome, c in (("cab_t", COR_CABELO), ("cilio", (30, 22, 20)), ("boca", (60, 26, 28))):
+    for nome, c in (("cab_t", COR_CABELO), ("cilio", (30, 22, 20)), ("boca", (60, 26, 28)), ("rima", (176, 118, 108))):
         tx, ty, tw, th_ = RR[nome]
         A[ty:ty + th_, tx:tx + tw] = _c(c)
 
@@ -695,13 +950,126 @@ def _pintar_orelha(A, lado):
     A[y0:y0 + h, x0:x0 + w] = np.clip(cor, 0, 1)
 
 
-def pintar(t):
+def _pintar_olho_z(A):
+    """Olho de morto-vivo: esclera leitosa amarelada, veias vermelhas, iris palida e pupila encolhida."""
+    x0, y0, w, h = RR["olho"]
+    i, j = np.mgrid[0:h, 0:w]
+    px = ((j + 0.5) / w - 0.5) / 0.96
+    py = (0.5 - (i + 0.5) / h) / 0.96
+    r = np.hypot(px, py)
+    cor = np.tile(_c((196, 196, 164)), (h, w, 1))
+    cor = cor * (0.90 + 0.14 * fbm(h, w, 5, 301)[..., None])
+    veias = suave((fbm(h, w, 16, 302, 3) - 0.62) / 0.05) * suave((r - 0.20) / 0.08)
+    cor = _mix(cor, _c((170, 50, 46)), np.clip(veias, 0, 1) * 0.55)
+    ir_r = 0.250
+    ang = np.arctan2(py, px)
+    estr = 0.5 + 0.5 * np.sin(ang * 26 + 4.0 * fbm(h, w, 5, 303))
+    ir = _c((150, 164, 152))[None, None, :] * (0.72 + 0.34 * estr[..., None])
+    cor = np.where((r < ir_r)[..., None], ir, cor)
+    cor = cor * (1.0 - 0.55 * (_g((r - ir_r) / 0.018) * (r < ir_r + 0.02))[..., None])
+    cor = _mix(cor, _c((20, 16, 14)), 1.0 - suave((r - 0.060) / 0.012))
+    cor = cor * (1.0 - 0.42 * suave((py - 0.02) / 0.22)[..., None])
+    cor = cor * (1.0 - 0.18 * suave((-py - 0.10) / 0.15)[..., None])
+    br = _g(np.hypot(px + 0.060, py - 0.050) / 0.020)
+    cor = _mix(cor, np.array([1.0, 1.0, 1.0], np.float32), np.clip(br * 1.2, 0, 1) * 0.70)
+    A[y0:y0 + h, x0:x0 + w] = np.clip(cor, 0, 1)
+
+
+def _zumbificar(t, A):
+    """F14: transforma a textura do rosto em pele de morto-vivo (palida, esverdeada, olheiras, veias, feridas, sangue)."""
+    x0, y0, w, h = RR["pele"]
+    u = (np.arange(w) + 0.5) / w
+    v = 1.0 - (np.arange(h) + 0.5) / h
+    U, V = np.meshgrid(u, v)
+    TH, Y = th_de_u(U), y_de_v(V)
+    P, rad = t.base(TH, Y)
+    x, y, z = P[..., 0], P[..., 1], P[..., 2]
+    ax = np.abs(x)
+    fr = suave((-z - 0.030) / 0.040)
+    cor = A[y0:y0 + h, x0:x0 + w].copy()
+    lum = cor.mean(-1, keepdims=True)
+    nb = fbm(h, w, 18, 201)
+    base = np.array([0.52, 0.58, 0.47], np.float32)[None, None, :] * (0.80 + 0.36 * nb[..., None])
+    cor = cor * 0.30 + (base * (lum / 0.66)) * 0.70
+    # manchas arroxeadas/esverdeadas (hematomas e decomposicao)
+    mb = suave((fbm(h, w, 6, 203, 3) - 0.60) / 0.08)
+    cor = _mix(cor, _c((92, 78, 100)), mb * 0.55)
+    mg = suave((fbm(h, w, 9, 207, 3) - 0.64) / 0.08)
+    cor = _mix(cor, _c((96, 108, 62)), mg * 0.45)
+    # veias azuladas
+    rid = 1.0 - np.abs(2.0 * fbm(h, w, 12, 204, 3) - 1.0)
+    ve = suave((rid - 0.90) / 0.05) * (0.3 + 0.7 * fr)
+    cor = _mix(cor, _c((70, 92, 104)), ve * 0.55)
+    # olheiras fundas
+    for s in (-1, 1):
+        q = (x - s * OLHO_X) * s
+        dy = y - OLHO_Y
+        so = np.exp(-(((q + 0.001) / 0.026) ** 2 + ((dy + 0.003) / 0.018) ** 2)) * fr
+        cor = _mix(cor, _c((46, 30, 44)), np.clip(so * 1.1, 0, 1) * 0.80)
+    # boca: labios acinzentados, cavidade escura entre eles
+    rel, verm, dl = labios(x, y)
+    cor = _mix(cor, _c((104, 80, 86)), np.clip(verm * fr, 0, 1) * 0.85)
+    cav = suave((BOCA_L - 0.002 - ax) / 0.004) * _g((y - 1.6090) / 0.0042) * fr
+    cor = _mix(cor, _c((18, 6, 8)), np.clip(cav * 1.6, 0, 1) * 0.95)
+    # feridas: nucleo vermelho-escuro com carne clara, anel arroxeado ao redor
+    feridas = [(0.050, 1.642, 0.020, 0.016, 1.0), (-0.028, 1.762, 0.014, 0.010, 1.0), (0.030, 1.531, 0.024, 0.018, 1.0),
+               (-0.055, 1.618, 0.012, 0.010, 1.0)]
+    rf = fbm(h, w, 14, 205, 3) - 0.5
+    for fx, fy, frx, fry, _ in feridas:
+        e = ((x - fx) / frx) ** 2 + ((y - fy) / fry) ** 2 + 0.90 * rf
+        gate = (-z > 0.010).astype(np.float32)
+        anel = suave((1.00 - e) / 0.35) * gate
+        nuc = suave((0.60 - e) / 0.20) * gate
+        carne = suave((fbm(h, w, 40, 206, 3) - 0.55) / 0.10) * nuc
+        cor = _mix(cor, _c((86, 58, 72)), anel * 0.55)
+        cor = _mix(cor, _c((84, 10, 10)), nuc * 0.92)
+        cor = _mix(cor, _c((190, 96, 90)), carne * 0.70)
+    # sangue escorrido da boca para o queixo e o pescoco
+    sg = suave((fbm(h, w, 10, 208, 3) - 0.42) / 0.14) * suave((1.622 - y) / 0.006) * suave((y - 1.508) / 0.02) \
+        * suave((0.026 - ax + 0.010 * fbm(h, w, 30, 209, 2)) / 0.008) * suave((-z + 0.010) / 0.03)
+    fio = suave((ruido(h, w, 1, 210) - 0.35) / 0.25) * suave((1.60 - y) / 0.02)
+    sg = np.clip(sg + 0.6 * fio * suave((0.020 - ax) / 0.01) * suave((y - 1.51) / 0.02) * suave((-z) / 0.02), 0, 1)
+    cor = _mix(cor, _c((64, 8, 10)), sg * 0.88)
+    # sujeira geral
+    suj = suave((fbm(h, w, 40, 211, 4) - 0.48) / 0.25)
+    cor = cor * (1.0 - 0.30 * suj[..., None] * np.array([0.7, 0.9, 1.1], np.float32))
+    # couro cabeludo: cabelo sujo, ralo e de cor morta
+    mh = suave((y - linha_cabelo(TH) + 0.006 + 0.010 * (fbm(h, w, 3, 80, 3) - 0.5)) / 0.008)
+    cab = _c((52, 44, 36))[None, None, :] * (0.55 + 0.9 * fbm(h, w, 2, 212)[..., None])
+    cor = _mix(cor, cab, mh)
+    A[y0:y0 + h, x0:x0 + w] = np.clip(cor, 0, 1)
+    # cabelo (tira) e orelhas
+    cx, cy, cw, ch = RR["cabelo"]
+    reg = A[cy:cy + ch, cx:cx + cw]
+    A[cy:cy + ch, cx:cx + cw] = np.clip(reg * 0.35 + _c((74, 64, 52))[None, None, :] * (0.50 + 0.9 * fbm(ch, cw, 5, 213)[..., None]) * 0.65, 0, 1)
+    for nome, c_ in (("cab_t", (60, 52, 42)), ("boca", (30, 12, 14)), ("rima", (120, 74, 74))):
+        tx, ty, tw, th_ = RR[nome]
+        A[ty:ty + th_, tx:tx + tw] = _c(c_)
+    for nome in ("orelha_esq", "orelha_dir"):
+        ox, oy, ow, oh = RR[nome]
+        reg = A[oy:oy + oh, ox:ox + ow]
+        lu = reg.mean(-1, keepdims=True)
+        A[oy:oy + oh, ox:ox + ow] = np.clip(reg * 0.30 + base[:1, :1, :] * (lu / 0.66) * 0.70, 0, 1)
+    _pintar_olho_z(A)
+
+
+def pintar(t, zumbi=False):
     """Atlas 1024x1024 (float 0..1) da cabeca."""
     A = np.zeros((ATLAS_ROSTO, ATLAS_ROSTO, 3), np.float32)
     A[:] = _c(COR_PELE)
-    _pintar_pele(t, A)
+    _pintar_pele(t, A, usar_foto=not zumbi)
     _pintar_cabelo(A)
     _pintar_olho(A)
     for lado in (-1, 1):
         _pintar_orelha(A, lado)
+    if zumbi:
+        _zumbificar(t, A)
     return A
+
+
+def salvar_png(a, caminho):
+    from PIL import Image
+    Image.fromarray((np.clip(a, 0, 1) * 255).astype(np.uint8)).save(caminho, optimize=True)
+
+
+COR_PELE = _cor_pele_foto()   # F16: a pele procedural (orelhas, maos, laterais) combina com a da foto
