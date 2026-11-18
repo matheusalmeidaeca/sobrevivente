@@ -1,0 +1,9 @@
+newmtl material
+Kd 1 1 1
+map_Kd textura_jogador.png
+newmtl material_cabeca
+Kd 1 1 1
+map_Kd textura_rosto.png
+newmtl material_mao
+Kd 1 1 1
+map_Kd textura_maos_jogador.png

@@ -30,7 +30,9 @@ class Jogador : Disposable {
         private set
 
     /** Modelo animado do F2 (null = usa a capsula placeholder). */
-    private val modeloAnimado: Model? = CarregadorModelos.carregar(Constantes.MODELO_JOGADOR)
+    private val modeloAnimado: Model? = CarregadorModelos.carregar(
+        if (Constantes.USAR_ESQUELETO_HUMANO) Constantes.MODELO_JOGADOR_HUMANO else Constantes.MODELO_JOGADOR
+    )
     val animado: Boolean = modeloAnimado != null
 
     private val modeloCorpo: Model
@@ -65,7 +67,9 @@ class Jogador : Disposable {
     private var empurraoX = 0f
     private var empurraoZ = 0f
     private var tempoDor = 0f
-    private val nomesReacao = arrayOf("coluna", "pescoco", "cabeca", "ombro_esq", "ombro_dir")
+    private val nomesReacao =
+        if (Constantes.USAR_ESQUELETO_HUMANO) arrayOf("coluna2", "pescoco", "cabeca", "clavicula_esq", "clavicula_dir")
+        else arrayOf("coluna", "pescoco", "cabeca", "ombro_esq", "ombro_dir")
     private val nosReacao = arrayOfNulls<Node>(5)
     private val baseReacao = Array(5) { Matrix4() }
     private var reacaoAplicada = false
@@ -283,22 +287,61 @@ class Jogador : Disposable {
         vida = minOf(Constantes.JOGADOR_VIDA_MAXIMA, vida + valor)
     }
 
+    private var giroRapidoRestante = 0f
+    private var giroRapidoTravado = false
+
+    /** Mantem a pose de mira (bracos levantados) enquanto a mira estiver ligada. */
+    fun manterMira() {
+        if (tempoEncarar < 0.25f) tempoEncarar = 0.25f
+    }
+
     /**
-     * Move o jogador. `entradaX/Y` vêm do joystick (-1..1; Y positivo = frente).
-     * O movimento é relativo ao yaw da câmera. Sem alocação.
+     * F18: movimento estilo Resident Evil 4 (Leon), "tank". `entradaX/Y` vem do analogico (-1..1; Y positivo = frente).
+     *  - Sem mira: Y para frente anda/corre na direcao em que o corpo olha; X gira o corpo no lugar (ou em curva andando);
+     *    Y todo para tras faz a meia-volta rapida (180 graus) e so.
+     *  - Mirando: o personagem fica parado; X gira devagar o corpo (a mira acompanha).
+     * Sem alocacao.
      */
-    fun mover(dt: Float, entradaX: Float, entradaY: Float, yawCamera: Float) {
-        intensidadeMovimento = minOf(1f, sqrt(entradaX * entradaX + entradaY * entradaY))
-        val temEntrada = entradaX != 0f || entradaY != 0f
-        val mirando = tempoEncarar > 0f || recarregandoArma
+    fun mover(dt: Float, entradaX: Float, entradaY: Float, mirando: Boolean) {
+        val recarregando = recarregandoArma
         if (reacao.ativa) tempoDor += dt
 
-        // Estilo CoD Mobile: joystick no maximo = corrida; agachado e mirando/recarregando andam mais devagar. Sem deslizar.
+        // --- giro do corpo ---
+        if (tempoDeslize <= 0f) {
+            if (giroRapidoRestante > 0f) {
+                val passo = minOf(giroRapidoRestante, Constantes.RE4_GIRO_RAPIDO_VEL * dt)
+                yaw += passo
+                giroRapidoRestante -= passo
+            } else {
+                if (entradaY > -0.3f) giroRapidoTravado = false
+                if (!mirando && !giroRapidoTravado && entradaY < -0.7f && kotlin.math.abs(entradaX) < 0.45f && !agachado) {
+                    giroRapidoRestante = 180f
+                    giroRapidoTravado = true
+                } else {
+                    val vel = when {
+                        mirando -> Constantes.RE4_GIRO_MIRANDO
+                        entradaY > Constantes.JOGADOR_SPRINT_LIMIAR * 0.9f -> Constantes.RE4_GIRO_CORRENDO
+                        else -> Constantes.RE4_GIRO_ANDANDO
+                    }
+                    yaw -= entradaX * vel * dt
+                }
+            }
+            yaw = ((yaw % 360f) + 360f) % 360f
+        }
+
+        // --- avanco ---
+        val avanco = if (mirando || giroRapidoRestante > 0f) 0f else maxOf(0f, entradaY)
+        intensidadeMovimento = avanco
+        val deslocando = avanco > 0.05f
+        val rad = yaw * MathUtils.degreesToRadians
+        val frenteX = -MathUtils.sin(rad)
+        val frenteZ = -MathUtils.cos(rad)
+
         fatorMov = when {
             agachado -> Constantes.JOGADOR_FATOR_AGACHADO
-            mirando -> Constantes.JOGADOR_FATOR_ATIRANDO
-            intensidadeMovimento >= Constantes.JOGADOR_SPRINT_LIMIAR -> Constantes.JOGADOR_SPRINT_FATOR
-            else -> 1f
+            recarregando -> Constantes.JOGADOR_FATOR_ATIRANDO
+            avanco >= Constantes.JOGADOR_SPRINT_LIMIAR -> Constantes.JOGADOR_SPRINT_FATOR
+            else -> 0.8f // andar (o Leon anda mais devagar do que corre)
         }
         if (reacao.ativa) fatorMov *= Constantes.IMPACTO_FATOR_VEL
 
@@ -323,33 +366,14 @@ class Jogador : Disposable {
             posicao.x = MathUtils.clamp(posicao.x + ultDirX * v * dt, -Constantes.MAPA_LIMITE, Constantes.MAPA_LIMITE)
             posicao.z = MathUtils.clamp(posicao.z + ultDirZ * v * dt, -Constantes.MAPA_LIMITE, Constantes.MAPA_LIMITE)
             Colisao.resolver(posicao, Constantes.JOGADOR_RAIO)
-            val yawAlvo = MathUtils.atan2(-ultDirX, -ultDirZ) * MathUtils.radiansToDegrees
-            yaw = MathUtils.lerpAngleDeg(yaw, yawAlvo, minOf(1f, Constantes.JOGADOR_VELOCIDADE_GIRO * dt))
             if (tempoDeslize <= 0f) agachado = false
-        } else if (temEntrada) {
-            val radianos = yawCamera * MathUtils.degreesToRadians
-            val seno = MathUtils.sin(radianos)
-            val cosseno = MathUtils.cos(radianos)
-            // frente da câmera = (-seno, -cosseno); direita da câmera = (cosseno, -seno)
-            val direcaoX = -seno * entradaY + cosseno * entradaX
-            val direcaoZ = -cosseno * entradaY - seno * entradaX
-            val v = Constantes.JOGADOR_VELOCIDADE * fatorMov
-            val dl = sqrt(direcaoX * direcaoX + direcaoZ * direcaoZ)
-            if (dl > 0.01f) {
-                ultDirX = direcaoX / dl
-                ultDirZ = direcaoZ / dl
-            }
-
-            posicao.x = MathUtils.clamp(posicao.x + direcaoX * v * dt, -Constantes.MAPA_LIMITE, Constantes.MAPA_LIMITE)
-            posicao.z = MathUtils.clamp(posicao.z + direcaoZ * v * dt, -Constantes.MAPA_LIMITE, Constantes.MAPA_LIMITE)
+        } else if (deslocando) {
+            ultDirX = frenteX
+            ultDirZ = frenteZ
+            val v = Constantes.JOGADOR_VELOCIDADE * fatorMov * avanco.coerceAtLeast(0.6f)
+            posicao.x = MathUtils.clamp(posicao.x + frenteX * v * dt, -Constantes.MAPA_LIMITE, Constantes.MAPA_LIMITE)
+            posicao.z = MathUtils.clamp(posicao.z + frenteZ * v * dt, -Constantes.MAPA_LIMITE, Constantes.MAPA_LIMITE)
             Colisao.resolver(posicao, Constantes.JOGADOR_RAIO) // desliza nas paredes (Marco 1.8)
-
-            // O corpo vira suavemente para a direção do movimento
-            // (a não ser que esteja encarando a mira logo após atirar).
-            if (tempoEncarar <= 0f) {
-                val yawAlvo = MathUtils.atan2(-direcaoX, -direcaoZ) * MathUtils.radiansToDegrees
-                yaw = MathUtils.lerpAngleDeg(yaw, yawAlvo, minOf(1f, Constantes.JOGADOR_VELOCIDADE_GIRO * dt))
-            }
         }
 
         // Vertical: gravidade, pulo, rampas e andar alto (Terreno).
@@ -369,10 +393,14 @@ class Jogador : Disposable {
             }
         }
         if (noChao && chaoY < posicao.y - 0.01f) noChao = false // saiu da borda: cai
-        if (temEntrada || !noChao || empurrando || tempoDeslize > 0f) Colisao.resolver(posicao, Constantes.JOGADOR_RAIO)
+        if (deslocando || !noChao || empurrando || tempoDeslize > 0f) Colisao.resolver(posicao, Constantes.JOGADOR_RAIO)
 
         atualizarTransformacao()
     }
+
+    /** Andando/correndo no chao (para o som dos passos). */
+    val andandoNoChao: Boolean
+        get() = noChao && !agachado && intensidadeMovimento > 0.05f && tempoDeslize <= 0f
 
     /** Correndo de verdade no chao (sprint): serve para a poeira dos pes. */
     val sprintando: Boolean

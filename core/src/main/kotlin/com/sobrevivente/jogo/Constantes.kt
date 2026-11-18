@@ -558,6 +558,25 @@ object Constantes {
     const val CAMERA_MARGEM_PAREDE = 0.3f
     const val CAMERA_FATOR_MINIMO = 0.2f // a câmera nunca chega mais perto que 20% da distância
 
+    // ---- F18: camera e movimento estilo Resident Evil 4 ----
+    const val RE4_DISTANCIA = 3.9f // atras do personagem (um pouco mais longe que a do Leon)
+    const val RE4_DISTANCIA_MIRA = 2.2f
+    const val RE4_OMBRO = 0.50f // camera deslocada para a direita: o personagem fica no lado esquerdo da tela
+    const val RE4_OMBRO_MIRA = 0.72f
+    const val RE4_PIVO_ALTURA = 1.55f
+    const val RE4_PITCH_PASSEIO = -9f // inclinacao padrao da camera andando (olhando um pouco para baixo)
+    const val RE4_FOV_MIRA = 52f
+    const val RE4_SEGUIR_YAW = 7f // quao rapido a camera acompanha o giro do personagem (andando)
+    const val RE4_ENTRAR_MIRA = 9f // velocidade de entrar/sair da mira (1/s)
+    const val RE4_MIRA_PRONTA = 0.8f // so atira depois da mira levantada
+    const val RE4_GIRO_ANDANDO = 135f // graus/s com o analogico todo para o lado
+    const val RE4_GIRO_CORRENDO = 100f
+    const val RE4_GIRO_MIRANDO = 62f
+    const val RE4_GIRO_RAPIDO_VEL = 620f // meia-volta (analogico para tras), graus/s
+    const val RE4_PITCH_MIRANDO_VEL = 38f // graus/s ao subir/descer a mira com o analogico
+    const val RE4_ARRASTO_SENS = 0.16f // graus por dp arrastado enquanto mira
+    const val RE4_LASER_ALCANCE = 45f
+
     // Minimapa funcional (norte fixo: -Z para cima)
     const val MINIMAPA_PAREDE_COR = 0.80f
     const val MINIMAPA_PAREDE_ALFA = 0.90f
@@ -568,8 +587,16 @@ object Constantes {
     // Marco F3: personagens animados (modelos .g3dj gerados no F2, copiados para android/assets/modelos)
     const val MODELO_JOGADOR = "modelos/jogador.g3dj"
     const val MODELO_ZUMBI = "modelos/zumbi.g3dj"
-    /** Ossos por modelo no shader (o boneco tem 18; o padrao do LibGDX e 12). */
-    const val NUM_OSSOS_SHADER = 20
+    /**
+     * Esqueleto humano de 24 ossos (ferramentas/animacao). Fica DESLIGADO por padrao: ele so tem 9 animacoes
+     * sem arma (parado, andar, correr, agachar, pular, atacar, dano, morrer, interagir). O modelo antigo tem
+     * tambem as poses armadas (pistola/fuzil/escopeta, recarregar, mirar andando). Ligando, o jogo cai nas
+     * animacoes sem arma quando falta a armada.
+     */
+    const val USAR_ESQUELETO_HUMANO = false
+    const val MODELO_JOGADOR_HUMANO = "modelos/jogador_humano.g3dj"
+    /** Ossos por modelo no shader (o modelo antigo tem 18, o humano tem 24; o padrao do LibGDX e 12). */
+    const val NUM_OSSOS_SHADER = 24
     const val ANIM_TRANSICAO_MARCHA_S = 0.25f   // fusao andar <-> correr <-> parado (mais longa = mais suave)
     const val ANIM_FILTRO_ENTRADA = 9f          // filtro do joystick (1/s)
     const val ANIM_FILTRO_VELOCIDADE = 6f       // filtro da velocidade de reproducao (1/s)
