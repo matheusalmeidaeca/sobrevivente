@@ -3,7 +3,7 @@ import kotlin.random.Random
 
 // ===== IA estilo RE4: máquina de estados + fichas de ataque + dificuldade dinâmica =====
 
-enum class Estado { PARADO, PATRULHA, PERSEGUE, CERCA, ATACA, ATORDOADO, CAIDO, MORTO }
+enum class Estado { PARADO, PATRULHA, PERSEGUE, CERCA, ATACA, ATORDOADO, VOANDO, CAIDO, MORTO }
 
 /** Rank oculto 1..10: sobe se o jogador vai bem, desce se vai mal. */
 class DificuldadeDinamica {
@@ -30,13 +30,15 @@ class FichasDeAtaque(private val max: Int = 2) {
 enum class ParteAtingida { CABECA, CORPO, PERNA }
 
 /** impacto: 0 = quase nada, 1 = leve, 2 = médio, 3 = forte. Ajuste os números ao seu jogo. */
-enum class Arma(val dano: Float, val impacto: Int) {
-    PISTOLA(dano = 25f, impacto = 1),
-    SUBMETRALHADORA(dano = 12f, impacto = 0),
-    SHOTGUN(dano = 60f, impacto = 3),
-    RIFLE(dano = 80f, impacto = 2),
-    MAGNUM(dano = 150f, impacto = 3),
-    FACA(dano = 15f, impacto = 1)
+/** empurrao: velocidade de arremesso (0 = não empurra). Perto de 3+ o inimigo sai voando. */
+enum class Arma(val dano: Float, val impacto: Int, val empurrao: Float) {
+    PISTOLA(dano = 25f, impacto = 1, empurrao = 0f),
+    SUBMETRALHADORA(dano = 12f, impacto = 0, empurrao = 0f),
+    SHOTGUN(dano = 60f, impacto = 3, empurrao = 7f),
+    RIFLE(dano = 80f, impacto = 2, empurrao = 2f),
+    MAGNUM(dano = 150f, impacto = 3, empurrao = 5f),
+    FACA(dano = 15f, impacto = 1, empurrao = 0f),
+    GRANADA(dano = 100f, impacto = 3, empurrao = 9f)   // explosão: arremessa todos ao redor
 }
 
 class Inimigo(
@@ -62,6 +64,14 @@ class Inimigo(
         tempo += dt
         val dist = hypot(px - x, py - y)
 
+        // arremesso: move e vai perdendo velocidade (vale até para inimigo morto)
+        if (vx != 0f || vy != 0f) {
+            x += vx * dt; y += vy * dt
+            val atrito = (1f - 4f * dt).coerceAtLeast(0f)
+            vx *= atrito; vy *= atrito
+            if (hypot(vx, vy) < 0.3f) { vx = 0f; vy = 0f }
+        }
+
         when (estado) {
             Estado.PARADO, Estado.PATRULHA ->
                 if (dist < visao || (barulho && dist < visao * 1.5f)) mudar(Estado.PERSEGUE)
@@ -86,6 +96,7 @@ class Inimigo(
                 }
             }
 
+            Estado.VOANDO    -> if (tempo > 0.5f) mudar(Estado.CAIDO)   // voa, cai e depois levanta
             Estado.ATORDOADO -> if (tempo > 1.2f) mudar(Estado.PERSEGUE)
             Estado.CAIDO     -> if (tempo > 1.5f) mudar(Estado.PERSEGUE)
             Estado.MORTO     -> {}
@@ -104,14 +115,28 @@ class Inimigo(
         when (Random.nextInt(3)) { 0 -> "foice"; 1 -> "soco"; else -> "agarrao" }
 
     /** Reação depende da arma (impacto) e de onde acertou. distancia = do jogador até o inimigo. */
-    fun levarTiro(arma: Arma, parte: ParteAtingida, distancia: Float = 5f) {
+    fun levarTiro(
+        arma: Arma, parte: ParteAtingida, distancia: Float = 5f,
+        origemX: Float = x, origemY: Float = y - 1f   // de onde veio o tiro/explosão
+    ) {
         if (estado == Estado.MORTO) return
 
         var dano = arma.dano
         if (parte == ParteAtingida.CABECA) dano *= 2f
         if (arma == Arma.SHOTGUN) dano *= (1.6f - distancia / 8f).coerceIn(0.4f, 1.6f) // perto = forte
         vida -= dano
+
+        // força do arremesso: cai com a distância (shotgun/explosão de perto = voa longe)
+        val forca = arma.empurrao * (1.2f - distancia / 10f).coerceIn(0f, 1.2f)
+        val voa = forca >= 3f && !pesado
+        if (voa) {
+            val dx = x - origemX; val dy = y - origemY
+            val d = hypot(dx, dy).coerceAtLeast(0.001f)
+            vx = dx / d * forca; vy = dy / d * forca
+        }
+
         if (vida <= 0f) { mudar(Estado.MORTO); return }
+        if (voa) { mudar(Estado.VOANDO); return }
 
         // impacto efetivo: cabeça/perna aumentam, armadura diminui
         var impacto = arma.impacto
@@ -127,4 +152,7 @@ class Inimigo(
     }
 
     var temArmadura = false
+    var pesado = false          // inimigos grandes (chefes, brutamontes) não voam
+    private var vx = 0f
+    private var vy = 0f
 }
