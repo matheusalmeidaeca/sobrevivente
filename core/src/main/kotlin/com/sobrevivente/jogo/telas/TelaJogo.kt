@@ -27,11 +27,27 @@ import com.sobrevivente.jogo.inventario.TipoItem
 import com.sobrevivente.jogo.mundo.Arma
 import com.sobrevivente.jogo.mundo.Jogador
 import com.sobrevivente.jogo.mundo.Mundo
+import com.sobrevivente.jogo.mundo.Fases
+import com.sobrevivente.jogo.mundo.Historia
+import com.sobrevivente.jogo.mundo.Progresso
+import com.sobrevivente.jogo.mundo.TipoArma
 
 /** Marco F3: personagens animados (F2) no lugar das capsulas. Marco 1.8: mapa de teste (paredes, colisão, minimapa), sobre maleta (1.7), morte/reinício (1.6), inimigos (1.5), tiro (1.4) e HUD (1.3). */
-class TelaJogo(private val jogo: com.badlogic.gdx.Game) : ScreenAdapter() {
+class TelaJogo(
+    private val jogo: com.badlogic.gdx.Game,
+    private val modoHistoria: Boolean = false,
+    private val fase: Int = 0
+) : ScreenAdapter() {
+
+    /** F17: troca o mapa das constantes (vila na sobrevivencia; fase N na historia) ANTES de criar o Mundo. */
+    private val cargaFase: Unit = Fases.carregar(if (modoHistoria) fase else 0)
 
     private val mundo = Mundo()
+    private var historia: Historia? = null
+    private var ouroNoInicio = 0
+    /** Menu modal aberto: 0 = pausa, 1 = loja do mercador, 2 = fase concluida. */
+    private var modo = 0
+    private val rotulosLoja = arrayOf("", "", "", "", "FECHAR")
     private var jogador = Jogador() // var: é recriado ao reiniciar depois da morte
     private val arma = Arma()
     private val direcaoTiro = Vector3() // reaproveitado: dispersao dos bagos da escopeta
@@ -56,7 +72,42 @@ class TelaJogo(private val jogo: com.badlogic.gdx.Game) : ScreenAdapter() {
     private var voltarAoMenu = false
 
     init {
+        mundo.spawnMax = Fases.atual.spawnMax
+        mundo.spawnDist = Fases.atual.spawnDist
+        mundo.spawnIntervalo = Fases.atual.spawnIntervalo
+        jogador.posicao.set(Fases.atual.inicio[0], 0f, Fases.atual.inicio[1])
         cameraJogo.seguir(jogador.posicao)
+        if (modoHistoria) {
+            ouroNoInicio = Progresso.ouro
+            aplicarProgresso()
+            iniciarHistoria()
+        }
+    }
+
+    /** Arma/municao/curas que o jogador leva de uma fase para a seguinte. */
+    private fun aplicarProgresso() {
+        if (Progresso.fuzil && maleta.adicionarArma(TipoArma.FUZIL)) arma.liberar(TipoArma.FUZIL)
+        if (Progresso.escopeta && maleta.adicionarArma(TipoArma.ESCOPETA)) arma.liberar(TipoArma.ESCOPETA)
+        arma.adicionarReserva(Progresso.reserva)
+        if (Progresso.curas > 0) maleta.adicionar(TipoItem.CURA, Progresso.curas)
+    }
+
+    private fun iniciarHistoria() {
+        val h = Historia(mundo, Fases.atual)
+        h.aoMensagem = { t -> hud.mostrarMensagem(t) }
+        h.aoAbrirLoja = { abrirMenu(1) }
+        h.aoConcluir = { concluirFase() }
+        historia = h
+        hud.historia = h
+        hud.mostrarMensagem(Fases.atual.subtitulo + ": " + Fases.atual.nome)
+    }
+
+    private fun concluirFase() {
+        Progresso.fuzil = arma.estaLiberada(TipoArma.FUZIL)
+        Progresso.escopeta = arma.estaLiberada(TipoArma.ESCOPETA)
+        Progresso.reserva = arma.reserva
+        Progresso.curas = maleta.total(TipoItem.CURA)
+        abrirMenu(2)
     }
 
     /** O boneco do F2 tem 13 ossos; o DefaultShader do LibGDX aceita 12 por padrao. */
@@ -111,10 +162,110 @@ class TelaJogo(private val jogo: com.badlogic.gdx.Game) : ScreenAdapter() {
     }
 
     private fun alternarPausa() {
-        pausado = !pausado
-        hud.pausado = pausado
-        controles.definirBloqueado(pausado)
-        Gdx.app.log("TELA", if (pausado) "pausado" else "retomado")
+        if (pausado) fecharMenu() else abrirMenu(0)
+    }
+
+    /** Abre um menu modal (jogo parado): 0 = pausa, 1 = loja do mercador, 2 = fase concluida. */
+    private fun abrirMenu(m: Int) {
+        modo = m
+        when (m) {
+            0 -> {
+                hud.menuTitulo = "PAUSADO"
+                hud.menuSubtitulo = if (modoHistoria) Fases.atual.subtitulo + ": " + Fases.atual.nome else ""
+                if (modoHistoria) {
+                    hud.menuRotulos = arrayOf("CONTINUAR", "REINICIAR FASE", "MENU PRINCIPAL")
+                    hud.menuCores = intArrayOf(0, 2, 1)
+                } else {
+                    hud.menuRotulos = arrayOf("CONTINUAR", "MENU PRINCIPAL")
+                    hud.menuCores = intArrayOf(0, 1)
+                }
+            }
+            1 -> {
+                hud.menuTitulo = "MERCADOR"
+                atualizarLoja("Escolha o que comprar")
+                hud.menuRotulos = rotulosLoja
+                hud.menuCores = intArrayOf(2, 2, 2, 2, 1)
+            }
+            else -> {
+                hud.menuTitulo = Fases.atual.nome + " CONCLUIDA"
+                hud.menuSubtitulo = "Ouro: " + Progresso.ouro
+                if (Fases.indice + 1 < Fases.total) {
+                    hud.menuRotulos = arrayOf("PROXIMA FASE", "MENU PRINCIPAL")
+                    hud.menuCores = intArrayOf(0, 1)
+                } else {
+                    hud.menuTitulo = "FIM DA HISTORIA"
+                    hud.menuRotulos = arrayOf("MENU PRINCIPAL")
+                    hud.menuCores = intArrayOf(1)
+                }
+            }
+        }
+        controles.definirMenu(hud.menuRotulos.size)
+        pausado = true
+        hud.pausado = true
+        controles.definirBloqueado(true)
+        Gdx.app.log("TELA", "menu " + m)
+    }
+
+    private fun fecharMenu() {
+        pausado = false
+        hud.pausado = false
+        controles.definirBloqueado(false)
+        Gdx.app.log("TELA", "menu fechado")
+    }
+
+    private val precosLoja = intArrayOf(20, 35, 150, 180)
+
+    private fun atualizarLoja(aviso: String) {
+        rotulosLoja[0] = "MUNICAO +30  (20)"
+        rotulosLoja[1] = "CURA  (35)"
+        rotulosLoja[2] = if (arma.estaLiberada(TipoArma.FUZIL)) "FUZIL  (ja tem)" else "FUZIL  (150)"
+        rotulosLoja[3] = if (arma.estaLiberada(TipoArma.ESCOPETA)) "ESCOPETA  (ja tem)" else "ESCOPETA  (180)"
+        hud.menuSubtitulo = "Ouro: " + Progresso.ouro + "  -  " + aviso
+    }
+
+    /** Toque num botao da loja (0..3 = itens, 4 = fechar). */
+    private fun comprar(i: Int) {
+        if (i == 4) { fecharMenu(); return }
+        if (Progresso.ouro < precosLoja[i]) { atualizarLoja("Ouro insuficiente"); return }
+        val resultado: String = when (i) {
+            0 -> { arma.adicionarReserva(30); "Comprou municao" }
+            1 -> if (maleta.adicionar(TipoItem.CURA, 1)) "Comprou cura" else { atualizarLoja(Constantes.MSG_MALETA_CHEIA); return }
+            2 -> if (arma.estaLiberada(TipoArma.FUZIL)) { atualizarLoja("Voce ja tem o fuzil"); return }
+                 else if (maleta.adicionarArma(TipoArma.FUZIL)) { arma.liberar(TipoArma.FUZIL); "Comprou o fuzil" }
+                 else { atualizarLoja(Constantes.MSG_MALETA_CHEIA); return }
+            else -> if (arma.estaLiberada(TipoArma.ESCOPETA)) { atualizarLoja("Voce ja tem a escopeta"); return }
+                 else if (maleta.adicionarArma(TipoArma.ESCOPETA)) { arma.liberar(TipoArma.ESCOPETA); "Comprou a escopeta" }
+                 else { atualizarLoja(Constantes.MSG_MALETA_CHEIA); return }
+        }
+        Progresso.ouro -= precosLoja[i]
+        atualizarLoja(resultado)
+    }
+
+    /** Botao tocado no menu modal (indice na lista do menu aberto). */
+    private fun tratarMenu(b: Int) {
+        when (modo) {
+            0 -> {
+                if (modoHistoria) {
+                    when (b) {
+                        0 -> fecharMenu()
+                        1 -> { fecharMenu(); reiniciar() }
+                        else -> voltarAoMenu = true
+                    }
+                } else {
+                    if (b == 0) fecharMenu() else voltarAoMenu = true
+                }
+            }
+            1 -> comprar(b)
+            else -> {
+                if (b == 0 && Fases.indice + 1 < Fases.total) irParaFase(Fases.indice + 1) else voltarAoMenu = true
+            }
+        }
+    }
+
+    private var proximaFase = -1
+
+    private fun irParaFase(n: Int) {
+        proximaFase = n
     }
 
     /** Câmera, movimento e tiro (só com o jogador vivo e o jogo rodando). */
@@ -242,6 +393,7 @@ class TelaJogo(private val jogo: com.badlogic.gdx.Game) : ScreenAdapter() {
 
     /** INTERAGIR: guarda na maleta o item mais perto (raio 1,5 m). Se não couber, recusa. */
     private fun interagir() {
+        if (historia?.interagir(jogador.posicao.x, jogador.posicao.z) == true) return
         val item = mundo.itemMaisProximo(
             jogador.posicao.x,
             jogador.posicao.z,
@@ -327,6 +479,13 @@ class TelaJogo(private val jogo: com.badlogic.gdx.Game) : ScreenAdapter() {
         mundo.reiniciar()
         particulas.limpar()
         maleta.limpar()
+        jogador.posicao.set(Fases.atual.inicio[0], 0f, Fases.atual.inicio[1])
+        if (modoHistoria) {
+            historia?.dispose()
+            Progresso.ouro = ouroNoInicio
+            aplicarProgresso()
+            iniciarHistoria()
+        }
         hud.limparMensagem()
         cameraJogo.seguir(jogador.posicao)
         morto = false
@@ -336,6 +495,13 @@ class TelaJogo(private val jogo: com.badlogic.gdx.Game) : ScreenAdapter() {
     }
 
     override fun render(delta: Float) {
+        if (proximaFase >= 0) { // fase concluida -> proxima fase: nova tela com o mapa novo
+            val n = proximaFase
+            proximaFase = -1
+            jogo.setScreen(TelaJogo(jogo, true, n))
+            dispose()
+            return
+        }
         if (voltarAoMenu) { // menu de pausa -> MENU PRINCIPAL: troca de tela e descarta esta
             voltarAoMenu = false
             jogo.setScreen(TelaMenu(jogo))
@@ -350,11 +516,11 @@ class TelaJogo(private val jogo: com.badlogic.gdx.Game) : ScreenAdapter() {
         val apertouVoltar = controles.consumirVoltar()
         if (apertouVoltar) {
             if (maletaAberta) alternarMaleta() // Voltar fecha a maleta
+            else if (pausado) { if (modo != 2) fecharMenu() } // Voltar fecha pausa/loja (fase concluida: so pelos botoes)
             else if (!morto) alternarPausa() // morto: Voltar não pausa
         }
         val botaoPausa = controles.consumirPausa()
-        if (pausado && botaoPausa == 0) alternarPausa()
-        if (pausado && botaoPausa == 1) voltarAoMenu = true
+        if (pausado && botaoPausa >= 0) tratarMenu(botaoPausa)
         if (controles.consumirPressao(ControlesToque.ACAO_MENU) && !pausado && !morto && !maletaAberta) alternarPausa()
         if (controles.consumirAlternarDebug()) hud.alternarDebug()
         if (controles.consumirAlternarMaleta() && !pausado && !morto) alternarMaleta()
@@ -377,6 +543,7 @@ class TelaJogo(private val jogo: com.badlogic.gdx.Game) : ScreenAdapter() {
                 val fl = kotlin.math.sqrt(fx * fx + fz * fz)
                 if (fl > 0.001f) { fx /= fl; fz /= fl } else { fx = 0f; fz = -1f }
                 mundo.atualizar(dt, jogador, fx, fz)
+                historia?.atualizar(dt)
                 efeitosDeMovimento(dt)
             }
             hud.atualizar(dt) // o tempo das mensagens corre também com a maleta aberta
@@ -391,6 +558,7 @@ class TelaJogo(private val jogo: com.badlogic.gdx.Game) : ScreenAdapter() {
         hud.definirVida(maxOf(jogador.vida, 0), Constantes.JOGADOR_VIDA_MAXIMA)
         hud.inimigosVivos = mundo.contarInimigosVivos()
         hud.definirJogador(jogador.posicao.x, jogador.posicao.z)
+        hud.definirHistoria(Progresso.ouro, historia?.dicaProximo(jogador.posicao.x, jogador.posicao.z))
 
         // Desenho 3D (primeiro o mapa de sombra, depois a cena numa textura com pos-processamento)
         desenharSombras()
@@ -441,6 +609,7 @@ class TelaJogo(private val jogo: com.badlogic.gdx.Game) : ScreenAdapter() {
             val item = mundo.drops[i]
             if (!item.coletado) loteModelos.render(item.instancia, mundo.ambiente)
         }
+        historia?.desenhar(loteModelos, mundo.ambiente)
         loteModelos.end()
         particulas.atualizar(if (pausado || maletaAberta) 0f else dt)
         particulas.desenhar(cameraJogo.camera)
@@ -480,6 +649,7 @@ class TelaJogo(private val jogo: com.badlogic.gdx.Game) : ScreenAdapter() {
         lote.dispose()
         forma.dispose()
         hud.dispose()
+        historia?.dispose()
         jogador.dispose()
         mundo.dispose()
     }

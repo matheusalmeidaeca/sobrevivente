@@ -116,6 +116,9 @@ class ControlesToque : InputAdapter() {
         private set
     var pausaAltura = 1f
         private set
+    /** Quantos botoes o menu modal mostra agora (pausa = 2 ou 3, loja = 5...). */
+    var numMenu = 2
+        private set
     private val pausaEsquerda = FloatArray(NUM_PAUSA)
     private val pausaBase = FloatArray(NUM_PAUSA)
     private var ponteiroPausa = SEM_PONTEIRO
@@ -134,7 +137,7 @@ class ControlesToque : InputAdapter() {
     }
 
     private fun pausaEm(x: Float, y: Float): Int {
-        for (i in 0 until NUM_PAUSA) {
+        for (i in 0 until numMenu) {
             if (x >= pausaEsquerda[i] && x <= pausaEsquerda[i] + pausaLargura &&
                 y >= pausaBase[i] && y <= pausaBase[i] + pausaAltura) return i
         }
@@ -142,13 +145,23 @@ class ControlesToque : InputAdapter() {
     }
 
     private fun calcularPausa(densidade: Float) {
-        pausaLargura = Constantes.PAUSA_BOTAO_LARGURA_DP * densidade
-        pausaAltura = Constantes.PAUSA_BOTAO_ALTURA_DP * densidade
-        val folga = Constantes.PAUSA_BOTAO_FOLGA_DP * densidade
-        for (i in 0 until NUM_PAUSA) {
+        val compacto = numMenu > 3
+        pausaLargura = Constantes.PAUSA_BOTAO_LARGURA_DP * densidade * (if (compacto) 1.25f else 1f)
+        pausaAltura = Constantes.PAUSA_BOTAO_ALTURA_DP * densidade * (if (compacto) 0.78f else 1f)
+        val folga = Constantes.PAUSA_BOTAO_FOLGA_DP * densidade * (if (compacto) 0.5f else 1f)
+        // lista centrada na tela: o botao 0 fica em cima; o titulo cabe acima dele
+        val total = numMenu * pausaAltura + (numMenu - 1) * folga
+        val topo = altura * 0.5f + total * 0.5f - (if (compacto) 0f else pausaAltura * 0.3f)
+        for (i in 0 until numMenu) {
             pausaEsquerda[i] = (largura - pausaLargura) * 0.5f
-            pausaBase[i] = altura * 0.5f - i * (pausaAltura + folga) - pausaAltura * 0.3f
+            pausaBase[i] = topo - (i + 1) * pausaAltura - i * folga
         }
+    }
+
+    /** Muda o numero de botoes do menu modal (pausa, loja, fase concluida) e refaz a posicao deles. */
+    fun definirMenu(quantidade: Int) {
+        numMenu = quantidade.coerceIn(1, NUM_PAUSA)
+        calcularPausa(densidadeTela)
     }
 
     // Zona e toque longo do overlay de debug
@@ -172,8 +185,8 @@ class ControlesToque : InputAdapter() {
         centroY = margem + raioBase
         calcularAcoes(densidade)
         calcularReiniciar(densidade)
-        calcularPausa(densidade)
         densidadeTela = densidade
+        calcularPausa(densidade)
         calcularMaleta(densidade)
         debugLargura = Constantes.DEBUG_ZONA_LARGURA_DP * densidade
         debugAltura = Constantes.DEBUG_ZONA_ALTURA_DP * densidade
@@ -649,7 +662,7 @@ class ControlesToque : InputAdapter() {
         const val NUM_BOTOES_CIRCULARES = 8 // 0..7 sao desenhados por BotoesAcao; 8..11 pelo Hud
         const val ACAO_MENU = 12 // icone de menu (start) no topo; desenhado pelo Hud
         const val NUM_ACOES = 13
-        const val NUM_PAUSA = 2
+        const val NUM_PAUSA = 6
         private const val SEM_PONTEIRO = -1
         private const val SEM_SLOT = -1
     }

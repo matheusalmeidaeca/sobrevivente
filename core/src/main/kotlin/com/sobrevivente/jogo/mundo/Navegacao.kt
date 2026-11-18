@@ -41,6 +41,12 @@ object Navegacao {
     private val dzViz = intArrayOf(0, 0, 1, -1, 1, -1, 1, -1)
 
     init {
+        reconstruir()
+    }
+
+    /** Refaz a grade com as paredes atuais (chamado ao trocar de fase). */
+    fun reconstruir() {
+        java.util.Arrays.fill(bloqueada, false)
         val folga = Constantes.ENIMIGO_RAIO + Constantes.NAV_MARGEM
         marcar(Constantes.PAREDES, folga, true)
         marcar(Constantes.BLOQUEIOS_INIMIGO, folga, false)

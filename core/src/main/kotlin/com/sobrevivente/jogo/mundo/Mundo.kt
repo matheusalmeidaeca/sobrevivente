@@ -268,7 +268,7 @@ class Mundo : Disposable {
         if (jogador.vida <= 0) return
         tempoSpawn -= dt
         if (tempoSpawn <= 0f) {
-            tempoSpawn = Constantes.SPAWN_INTERVALO_S
+            tempoSpawn = spawnIntervalo
             tentarNascer(jogador, dirX, dirZ)
         }
     }
@@ -353,7 +353,34 @@ class Mundo : Disposable {
         return acertou
     }
 
+    /** Modo historia: chamado quando um zumbi morre (ouro, objetivos). */
+    var aoMatar: ((Inimigo) -> Unit)? = null
+
+    /** Ajuste do respawn por fase: maximo de zumbis vivos, distancia minima ao jogador e intervalo (s). */
+    var spawnMax = Constantes.SPAWN_MAX_VIVOS
+    var spawnDist = Constantes.SPAWN_DIST_MIN
+    var spawnIntervalo = Constantes.SPAWN_INTERVALO_S
+
+    /** Faz nascer um mini chefe / chefe em (x, z). Usa um lugar livre do pool; se nao ha, toma o de um zumbi comum. */
+    fun nascerEspecial(tipo: TipoZumbi, x: Float, z: Float, fatorVida: Float): Inimigo? {
+        var escolhido: Inimigo? = null
+        for (i in inimigos.indices) {
+            if (inimigos[i].disponivelParaNascer) { escolhido = inimigos[i]; break }
+        }
+        if (escolhido == null) {
+            for (i in inimigos.indices) {
+                if (inimigos[i].tipo.especial && inimigos[i].vivo) continue
+                escolhido = inimigos[i]
+                break
+            }
+        }
+        val e = escolhido ?: return null
+        e.nascerEspecial(x, z, tipo, fatorVida)
+        return e
+    }
+
     private fun soltarLoot(z: Inimigo) {
+        aoMatar?.invoke(z)
         abates++
         val l = z.consumirLoot()
         if (l == 0) return
@@ -391,7 +418,7 @@ class Mundo : Disposable {
      * (atras/ao lado da camera, ou escondido por parede), e usa um zumbi do pool que ja sumiu.
      */
     private fun tentarNascer(jogador: Jogador, dirX: Float, dirZ: Float) {
-        if (contarInimigosVivos() >= Constantes.SPAWN_MAX_VIVOS) return
+        if (contarInimigosVivos() >= spawnMax) return
         var livre: Inimigo? = null
         for (i in inimigos.indices) {
             if (inimigos[i].disponivelParaNascer) {
@@ -410,7 +437,7 @@ class Mundo : Disposable {
             val dx = sx - jogador.posicao.x
             val dz = sz - jogador.posicao.z
             val d = kotlin.math.sqrt(dx * dx + dz * dz)
-            if (d < Constantes.SPAWN_DIST_MIN) continue
+            if (d < spawnDist) continue
             val cosAngulo = (dx * dirX + dz * dirZ) / d
             val naVista = cosAngulo > Constantes.SPAWN_COS_VISAO &&
                 !Navegacao.paredeEntre(jogador.posicao.x, jogador.posicao.z, sx, sz)
@@ -436,7 +463,7 @@ class Mundo : Disposable {
             itens[i].coletado = false
         }
         drops.clear()
-        tempoSpawn = Constantes.SPAWN_INTERVALO_S
+        tempoSpawn = spawnIntervalo
     }
 
     /** Item no chão mais perto de (x, z) dentro de `raio` metros (plano XZ), ou null. Sem alocação. */

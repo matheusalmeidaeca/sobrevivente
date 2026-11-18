@@ -342,7 +342,7 @@ object Constantes {
 
     // ---- VILA (gerada por ferramentas/vila/gerar_vila.py; NAO editar a mao) ----
     /** Paredes e obstaculos (minX, minZ, maxX, maxZ). Ver PAREDES_BASE / PAREDES_ALTURA / PAREDES_TIPO. */
-    val PAREDES = floatArrayOf(
+    var PAREDES = floatArrayOf(
         -34f, -32f, -18f, -31.6f,
         -34f, -18.4f, -27.5f, -18f,
         -24.5f, -18.4f, -18f, -18f,
@@ -531,28 +531,28 @@ object Constantes {
         2.55f, -30.45f, 3.45f, -29.55f
     )
     /** Altura da base de cada parede (0 = chao; 3,2 = guarda-corpo do andar alto). */
-    val PAREDES_BASE = floatArrayOf(0f, 0f, 0f, 0f, 0f, 3.2f, 3.2f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f)
-    val PAREDES_ALTURA = floatArrayOf(6.4f, 6.4f, 6.4f, 6.4f, 6.4f, 1f, 1f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 5f, 5f, 5f, 5f, 5f, 4.5f, 4.5f, 4.5f, 4.5f, 4.5f, 11f, 1.2f, 1.4f, 1.4f, 1.4f, 1.4f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 2.6f, 2.6f, 2.6f, 2.6f, 2.6f, 2.6f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 0.9f, 0.9f, 0.9f, 0.9f, 0.9f, 0.9f)
+    var PAREDES_BASE = floatArrayOf(0f, 0f, 0f, 0f, 0f, 3.2f, 3.2f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f)
+    var PAREDES_ALTURA = floatArrayOf(6.4f, 6.4f, 6.4f, 6.4f, 6.4f, 1f, 1f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 3f, 5f, 5f, 5f, 5f, 5f, 4.5f, 4.5f, 4.5f, 4.5f, 4.5f, 11f, 1.2f, 1.4f, 1.4f, 1.4f, 1.4f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 6f, 2.6f, 2.6f, 2.6f, 2.6f, 2.6f, 2.6f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 0.9f, 0.9f, 0.9f, 0.9f, 0.9f, 0.9f)
     /** 0 casa, 1 pedra, 2 cerca, 3 celeiro, 4 guarda-corpo, 5 tronco, 6-8 reboco, 9 caixote/barril, 10 poco, 11 fardo (2, 5, 9, 10, 11 so colisao: o desenho vem da decoracao). */
-    val PAREDES_TIPO = intArrayOf(0, 0, 0, 0, 0, 4, 9, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 0, 0, 0, 0, 0, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 0, 0, 0, 0, 0, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 3, 3, 3, 3, 3, 1, 10, 11, 11, 11, 11, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9)
+    var PAREDES_TIPO = intArrayOf(0, 0, 0, 0, 0, 4, 9, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 0, 0, 0, 0, 0, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 0, 0, 0, 0, 0, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 3, 3, 3, 3, 3, 1, 10, 11, 11, 11, 11, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9)
     /** Piso interno das casas (minX, minZ, maxX, maxZ). */
-    val PISOS = floatArrayOf(-33.6f, -31.6f, -18.4f, -18.4f, 14.4f, -31.6f, 27.6f, -22.4f, -31.6f, 10.4f, -20.4f, 19.6f, 18.4f, 12.4f, 29.6f, 23.6f, -55.6f, -5.6f, -47.4f, 1.6f, 40.4f, -7.6f, 49.6f, 0.6f, -9.6f, 40.4f, 3.6f, 49.6f, 30.4f, 36.4f, 39.6f, 45.6f, -47.6f, 36.4f, -37.4f, 44.6f, 55.4f, 30.4f, 63.6f, 37.6f, -59.6f, -47.6f, -50.4f, -39.4f, 58.4f, -29.6f, 66.6f, -21.4f, -11.6f, -61.6f, 11.6f, -46.4f, 38.4f, -51.6f, 57.6f, -38.4f)
+    var PISOS = floatArrayOf(-33.6f, -31.6f, -18.4f, -18.4f, 14.4f, -31.6f, 27.6f, -22.4f, -31.6f, 10.4f, -20.4f, 19.6f, 18.4f, 12.4f, 29.6f, 23.6f, -55.6f, -5.6f, -47.4f, 1.6f, 40.4f, -7.6f, 49.6f, 0.6f, -9.6f, 40.4f, 3.6f, 49.6f, 30.4f, 36.4f, 39.6f, 45.6f, -47.6f, 36.4f, -37.4f, 44.6f, 55.4f, 30.4f, 63.6f, 37.6f, -59.6f, -47.6f, -50.4f, -39.4f, 58.4f, -29.6f, 66.6f, -21.4f, -11.6f, -61.6f, 11.6f, -46.4f, 38.4f, -51.6f, 57.6f, -38.4f)
     /** Andares altos: (minX, minZ, maxX, maxZ) e altura. */
-    val ALTOS = floatArrayOf(-33.6f, -31.6f, -18.4f, -24.6f)
-    val ALTOS_ALTURA = floatArrayOf(3.2f)
+    var ALTOS = floatArrayOf(-33.6f, -31.6f, -18.4f, -24.6f)
+    var ALTOS_ALTURA = floatArrayOf(3.2f)
     /** Rampas/escadas: (minX, minZ, maxX, maxZ), altura em baixo e em cima, e para onde sobem (0=-Z, 1=+Z, 2=+X, 3=-X). */
-    val RAMPAS = floatArrayOf(-33.6f, -24.6f, -31.4f, -19f)
-    val RAMPAS_ALTURAS = floatArrayOf(0f, 3.2f)
-    val RAMPAS_EIXO = intArrayOf(0)
+    var RAMPAS = floatArrayOf(-33.6f, -24.6f, -31.4f, -19f)
+    var RAMPAS_ALTURAS = floatArrayOf(0f, 3.2f)
+    var RAMPAS_EIXO = intArrayOf(0)
     /** Area que os zumbis nao pisam (escada). */
-    val BLOQUEIOS_INIMIGO = floatArrayOf(-33.6f, -24.6f, -31.4f, -19f)
-    val ITENS_XZ = floatArrayOf(-21f, -28.5f, -31f, -29f, -24f, -22f, 0f, 3f, 3f, 3f, -3f, 3f, 21f, -26f, 24f, -24f, -26f, 16f, 24f, 18f, -52f, -2f, 44f, -3f, -3f, 46f, 34f, 42f, -43f, 40f, 0f, -56f, 6f, -57f, -6f, -57f, 48f, -46f, 44f, -44f, -56f, -44f, 62f, -26f)
-    val ITENS_Y = floatArrayOf(3.2f, 3.2f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f)
+    var BLOQUEIOS_INIMIGO = floatArrayOf(-33.6f, -24.6f, -31.4f, -19f)
+    var ITENS_XZ = floatArrayOf(-21f, -28.5f, -31f, -29f, -24f, -22f, 0f, 3f, 3f, 3f, -3f, 3f, 21f, -26f, 24f, -24f, -26f, 16f, 24f, 18f, -52f, -2f, 44f, -3f, -3f, 46f, 34f, 42f, -43f, 40f, 0f, -56f, 6f, -57f, -6f, -57f, 48f, -46f, 44f, -44f, -56f, -44f, 62f, -26f)
+    var ITENS_Y = floatArrayOf(3.2f, 3.2f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f)
     /** 0 cura, 1 municao, 2 fuzil, 3 escopeta. */
-    val ITENS_TIPO = intArrayOf(3, 1, 0, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 2, 0, 1, 1, 0, 0, 1)
-    val INIMIGOS_XZ = floatArrayOf(-10f, -14f, 12f, 10f, -22f, 22f, 26f, -20f, 4f, 34f, -40f, -6f, 48f, 20f)
+    var ITENS_TIPO = intArrayOf(3, 1, 0, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 2, 0, 1, 1, 0, 0, 1)
+    var INIMIGOS_XZ = floatArrayOf(-10f, -14f, 12f, 10f, -22f, 22f, 26f, -20f, 4f, 34f, -40f, -6f, 48f, 20f)
     /** Pontos onde zumbis novos podem nascer (longe do jogador e fora da vista). */
-    val SPAWNS_XZ = floatArrayOf(-74f, -74f, 74f, -74f, -74f, 74f, 74f, 74f, 0f, -76f, 0f, 76f, -76f, 0f, 76f, 0f, -60f, -30f, 60f, 20f, 40f, 72f, -40f, 72f, -70f, 30f, 70f, -50f, -30f, -72f, 30f, 74f)
+    var SPAWNS_XZ = floatArrayOf(-74f, -74f, 74f, -74f, -74f, 74f, 74f, 74f, 0f, -76f, 0f, 76f, -76f, 0f, 76f, 0f, -60f, -30f, 60f, 20f, 40f, 72f, -40f, 72f, -70f, 30f, 70f, -50f, -30f, -72f, 30f, 74f)
 
     // Câmera contra paredes
     const val CAMERA_MARGEM_PAREDE = 0.3f
@@ -649,7 +649,7 @@ object Constantes {
     const val RAMPA_COR_R = 0.50f
     const val RAMPA_COR_G = 0.40f
     const val RAMPA_COR_B = 0.25f
-    const val INIMIGOS_POOL = 14 // zumbis que podem existir ao mesmo tempo (vivos + corpos)
+    const val INIMIGOS_POOL = 16 // zumbis que podem existir ao mesmo tempo (vivos + corpos)
     const val SPAWN_MAX_VIVOS = 9
     const val SPAWN_INTERVALO_S = 7f
     const val SPAWN_DIST_MIN = 45f // so nasce a mais de 45 m do jogador

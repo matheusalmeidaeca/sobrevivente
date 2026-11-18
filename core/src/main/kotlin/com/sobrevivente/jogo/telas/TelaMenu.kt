@@ -13,6 +13,8 @@ import com.badlogic.gdx.graphics.glutils.ShapeRenderer
 import com.badlogic.gdx.math.MathUtils
 import com.badlogic.gdx.utils.Align
 import com.badlogic.gdx.utils.ScreenUtils
+import com.sobrevivente.jogo.mundo.Fases
+import com.sobrevivente.jogo.mundo.Progresso
 
 /**
  * F11: menu inicial (antes das fases). JOGAR abre a sobrevivencia na vila; MODO HISTORIA ainda e "em breve"
@@ -24,6 +26,8 @@ class TelaMenu(private val jogo: Game) : ScreenAdapter() {
     private val lote = SpriteBatch()
     private val fonte = BitmapFont()
     private val rotulos = arrayOf("JOGAR", "MODO HISTORIA", "SAIR")
+    private fun rotulo(i: Int): String =
+        if (i == 1 && Progresso.faseMaxima > 0) "HISTORIA - FASE " + (Progresso.faseMaxima + 1).coerceAtMost(Fases.total) else rotulos[i]
     private val bx = FloatArray(3)
     private val by = FloatArray(3)
     private var bw = 1f
@@ -97,7 +101,11 @@ class TelaMenu(private val jogo: Game) : ScreenAdapter() {
             }
             1 -> {
                 acao = -1
-                aviso = 2.2f
+                // Modo historia: comeca na fase liberada (a memoria dura ate fechar o app; ainda sem salvar em disco)
+                if (Progresso.faseMaxima == 0) Progresso.novo()
+                jogo.setScreen(TelaJogo(jogo, true, Progresso.faseMaxima.coerceAtMost(Fases.total - 1)))
+                dispose()
+                return
             }
             2 -> {
                 acao = -1
@@ -133,12 +141,12 @@ class TelaMenu(private val jogo: Game) : ScreenAdapter() {
         fonte.data.setScale(1.3f * d)
         fonte.setColor(1f, 1f, 1f, 1f)
         for (i in 0..2) {
-            fonte.draw(lote, rotulos[i], bx[i], by[i] + bh * 0.5f + fonte.capHeight * 0.5f, bw, Align.center, false)
+            fonte.draw(lote, rotulo(i), bx[i], by[i] + bh * 0.5f + fonte.capHeight * 0.5f, bw, Align.center, false)
         }
         if (aviso > 0f) {
             fonte.data.setScale(1.0f * d)
             fonte.setColor(1f, 0.85f, 0.3f, 1f)
-            fonte.draw(lote, "Modo historia em breve: fases, chefes, puzzles, chaves e mercador.", 0f, by[2] - 30f * d, w, Align.center, false)
+            fonte.draw(lote, "Modo historia", 0f, by[2] - 30f * d, w, Align.center, false)
         }
         fonte.setColor(1f, 1f, 1f, 1f)
         lote.end()

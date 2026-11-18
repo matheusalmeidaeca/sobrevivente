@@ -12,6 +12,7 @@ import com.sobrevivente.jogo.entrada.ControlesToque
 import com.sobrevivente.jogo.inventario.Item
 import com.sobrevivente.jogo.inventario.Maleta
 import com.sobrevivente.jogo.inventario.TipoItem
+import com.sobrevivente.jogo.mundo.Historia
 import com.sobrevivente.jogo.mundo.Mundo
 import com.sobrevivente.jogo.mundo.TipoArma
 
@@ -34,6 +35,12 @@ class Hud(
     private val overlayDebug = OverlayDebug()
 
     var pausado = false
+    /** Menu modal (pausa, loja, fase concluida): titulo, rotulos e cores (0 verde, 1 vermelho, 2 azul) dos botoes. */
+    var menuTitulo = "PAUSADO"
+    var menuRotulos: Array<String> = arrayOf("CONTINUAR", "MENU PRINCIPAL")
+    var menuCores: IntArray = intArrayOf(0, 1)
+    /** Linhas extras no menu (ex.: ouro na loja). */
+    var menuSubtitulo = ""
     var morto = false
     var maletaAberta = false
     var inimigosVivos = 0
@@ -116,6 +123,64 @@ class Hud(
         dor = valor
     }
 
+    // ---------- F17: modo historia (objetivo, dica, ouro, barra do chefe) ----------
+    var historia: Historia? = null
+    private var ouro = 0
+    private var dicaProximo: String? = null
+    private val textoOuro = StringBuilder(32)
+
+    /** Ouro e texto de ajuda do objeto perto do jogador (null = nada perto). Chamar todo frame. */
+    fun definirHistoria(ouroAtual: Int, dica: String?) {
+        ouro = ouroAtual
+        dicaProximo = dica
+    }
+
+    private fun desenharBarraChefe(forma: ShapeRenderer) {
+        val h = historia ?: return
+        val c = h.chefeAtual() ?: return
+        val i = ControlesToque.ACAO_MENU
+        val w = largura * 0.40f
+        val x = (largura - w) * 0.5f
+        val y = controles.acaoY(i) - controles.acaoRaio(i) - 98f * densidade
+        val alt = 9f * densidade
+        val f = (c.vida.toFloat() / c.vidaMaxima.coerceAtLeast(1).toFloat()).coerceIn(0f, 1f)
+        forma.setColor(0f, 0f, 0f, 0.65f)
+        forma.rect(x - 2f * densidade, y - 2f * densidade, w + 4f * densidade, alt + 4f * densidade)
+        forma.setColor(0.80f, 0.10f, 0.10f, 0.95f)
+        forma.rect(x, y, w * f, alt)
+    }
+
+    private fun desenharTextosHistoria(lote: SpriteBatch) {
+        val h = historia ?: return
+        val i = ControlesToque.ACAO_MENU
+        val x = largura * 0.27f
+        val w = largura * 0.46f
+        var y = controles.acaoY(i) - controles.acaoRaio(i) - 6f * densidade
+        definirEscala(Constantes.FONTE_ESCALA_HUD * 1.0f)
+        fonte.setColor(1f, 0.92f, 0.55f, 1f)
+        fonte.draw(lote, h.objetivoTexto, x, y, w, Align.center, true)
+        y -= 20f * densidade
+        definirEscala(Constantes.FONTE_ESCALA_HUD * 0.78f)
+        fonte.setColor(0.85f, 0.88f, 0.92f, 1f)
+        fonte.draw(lote, h.dicaTexto, x, y, w, Align.center, true)
+        textoOuro.setLength(0)
+        textoOuro.append("Ouro ").append(ouro)
+        fonte.setColor(1f, 0.82f, 0.25f, 1f)
+        fonte.draw(lote, textoOuro, x, controles.acaoY(i) - controles.acaoRaio(i) - 74f * densidade, w, Align.center, false)
+        val c = h.chefeAtual()
+        if (c != null) {
+            fonte.setColor(1f, 0.75f, 0.75f, 1f)
+            fonte.draw(lote, h.nomeChefeAtual(), x, controles.acaoY(i) - controles.acaoRaio(i) - 98f * densidade + 28f * densidade, w, Align.center, false)
+        }
+        val p = dicaProximo
+        if (p != null) {
+            definirEscala(Constantes.FONTE_ESCALA_HUD * 1.05f)
+            fonte.setColor(1f, 1f, 0.6f, 1f)
+            fonte.draw(lote, p, 0f, altura * 0.30f, largura, Align.center, false)
+        }
+        fonte.setColor(1f, 1f, 1f, 1f)
+    }
+
     /** Posição do jogador no plano XZ (para o minimapa). Chamar todo frame. */
     fun definirJogador(x: Float, z: Float) {
         jogadorX = x
@@ -185,6 +250,7 @@ class Hud(
         botoes.desenharFormas(forma)
         desenharSlotsArma(forma)
         desenharIconeMenu(forma)
+        if (!pausado && !morto && !maletaAberta) desenharBarraChefe(forma)
         if (pausado) {
             desenharFormasPausa(forma)
         } else if (morto) {
@@ -215,7 +281,7 @@ class Hud(
     private fun desenharFormasPausa(forma: ShapeRenderer) {
         forma.setColor(0f, 0f, 0f, Constantes.PAUSA_ALFA_FUNDO)
         forma.rect(0f, 0f, largura, altura)
-        for (i in 0 until ControlesToque.NUM_PAUSA) {
+        for (i in 0 until minOf(controles.numMenu, menuRotulos.size)) {
             val e = if (controles.pausaApertadoIndice() == i) Constantes.BOTAO_ESCURECER else 1f
             val x = controles.pausaEsq(i)
             val y = controles.pausaBas(i)
@@ -223,7 +289,11 @@ class Hud(
             val h = controles.pausaAltura
             forma.setColor(1f, 1f, 1f, 0.75f)
             forma.rect(x, y, w, h)
-            if (i == 0) forma.setColor(0.18f * e, 0.45f * e, 0.22f * e, 0.95f) else forma.setColor(0.45f * e, 0.18f * e, 0.16f * e, 0.95f)
+            when (if (i < menuCores.size) menuCores[i] else 1) {
+                0 -> forma.setColor(0.18f * e, 0.45f * e, 0.22f * e, 0.95f)
+                2 -> forma.setColor(0.17f * e, 0.30f * e, 0.50f * e, 0.95f)
+                else -> forma.setColor(0.45f * e, 0.18f * e, 0.16f * e, 0.95f)
+            }
             forma.rect(x + 2f * densidade, y + 2f * densidade, w - 4f * densidade, h - 4f * densidade)
         }
     }
@@ -475,6 +545,7 @@ class Hud(
             desenharTextosPilulas(lote)
             botoes.desenharTextos(lote)
             desenharContadorCura(lote)
+            desenharTextosHistoria(lote)
         }
         desenharMensagem(lote)
     }
@@ -611,10 +682,14 @@ class Hud(
     private fun desenharTextoPausa(lote: SpriteBatch) {
         definirEscala(Constantes.ESCALA_FONTE)
         val topo = controles.pausaBas(0) + controles.pausaAltura
-        fonte.draw(lote, "PAUSADO", 0f, topo + 56f * densidade, largura, Align.center, false)
-        definirEscala(Constantes.FONTE_ESCALA_HUD * 1.2f)
-        val nomes = arrayOf("CONTINUAR", "MENU PRINCIPAL")
-        for (i in 0 until ControlesToque.NUM_PAUSA) {
+        fonte.draw(lote, menuTitulo, 0f, topo + 56f * densidade, largura, Align.center, false)
+        if (menuSubtitulo.isNotEmpty()) {
+            definirEscala(Constantes.FONTE_ESCALA_HUD * 1.0f)
+            fonte.draw(lote, menuSubtitulo, 0f, topo + 22f * densidade, largura, Align.center, false)
+        }
+        definirEscala(Constantes.FONTE_ESCALA_HUD * (if (controles.numMenu > 3) 1.0f else 1.2f))
+        val nomes = menuRotulos
+        for (i in 0 until minOf(controles.numMenu, nomes.size)) {
             fonte.draw(
                 lote, nomes[i], controles.pausaEsq(i),
                 controles.pausaBas(i) + controles.pausaAltura * 0.5f + fonte.capHeight * 0.5f,

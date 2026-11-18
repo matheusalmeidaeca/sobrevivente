@@ -16,4 +16,9 @@ tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
 
 dependencies {
     api "com.badlogicgames.gdx:gdx:$gdxVersion"
+    testImplementation "junit:junit:4.13.2"
+}
+
+test {
+    testLogging { showStandardStreams = true }
 }

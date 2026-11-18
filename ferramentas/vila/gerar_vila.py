@@ -498,32 +498,32 @@ def kotlin():
     o = []
     o.append("    // ---- VILA (gerada por ferramentas/vila/gerar_vila.py; NAO editar a mao) ----")
     o.append("    /** Paredes e obstaculos (minX, minZ, maxX, maxZ). Ver PAREDES_BASE / PAREDES_ALTURA / PAREDES_TIPO. */")
-    o.append("    val PAREDES = floatArrayOf(")
+    o.append("    var PAREDES = floatArrayOf(")
     o.append(",\n".join("        " + ", ".join(f(v) for v in p[:4]) for p in paredes))
     o.append("    )")
     o.append("    /** Altura da base de cada parede (0 = chao; 3,2 = guarda-corpo do andar alto). */")
-    o.append("    val PAREDES_BASE = floatArrayOf(" + ", ".join(f(p[4]) for p in paredes) + ")")
-    o.append("    val PAREDES_ALTURA = floatArrayOf(" + ", ".join(f(p[5]) for p in paredes) + ")")
+    o.append("    var PAREDES_BASE = floatArrayOf(" + ", ".join(f(p[4]) for p in paredes) + ")")
+    o.append("    var PAREDES_ALTURA = floatArrayOf(" + ", ".join(f(p[5]) for p in paredes) + ")")
     o.append("    /** 0 casa, 1 pedra, 2 cerca, 3 celeiro, 4 guarda-corpo, 5 tronco, 6-8 reboco, 9 caixote/barril, 10 poco, 11 fardo (2, 5, 9, 10, 11 so colisao: o desenho vem da decoracao). */")
-    o.append("    val PAREDES_TIPO = intArrayOf(" + ", ".join(str(p[6]) for p in paredes) + ")")
+    o.append("    var PAREDES_TIPO = intArrayOf(" + ", ".join(str(p[6]) for p in paredes) + ")")
     o.append("    /** Piso interno das casas (minX, minZ, maxX, maxZ). */")
-    o.append("    val PISOS = floatArrayOf(" + ", ".join(f(v) for p in pisos for v in p) + ")")
+    o.append("    var PISOS = floatArrayOf(" + ", ".join(f(v) for p in pisos for v in p) + ")")
     o.append("    /** Andares altos: (minX, minZ, maxX, maxZ) e altura. */")
-    o.append("    val ALTOS = floatArrayOf(" + ", ".join(f(v) for p in altos for v in p[:4]) + ")")
-    o.append("    val ALTOS_ALTURA = floatArrayOf(" + ", ".join(f(p[4]) for p in altos) + ")")
+    o.append("    var ALTOS = floatArrayOf(" + ", ".join(f(v) for p in altos for v in p[:4]) + ")")
+    o.append("    var ALTOS_ALTURA = floatArrayOf(" + ", ".join(f(p[4]) for p in altos) + ")")
     o.append("    /** Rampas/escadas: (minX, minZ, maxX, maxZ), altura em baixo e em cima, e para onde sobem (0=-Z, 1=+Z, 2=+X, 3=-X). */")
-    o.append("    val RAMPAS = floatArrayOf(" + ", ".join(f(v) for p in rampas for v in p[:4]) + ")")
-    o.append("    val RAMPAS_ALTURAS = floatArrayOf(" + ", ".join(f(v) for p in rampas for v in p[4:6]) + ")")
-    o.append("    val RAMPAS_EIXO = intArrayOf(" + ", ".join(str(p[6]) for p in rampas) + ")")
+    o.append("    var RAMPAS = floatArrayOf(" + ", ".join(f(v) for p in rampas for v in p[:4]) + ")")
+    o.append("    var RAMPAS_ALTURAS = floatArrayOf(" + ", ".join(f(v) for p in rampas for v in p[4:6]) + ")")
+    o.append("    var RAMPAS_EIXO = intArrayOf(" + ", ".join(str(p[6]) for p in rampas) + ")")
     o.append("    /** Area que os zumbis nao pisam (escada). */")
-    o.append("    val BLOQUEIOS_INIMIGO = floatArrayOf(" + ", ".join(f(v) for p in bloq_inimigo for v in p) + ")")
-    o.append("    val ITENS_XZ = floatArrayOf(" + ", ".join(f(v) for (x, z, y, t) in itens for v in (x, z)) + ")")
-    o.append("    val ITENS_Y = floatArrayOf(" + ", ".join(f(y) for (x, z, y, t) in itens) + ")")
+    o.append("    var BLOQUEIOS_INIMIGO = floatArrayOf(" + ", ".join(f(v) for p in bloq_inimigo for v in p) + ")")
+    o.append("    var ITENS_XZ = floatArrayOf(" + ", ".join(f(v) for (x, z, y, t) in itens for v in (x, z)) + ")")
+    o.append("    var ITENS_Y = floatArrayOf(" + ", ".join(f(y) for (x, z, y, t) in itens) + ")")
     o.append("    /** 0 cura, 1 municao, 2 fuzil, 3 escopeta. */")
-    o.append("    val ITENS_TIPO = intArrayOf(" + ", ".join(str(t) for (x, z, y, t) in itens) + ")")
-    o.append("    val INIMIGOS_XZ = floatArrayOf(" + ", ".join(f(v) for p in inimigos for v in p) + ")")
+    o.append("    var ITENS_TIPO = intArrayOf(" + ", ".join(str(t) for (x, z, y, t) in itens) + ")")
+    o.append("    var INIMIGOS_XZ = floatArrayOf(" + ", ".join(f(v) for p in inimigos for v in p) + ")")
     o.append("    /** Pontos onde zumbis novos podem nascer (longe do jogador e fora da vista). */")
-    o.append("    val SPAWNS_XZ = floatArrayOf(" + ", ".join(f(v) for p in spawns for v in p) + ")")
+    o.append("    var SPAWNS_XZ = floatArrayOf(" + ", ".join(f(v) for p in spawns for v in p) + ")")
     return "\n".join(o) + "\n"
 
 
@@ -543,9 +543,15 @@ def kotlin_decor():
          "        return out.toFloatArray()",
          "    }", "",
          "    /** Por forma: cx, cy, cz, sx, sy, sz, rotY(graus), r, g, b, forma (0 caixa, 1 esfera, 2 cilindro, 3 cone)  (11 numeros). */",
-         "    val CAIXAS: FloatArray by lazy { ler(CAIXAS_TXT) }",
+         "    private var caixasV: FloatArray? = null",
+         "    var CAIXAS: FloatArray",
+         "        get() = caixasV ?: ler(CAIXAS_TXT).also { caixasV = it }",
+         "        set(v) { caixasV = v }",
          "    /** Por telhado: x0, z0, x1, z1, yBase, altura, forma (0 cumeeira em X, 1 em Z, 2 piramide), r, g, b, oculta (1 = some com o jogador dentro) (11 numeros). */",
-         "    val TELHADOS: FloatArray by lazy { ler(TELHADOS_TXT) }", ""]
+         "    private var telhadosV: FloatArray? = null",
+         "    var TELHADOS: FloatArray",
+         "        get() = telhadosV ?: ler(TELHADOS_TXT).also { telhadosV = it }",
+         "        set(v) { telhadosV = v }", ""]
     # blocos de texto < 60 KB cada: divide em pedacos concatenados em tempo de execucao
     def bloco(nome, linhas):
         partes, atual = [], []

@@ -15,12 +15,16 @@ import kotlin.math.sqrt
 /** F10: tipos de zumbi (velocidade relativa, dano, vida, tamanho e tom de cor proprios). `peso` = chance relativa de nascer. */
 enum class TipoZumbi(
     val nome: String, val velocidade: Float, val dano: Int, val vida: Int,
-    val altura: Float, val largura: Float, val r: Float, val g: Float, val b: Float, val peso: Int
+    val altura: Float, val largura: Float, val r: Float, val g: Float, val b: Float, val peso: Int,
+    val especial: Boolean = false
 ) {
     NORMAL("Zumbi", 1.00f, 10, 100, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 40),
     RAPIDO("Corredor", 1.75f, 6, 55, 0.96f, 0.82f, 0.88f, 0.96f, 1.05f, 22),
     LENTO("Bruto", 0.60f, 24, 240, 1.10f, 1.32f, 0.88f, 0.66f, 0.60f, 16),
-    FORTE("Mutante", 1.10f, 16, 150, 1.06f, 1.10f, 0.82f, 0.98f, 0.72f, 22);
+    FORTE("Mutante", 1.10f, 16, 150, 1.06f, 1.10f, 0.82f, 0.98f, 0.72f, 22),
+    /** Modo historia: mini chefe e chefe (peso 0 = nunca sorteados; so nascem por `nascerEspecial`). */
+    MINICHEFE("Mini chefe", 1.00f, 22, 900, 1.28f, 1.38f, 0.90f, 0.62f, 0.55f, 0, true),
+    CHEFE("Chefe", 1.08f, 30, 2400, 1.42f, 1.32f, 0.62f, 0.64f, 0.82f, 0, true);
 
     companion object {
         fun sortear(): TipoZumbi {
@@ -55,6 +59,9 @@ class Inimigo(modelo: Model, x: Float, z: Float, private val animado: Boolean = 
     var tipo = TipoZumbi.NORMAL
         private set
     var vida = Constantes.ENIMIGO_VIDA
+        private set
+    /** Vida com que nasceu (barra de vida do chefe). */
+    var vidaMaxima = Constantes.ENIMIGO_VIDA
         private set
     var estado = Estado.PARADO
         private set
@@ -119,10 +126,11 @@ class Inimigo(modelo: Model, x: Float, z: Float, private val animado: Boolean = 
     private var rumoYaw = 0f // para onde o corpo quer olhar andando
 
     /** Sorteia aparencia: magro/gordo, alto/baixo e um tom de pele (so com o modelo animado). */
-    private fun sortearAparencia() {
-        tipo = TipoZumbi.sortear()
-        vida = tipo.vida
-        loot = if (MathUtils.randomBoolean(Constantes.LOOT_CHANCE)) {
+    private fun sortearAparencia(forcado: TipoZumbi? = null, fatorVida: Float = 1f) {
+        tipo = forcado ?: TipoZumbi.sortear()
+        vida = (tipo.vida * fatorVida).toInt()
+        vidaMaxima = vida
+        loot = if (forcado != null) 0 else if (MathUtils.randomBoolean(Constantes.LOOT_CHANCE)) {
             if (MathUtils.randomBoolean(Constantes.LOOT_CHANCE_CURA)) 2 else 1
         } else 0
         tempoQueda = 0f
@@ -388,6 +396,24 @@ class Inimigo(modelo: Model, x: Float, z: Float, private val animado: Boolean = 
         atualizarTransformacao()
     }
 
+    /** Modo historia: nasce em (x, z) como mini chefe ou chefe, com vida multiplicada por `fatorVida`, ja cacando o jogador. */
+    fun nascerEspecial(x: Float, z: Float, forcado: TipoZumbi, fatorVida: Float) {
+        desativado = false
+        cacador = true
+        sortearAparencia(forcado, fatorVida)
+        posicao.set(x, 0f, z)
+        tempoAtaque = 0f
+        tempoFlash = 0f
+        tempoMorto = 0f
+        trajetoN = 0
+        trajetoI = 0
+        tempoReplano = 0f
+        yaw = 0f
+        rumoYaw = 0f
+        mudarEstado(Estado.CACANDO)
+        atualizarTransformacao()
+    }
+
     /** Muda o ponto inicial (zumbi do pool que volta a ser inicial). */
     fun redefinirPosicao(x: Float, z: Float) {
         inicioX = x
@@ -441,7 +467,7 @@ class Inimigo(modelo: Model, x: Float, z: Float, private val animado: Boolean = 
     fun receberTiro(dano: Int, yRelativo: Float, dx: Float, dz: Float): Boolean {
         if (receberDano(dano)) return true
         reacao.disparar(dx, dz, Constantes.IMPACTO_TIRO_ZUMBI, 0.6f)
-        if (yRelativo < Constantes.ENIMIGO_ALTURA * escalaAltura * Constantes.PERNA_ALTURA_FRACAO && !imune) {
+        if (!tipo.especial && yRelativo < Constantes.ENIMIGO_ALTURA * escalaAltura * Constantes.PERNA_ALTURA_FRACAO && !imune) {
             if (MathUtils.randomBoolean(Constantes.ZUMBI_QUEDA_CHANCE_PERNA)) {
                 derrubar(Constantes.ZUMBI_QUEDA_S)
             } else {
@@ -454,7 +480,7 @@ class Inimigo(modelo: Model, x: Float, z: Float, private val animado: Boolean = 
 
     /** Cai no chao por `duracao` segundos (inclui levantar). Sem dano. Ignorado se ja esta caido/imune. */
     fun derrubar(duracao: Float) {
-        if (estado == Estado.MORTO || desativado || imune) return
+        if (estado == Estado.MORTO || desativado || imune || tipo.especial) return
         tempoQueda = duracao
         duracaoQueda = duracao
         tempoCambaleio = 0f
