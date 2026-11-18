@@ -7,6 +7,12 @@ import com.badlogic.gdx.ScreenAdapter
 import com.badlogic.gdx.graphics.GL20
 import com.badlogic.gdx.graphics.g2d.SpriteBatch
 import com.badlogic.gdx.graphics.g3d.ModelBatch
+import com.badlogic.gdx.graphics.g3d.Model
+import com.badlogic.gdx.graphics.g3d.ModelInstance
+import com.badlogic.gdx.graphics.g3d.Material
+import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute
+import com.badlogic.gdx.graphics.g3d.utils.ModelBuilder
+import com.badlogic.gdx.graphics.VertexAttributes.Usage
 import com.badlogic.gdx.graphics.g3d.shaders.DefaultShader
 import com.badlogic.gdx.graphics.g3d.shaders.DepthShader
 import com.badlogic.gdx.graphics.g3d.utils.DepthShaderProvider
@@ -18,6 +24,8 @@ import com.badlogic.gdx.math.MathUtils
 import com.badlogic.gdx.math.Vector3
 import com.badlogic.gdx.utils.ScreenUtils
 import com.sobrevivente.jogo.Constantes
+import com.sobrevivente.jogo.audio.Som
+import com.sobrevivente.jogo.audio.Trilha
 import com.sobrevivente.jogo.camera.CameraTerceiraPessoa
 import com.sobrevivente.jogo.entrada.ControlesToque
 import com.sobrevivente.jogo.hud.Hud
@@ -52,6 +60,29 @@ class TelaJogo(
     private val arma = Arma()
     private val direcaoTiro = Vector3() // reaproveitado: dispersao dos bagos da escopeta
     private val cameraJogo = CameraTerceiraPessoa()
+    /** F18: mira ligada (arma levantada, laser, personagem parado). */
+    private var mirando = false
+    private val som = Som()
+    private var tempoPasso = 0f
+    private var vidaAnterior = Constantes.JOGADOR_VIDA_MAXIMA
+    private var abatesAnteriores = 0
+    private var tempoGemido = 2f
+    private var tempoPerigo = 0f
+    private var tempoDorSom = 0f
+    private var tempoCliqueVazio = 0f
+    private var recarregandoAntes = false
+    private var mirandoAntes = false
+    private var chefeAvisado = false
+    private val laserModelo: Model = ModelBuilder().createBox(
+        1f, 1f, 1f,
+        Material(ColorAttribute.createDiffuse(1f, 0.05f, 0.05f, 1f), ColorAttribute.createEmissive(1f, 0.05f, 0.05f, 1f)),
+        (Usage.Position or Usage.Normal).toLong()
+    )
+    private val laserFeixe = ModelInstance(laserModelo)
+    private val laserPonto = ModelInstance(laserModelo)
+    private val laserOrigem = Vector3()
+    private val laserAlvo = Vector3()
+    private val laserDir = Vector3()
     private val controles = ControlesToque()
     private val joystick = Joystick(controles)
     private val maleta = Maleta()
@@ -107,6 +138,7 @@ class TelaJogo(
         Progresso.escopeta = arma.estaLiberada(TipoArma.ESCOPETA)
         Progresso.reserva = arma.reserva
         Progresso.curas = maleta.total(TipoItem.CURA)
+        som.tocar("fase_completa", 0.9f)
         abrirMenu(2)
     }
 
@@ -270,19 +302,40 @@ class TelaJogo(
 
     /** Câmera, movimento e tiro (só com o jogador vivo e o jogo rodando). */
     private fun atualizarJogador(dt: Float, densidade: Float) {
-        cameraJogo.girar(
-            controles.consumirGiroX() / densidade,
-            controles.consumirGiroY() / densidade
-        )
-        jogador.mover(dt, controles.movimentoX, controles.movimentoY, cameraJogo.yaw)
-        cameraJogo.seguir(jogador.posicao)
+        // F18: RE4. Botao MIRAR liga/desliga a mira; apertar ATIRAR sem mira levanta a arma primeiro.
+        val giroX = controles.consumirGiroX() / densidade
+        val giroY = controles.consumirGiroY() / densidade
+        if (controles.consumirPressao(ControlesToque.ACAO_MIRAR) && !arma.faca) mirando = !mirando
+        val apertouAtirar = controles.acaoPressionada(ControlesToque.ACAO_ATIRAR) ||
+            controles.acaoPressionada(ControlesToque.ACAO_ATIRAR_ESQ)
+        if (arma.faca) mirando = false
+        else if (apertouAtirar && !mirando) mirando = true
+        var ajustePitch = 0f
+        if (mirando) {
+            // arrastar o dedo na direita refina a mira (yaw do corpo + pitch)
+            jogador.yaw = (jogador.yaw - giroX * Constantes.RE4_ARRASTO_SENS * 4f + 360f) % 360f
+            ajustePitch = giroY * Constantes.RE4_ARRASTO_SENS * 4f + controles.movimentoY * Constantes.RE4_PITCH_MIRANDO_VEL * dt
+        }
+        if (mirando && !mirandoAntes) som.tocar("laser_liga", 0.6f)
+        mirandoAntes = mirando
+        jogador.mover(dt, controles.movimentoX, controles.movimentoY, mirando)
+        if (mirando) jogador.manterMira()
+        cameraJogo.atualizar(dt, jogador.posicao, jogador.yaw, mirando, ajustePitch)
+        hud.mirando = mirando && cameraJogo.mira > 0.5f
 
         // Tiro: o raio sai da câmera, atravessa o centro da tela (onde fica a mira)
-        val atirando = controles.acaoPressionada(ControlesToque.ACAO_ATIRAR) ||
-            controles.acaoPressionada(ControlesToque.ACAO_ATIRAR_ESQ)
+        val atirando = apertouAtirar && (arma.faca || cameraJogo.mira >= Constantes.RE4_MIRA_PRONTA)
         val atirou = arma.atualizar(dt, atirando, controles.consumirPressao(ControlesToque.ACAO_RECARREGAR))
         if (atirou) {
             val tipo = arma.tipo
+            som.tocar(
+                when (tipo) {
+                    com.sobrevivente.jogo.mundo.TipoArma.PISTOLA -> "tiro_pistola"
+                    com.sobrevivente.jogo.mundo.TipoArma.FUZIL -> "tiro_fuzil"
+                    else -> "tiro_escopeta"
+                },
+                1f, 0f, 0.03f
+            )
             var acertou = false
             for (i in 0 until tipo.projeteis) {
                 direcaoTiro.set(cameraJogo.camera.direction)
@@ -303,7 +356,19 @@ class TelaJogo(
             efeitosDoTiro(tipo)
         }
         controles.consumirPressao(ControlesToque.ACAO_ATIRAR_ESQ)
-        if (arma.golpeFaca) golpearComFaca()
+        if (arma.golpeFaca) {
+            som.tocar("faca_ar", 0.8f)
+            golpearComFaca()
+        }
+        tempoCliqueVazio -= dt
+        if (apertouAtirar && !arma.faca && !arma.recarregando && arma.carregador <= 0 &&
+            cameraJogo.mira >= Constantes.RE4_MIRA_PRONTA && tempoCliqueVazio <= 0f
+        ) {
+            som.tocar("clique_vazio", 0.8f)
+            tempoCliqueVazio = 0.45f
+        }
+        if (arma.recarregando && !recarregandoAntes) som.tocar("recarga", 0.9f)
+        recarregandoAntes = arma.recarregando
         if (controles.consumirPressao(ControlesToque.ACAO_TROCAR)) {
             if (arma.trocar()) hud.mostrarMensagem(nomeEquipado())
             else hud.mostrarMensagem("Sem outra arma")
@@ -318,7 +383,28 @@ class TelaJogo(
         jogador.definirFaca(arma.faca)
         jogador.definirRecarga(arma.recarregando)
         if (controles.consumirPressao(ControlesToque.ACAO_INTERAGIR)) interagir()
-        jogador.atualizarTiro(dt, cameraJogo.yaw, atirou || arma.golpeFaca)
+        jogador.atualizarTiro(dt, jogador.yaw, atirou || arma.golpeFaca)
+    }
+
+    /** Posiciona o feixe vermelho (da arma ate onde a mira bate) e o ponto de impacto. Devolve false se nao deve aparecer. */
+    private fun atualizarLaser(): Boolean {
+        val c = cameraJogo.camera
+        val d = mundo.alcanceLivre(c.position, c.direction, Constantes.RE4_LASER_ALCANCE)
+        laserAlvo.set(c.direction).scl(d).add(c.position)
+        val rad = jogador.yaw * MathUtils.degreesToRadians
+        laserOrigem.set(
+            jogador.posicao.x - MathUtils.sin(rad) * 0.65f + MathUtils.cos(rad) * 0.18f,
+            jogador.posicao.y + 1.38f,
+            jogador.posicao.z - MathUtils.cos(rad) * 0.65f - MathUtils.sin(rad) * 0.18f
+        )
+        laserDir.set(laserAlvo).sub(laserOrigem)
+        val len = laserDir.len()
+        if (len < 0.6f) return false
+        laserDir.scl(1f / len)
+        tmp.set(laserOrigem).add(laserAlvo).scl(0.5f)
+        laserFeixe.transform.setToWorld(tmp, laserDir, Vector3.Y).scale(0.012f, 0.012f, len)
+        laserPonto.transform.idt().translate(laserAlvo.x, laserAlvo.y, laserAlvo.z).scale(0.09f, 0.09f, 0.09f)
+        return true
     }
 
     private fun nomeEquipado(): String = if (arma.faca) "Faca" else arma.tipo.nome
@@ -352,6 +438,7 @@ class TelaJogo(
         fz /= fl
         jogador.golpearFaca(fx, fz)
         if (mundo.golpeFaca(jogador.posicao.x, jogador.posicao.z, jogador.posicao.y, fx, fz)) {
+            som.tocar("faca_acerto", 0.9f)
             hud.mostrarAcerto()
             particulas.sangue(
                 mundo.impacto.x, mundo.impacto.y, mundo.impacto.z,
@@ -381,6 +468,76 @@ class TelaJogo(
     }
 
     /** Poeira nos pes ao correr e ao pousar do pulo. */
+    /** F18: passos, dor, gemidos dos zumbis (com direcao/volume pela distancia) e troca de trilha conforme o perigo. */
+    private fun atualizarSom(dt: Float) {
+        if (morto) {
+            som.atualizar(dt)
+            return
+        }
+        // passos
+        if (jogador.andandoNoChao) {
+            tempoPasso -= dt
+            if (tempoPasso <= 0f) {
+                val correndo = jogador.sprintando
+                tempoPasso = if (correndo) 0.30f else 0.52f
+                som.tocarVariante(if (correndo) "corrida" else "passo", 3, if (correndo) 0.7f else 0.5f, 0f, 0.08f)
+            }
+        } else {
+            tempoPasso = 0.08f
+        }
+        // dor
+        tempoDorSom -= dt
+        if (jogador.vida < vidaAnterior && tempoDorSom <= 0f) {
+            som.tocarVariante("jogador_dor", 2, 0.9f)
+            som.tocar("zumbi_ataque", 0.45f)
+            tempoDorSom = 0.5f
+        }
+        vidaAnterior = jogador.vida
+        // abates
+        if (mundo.abates > abatesAnteriores) som.tocar("zumbi_morre", 0.8f, 0f, 0.08f)
+        abatesAnteriores = mundo.abates
+        // zumbis proximos
+        var perto = 999f
+        var dxP = 0f
+        var dzP = 0f
+        for (i in mundo.inimigos.indices) {
+            val z = mundo.inimigos[i]
+            if (!z.vivo) continue
+            val dx = z.posicao.x - jogador.posicao.x
+            val dz = z.posicao.z - jogador.posicao.z
+            val d = kotlin.math.sqrt(dx * dx + dz * dz)
+            if (d < perto) {
+                perto = d
+                dxP = dx
+                dzP = dz
+            }
+        }
+        tempoGemido -= dt
+        if (perto < 18f && tempoGemido <= 0f) {
+            val ry = cameraJogo.yaw * MathUtils.degreesToRadians
+            val pan = if (perto > 0.1f) (dxP * MathUtils.cos(ry) - dzP * MathUtils.sin(ry)) / perto else 0f
+            som.tocarVariante("zumbi_gemido", 3, (1f - perto / 18f) * 0.95f + 0.05f, pan * 0.8f, 0.10f)
+            tempoGemido = 1.8f + MathUtils.random(0f, 3.5f) * (0.4f + perto / 18f)
+        }
+        // chefe: rugido ao aparecer
+        val chefe = historia?.chefeAtual()
+        if (chefe != null && !chefeAvisado) {
+            chefeAvisado = true
+            som.tocar("chefe_rugido", 1f)
+        }
+        // trilha
+        tempoPerigo -= dt
+        if (perto < 11f || (chefe != null && chefe.vivo)) tempoPerigo = 5f
+        som.definirTrilha(
+            when {
+                tempoPerigo > 0f -> Trilha.COMBATE
+                perto < 26f -> Trilha.TENSAO
+                else -> Trilha.AMBIENTE
+            }
+        )
+        som.atualizar(dt)
+    }
+
     private fun efeitosDeMovimento(dt: Float) {
         if (morto) return
         if (jogador.consumirPouso()) particulas.poeira(jogador.posicao.x, jogador.posicao.y, jogador.posicao.z, 7)
@@ -393,7 +550,10 @@ class TelaJogo(
 
     /** INTERAGIR: guarda na maleta o item mais perto (raio 1,5 m). Se não couber, recusa. */
     private fun interagir() {
-        if (historia?.interagir(jogador.posicao.x, jogador.posicao.z) == true) return
+        if (historia?.interagir(jogador.posicao.x, jogador.posicao.z) == true) {
+            som.tocar("alavanca", 0.8f)
+            return
+        }
         val item = mundo.itemMaisProximo(
             jogador.posicao.x,
             jogador.posicao.z,
@@ -407,12 +567,14 @@ class TelaJogo(
                 return
             }
             item.coletado = true
+            som.tocar("item_pegar", 0.8f)
             arma.liberar(armaChao)
             hud.mostrarMensagem("Pegou: " + armaChao.nome)
             return
         }
         if (maleta.adicionar(item.tipo, item.quantidade)) {
             item.coletado = true
+            som.tocar("item_pegar", 0.8f)
             hud.mostrarMensagem(
                 if (item.tipo == TipoItem.CURA) Constantes.MSG_PEGOU_CURA else Constantes.MSG_PEGOU_MUNICAO
             )
@@ -435,6 +597,7 @@ class TelaJogo(
                     return
                 }
                 jogador.curar(Constantes.CURA_VALOR)
+                som.tocar("curar", 0.8f)
                 maleta.remover(item, 1)
                 hud.mostrarMensagem(Constantes.MSG_USOU_CURA)
             }
@@ -469,12 +632,19 @@ class TelaJogo(
         hud.morto = true
         controles.definirMorto(true) // solta os dedos; só REINICIAR responde
         Gdx.app.log("TELA", "jogador morreu")
+        som.tocar("derrota", 0.9f)
+        som.definirTrilha(Trilha.TENSAO)
     }
 
     /** Restaura vida, munição e inimigos. O jogador é recriado (descarta o corpo antigo). */
     private fun reiniciar() {
         jogador.dispose()
         jogador = Jogador()
+        mirando = false
+        mirandoAntes = false
+        vidaAnterior = Constantes.JOGADOR_VIDA_MAXIMA
+        abatesAnteriores = 0
+        chefeAvisado = false
         arma.reiniciar()
         mundo.reiniciar()
         particulas.limpar()
@@ -533,7 +703,7 @@ class TelaJogo(
             if (!maletaAberta) {
                 if (morto) {
                     // Sem movimento nem tiro; só deixa um clarão em andamento terminar.
-                    jogador.atualizarTiro(dt, cameraJogo.yaw, false)
+                    jogador.atualizarTiro(dt, jogador.yaw, false)
                 } else {
                     atualizarJogador(dt, densidade)
                 }
@@ -545,6 +715,7 @@ class TelaJogo(
                 mundo.atualizar(dt, jogador, fx, fz)
                 historia?.atualizar(dt)
                 efeitosDeMovimento(dt)
+                atualizarSom(dt)
             }
             hud.atualizar(dt) // o tempo das mensagens corre também com a maleta aberta
             if (!morto && jogador.vida <= 0) morrer()
@@ -596,6 +767,10 @@ class TelaJogo(
         jogador.armaVisivel?.let { loteModelos.render(it, mundo.ambiente) }
         jogador.facaCabo?.let { loteModelos.render(it, mundo.ambiente) }
         if (jogador.claraoVisivel) loteModelos.render(jogador.clarao, mundo.ambiente)
+        if (!morto && mirando && cameraJogo.mira > 0.6f && atualizarLaser()) {
+            loteModelos.render(laserFeixe)
+            loteModelos.render(laserPonto)
+        }
         for (i in mundo.inimigos.indices) {
             val inimigo = mundo.inimigos[i]
             if (inimigo.visivel) loteModelos.render(inimigo.instancia, mundo.ambiente)
@@ -642,6 +817,8 @@ class TelaJogo(
     }
 
     override fun dispose() {
+        som.dispose()
+        laserModelo.dispose()
         loteModelos.dispose()
         loteSombra.dispose()
         pos.dispose()

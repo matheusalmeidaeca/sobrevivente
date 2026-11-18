@@ -1073,3 +1073,10 @@ Estado em 15/11/2026: o `gerar-modelo.yml` já está no repositório com a etapa
 - **Entrega:** `gerar_g3dj.py` (+ `config_humano.json`), `teste_animacao.py`, `preview_animacao.py`, `kotlin/ExemploAnimacaoHumana.kt` (mistura suave 0,10–0,25 s) e `LEIAME.md`. Suposição: malha = boneco atual do jogo, frente −Z, +Y para cima, metros.
 - **Validação:** 0 violações de limite em 11.760 rotações, pesos somam 1 (≤ 4 ossos), pé não desliza (≤ 3,7 mm/quadro), nenhuma perna esticada, malha ≤ 14 mm abaixo do chão.
 - **Limites:** nada rodado no aparelho; "véu" do casaco na lateral quando o braço sobe (malha tem casaco colado ao braço); ainda **não integrado** ao jogo: precisa `NUM_OSSOS_SHADER >= 24` e trocar nomes de ossos (ombro_* → clavicula_*/braco_*).
+
+## F20 - Esqueleto humano ligado ao jogo (opcional, desligado)
+- `android/assets/modelos/jogador_humano.g3dj` (24 ossos, 9 animacoes sem arma) copiado de `ferramentas/animacao/saida/humano.g3dj`.
+- `Constantes.NUM_OSSOS_SHADER` subiu de 20 para 24 (serve aos dois modelos).
+- `Constantes.USAR_ESQUELETO_HUMANO = false` por padrao. Ligando (true), `Jogador.kt` carrega o modelo humano e reage nos ossos `coluna2`, `pescoco`, `cabeca`, `clavicula_esq/dir`; a arma continua presa em `mao_dir`.
+- Por que desligado: o modelo antigo tem poses armadas (pistola/fuzil/escopeta, recarregar, andarmirar...) que o humano nao tem; com ele ligado o jogo usa as animacoes sem arma. Proximo passo para ligar de vez: gerar as poses armadas no `gerar_g3dj.py`.
+- NAO compilado nem testado no celular (sem LibGDX no ambiente da IA).

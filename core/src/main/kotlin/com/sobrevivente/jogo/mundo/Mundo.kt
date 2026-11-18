@@ -509,6 +509,27 @@ class Mundo : Disposable {
      * Hitscan: raio de `origem` na `direcao`; vale o primeiro inimigo vivo dentro do `alcance`.
      * Devolve true se acertou. Sem alocação.
      */
+    /** Distancia ate o primeiro obstaculo (parede ou inimigo vivo) ao longo do raio, sem causar dano. Usado pelo laser. */
+    fun alcanceLivre(origem: Vector3, direcao: Vector3, alcance: Float): Float {
+        raio.set(origem, direcao)
+        var melhor = alcance
+        for (i in caixasParedes.indices) {
+            if (Intersector.intersectRayBounds(raio, caixasParedes[i], ponto)) {
+                val d = ponto.dst(origem)
+                if (d < melhor) melhor = d
+            }
+        }
+        for (i in inimigos.indices) {
+            val inimigo = inimigos[i]
+            if (!inimigo.vivo) continue
+            if (Intersector.intersectRayBounds(raio, inimigo.caixa, ponto)) {
+                val d = ponto.dst(origem)
+                if (d < melhor) melhor = d
+            }
+        }
+        return melhor
+    }
+
     fun atirar(origem: Vector3, direcao: Vector3, alcance: Float, dano: Int): Boolean {
         raio.set(origem, direcao)
         var melhor: Inimigo? = null

@@ -27,6 +27,10 @@ class CameraTerceiraPessoa {
     var pitch = Constantes.CAMERA_PITCH_INICIAL
         private set
 
+    /** 0 = andando (camera longe), 1 = mira levantada (camera no ombro). Suavizado. */
+    var mira = 0f
+        private set
+
     init {
         camera.near = Constantes.CAMERA_NEAR
         camera.far = Constantes.CAMERA_FAR
@@ -40,6 +44,24 @@ class CameraTerceiraPessoa {
             Constantes.CAMERA_PITCH_MIN,
             Constantes.CAMERA_PITCH_MAX
         )
+    }
+
+    /**
+     * F18 (estilo RE4): a camera fica atras do personagem. Andando, acompanha o giro dele com um leve atraso;
+     * mirando, fica colada no yaw dele (o tiro sai exatamente por onde o laser aponta).
+     * `ajustePitch` (graus) so vale mirando; fora da mira a inclinacao volta ao padrao.
+     */
+    fun atualizar(dt: Float, alvo: Vector3, yawJogador: Float, mirando: Boolean, ajustePitch: Float) {
+        val k = minOf(1f, Constantes.RE4_ENTRAR_MIRA * dt)
+        mira += ((if (mirando) 1f else 0f) - mira) * k
+        val taxa = if (mirando) 40f else Constantes.RE4_SEGUIR_YAW
+        yaw = MathUtils.lerpAngleDeg(yaw, yawJogador, minOf(1f, taxa * dt))
+        if (mirando) {
+            pitch = MathUtils.clamp(pitch + ajustePitch, Constantes.CAMERA_PITCH_MIN, Constantes.CAMERA_PITCH_MAX)
+        } else {
+            pitch += (Constantes.RE4_PITCH_PASSEIO - pitch) * minOf(1f, 4f * dt)
+        }
+        seguir(alvo)
     }
 
     /** `alvo` = posição dos pés do jogador. Sem alocação. */
@@ -59,14 +81,17 @@ class CameraTerceiraPessoa {
         val direitaX = cossenoYaw
         val direitaZ = -senoYaw
 
-        val pivoY = alvo.y + Constantes.CAMERA_PIVO_ALTURA
-        var cameraY = pivoY - frenteY * Constantes.CAMERA_DISTANCIA
+        val distancia = MathUtils.lerp(Constantes.RE4_DISTANCIA, Constantes.RE4_DISTANCIA_MIRA, mira)
+        val ombro = MathUtils.lerp(Constantes.RE4_OMBRO, Constantes.RE4_OMBRO_MIRA, mira)
+        camera.fieldOfView = MathUtils.lerp(Constantes.CAMERA_FOV, Constantes.RE4_FOV_MIRA, mira)
+        val pivoY = alvo.y + Constantes.RE4_PIVO_ALTURA
+        var cameraY = pivoY - frenteY * distancia
         if (cameraY < Constantes.CAMERA_ALTURA_MINIMA) {
             cameraY = Constantes.CAMERA_ALTURA_MINIMA // não atravessa o chão
         }
 
-        val desejadoX = alvo.x - frenteX * Constantes.CAMERA_DISTANCIA + direitaX * Constantes.CAMERA_OMBRO
-        val desejadoZ = alvo.z - frenteZ * Constantes.CAMERA_DISTANCIA + direitaZ * Constantes.CAMERA_OMBRO
+        val desejadoX = alvo.x - frenteX * distancia + direitaX * ombro
+        val desejadoZ = alvo.z - frenteZ * distancia + direitaZ * ombro
 
         // Parede entre o jogador e a câmera: aproxima a câmera (Marco 1.8), no plano XZ.
         val dx = desejadoX - alvo.x

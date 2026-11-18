@@ -83,6 +83,8 @@ class Hud(
     private var densidade = 1f
 
     // Mira (calculada no resize)
+    /** F18: mira ligada (so entao aparece a mira central e o botao fica aceso). */
+    var mirando = false
     private var miraComprimento = 0f
     private var miraEspessura = 0f
     private var miraFolga = 0f
@@ -245,8 +247,8 @@ class Hud(
         barraVida.desenharFormas(forma)
         desenharAvatar(forma)
         desenharPilulas(forma)
-        desenharMira(forma)
-        desenharMarcadorAcerto(forma)
+        if (mirando) { desenharMira(forma); desenharMarcadorAcerto(forma) }
+        desenharBotaoMirar(forma)
         botoes.desenharFormas(forma)
         desenharSlotsArma(forma)
         desenharIconeMenu(forma)
@@ -345,6 +347,31 @@ class Hud(
         altura - (Constantes.MARGEM_SEGURA_DP + Constantes.HUD_PILULA_ALTURA_DP + linha * (Constantes.HUD_PILULA_ALTURA_DP + 6f)) * densidade
 
     /** Contadores no topo, a esquerda do minimapa: ZUMBIS vivos e ABATES. */
+    /** Botao MIRAR: circulo com retículo; aceso (vermelho) enquanto a mira esta ligada. */
+    private fun desenharBotaoMirar(forma: ShapeRenderer) {
+        val i = ControlesToque.ACAO_MIRAR
+        val r = controles.acaoRaio(i) * (if (controles.acaoPressionada(i)) 0.92f else 1f)
+        val x = controles.acaoX(i)
+        val y = controles.acaoY(i)
+        forma.setColor(1f, 1f, 1f, 0.55f)
+        forma.circle(x, y, r * 1.04f, 32)
+        if (mirando) forma.setColor(0.62f, 0.10f, 0.10f, 0.92f) else forma.setColor(0.08f, 0.09f, 0.12f, 0.80f)
+        forma.circle(x, y, r * 0.92f, 32)
+        forma.setColor(1f, 1f, 1f, 0.95f)
+        val e = r * 0.09f
+        forma.circle(x, y, r * 0.10f, 12)
+        // aro do reticulo + 4 tracos
+        forma.circle(x, y, r * 0.52f, 32)
+        forma.setColor(if (mirando) 0.62f else 0.08f, if (mirando) 0.10f else 0.09f, if (mirando) 0.10f else 0.12f, if (mirando) 0.92f else 0.80f)
+        forma.circle(x, y, r * 0.52f - e, 32)
+        forma.setColor(1f, 1f, 1f, 0.95f)
+        forma.circle(x, y, r * 0.10f, 12)
+        forma.rect(x - e * 0.5f, y + r * 0.30f, e, r * 0.50f)
+        forma.rect(x - e * 0.5f, y - r * 0.80f, e, r * 0.50f)
+        forma.rect(x + r * 0.30f, y - e * 0.5f, r * 0.50f, e)
+        forma.rect(x - r * 0.80f, y - e * 0.5f, r * 0.50f, e)
+    }
+
     private fun desenharPilulas(forma: ShapeRenderer) {
         val w = Constantes.HUD_PILULA_LARGURA_DP * densidade
         val h = Constantes.HUD_PILULA_ALTURA_DP * densidade

@@ -214,7 +214,13 @@ class ControlesToque : InputAdapter() {
         definirAcao(ACAO_RECARREGAR, fx - passo, fy, raioPequeno, alvoMinimo)  // quadrado
         definirAcao(ACAO_INTERAGIR, fx, fy + passo, raioPequeno, alvoMinimo)   // triangulo
         // R1: ATIRAR grande, a esquerda do losango e um pouco acima
-        definirAcao(ACAO_ATIRAR, fx - passo - raioPequeno - folga - raioAtirar, fy + passo * 0.55f, raioAtirar, alvoMinimo)
+        val xAtirar = fx - passo - raioPequeno - folga - raioAtirar
+        val yAtirar = fy + passo * 0.55f
+        definirAcao(ACAO_ATIRAR, xAtirar, yAtirar, raioAtirar, alvoMinimo)
+        // MIRAR: acima do ATIRAR (RE4: levantar a arma com o laser)
+        val raioMirar = raioAtirar * 0.82f
+        val yMirar = minOf(yAtirar + raioAtirar + folga + raioMirar, altura - margem - raioMirar - 70f * densidade)
+        definirAcao(ACAO_MIRAR, xAtirar, yMirar, raioMirar, alvoMinimo)
 
         // lado esquerdo, acima do joystick: segundo ATIRAR (L2) e TROCAR (L1)
         val raioEsq = Constantes.ATIRAR_ESQ_DIAMETRO_DP * 0.5f * densidade
@@ -661,7 +667,8 @@ class ControlesToque : InputAdapter() {
         const val ACAO_ARMA0 = 8 // 8..11 = slots de arma (pistola, fuzil, escopeta, faca)
         const val NUM_BOTOES_CIRCULARES = 8 // 0..7 sao desenhados por BotoesAcao; 8..11 pelo Hud
         const val ACAO_MENU = 12 // icone de menu (start) no topo; desenhado pelo Hud
-        const val NUM_ACOES = 13
+        const val ACAO_MIRAR = 13 // botao de mira (liga/desliga a mira com laser); desenhado pelo Hud
+        const val NUM_ACOES = 14
         const val NUM_PAUSA = 6
         private const val SEM_PONTEIRO = -1
         private const val SEM_SLOT = -1
