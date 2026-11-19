@@ -70,7 +70,7 @@ object Constantes {
     const val CAMERA_PIVO_ALTURA = 1.6f
     const val CAMERA_ALTURA_MINIMA = 0.3f
     const val CAMERA_PITCH_INICIAL = -10f
-    const val CAMERA_PITCH_MIN = -25f
+    const val CAMERA_PITCH_MIN = -40f
     const val CAMERA_PITCH_MAX = 50f
     const val CAMERA_SENSIBILIDADE = 0.25f // graus por dp arrastado
 
@@ -202,12 +202,12 @@ object Constantes {
 
     // Inimigo básico (seção 13 do mapa)
     const val ENIMIGO_VIDA = 100
-    const val ENIMIGO_VELOCIDADE = 2.0f // m/s (menor que a do jogador)
-    const val ENIMIGO_VISAO = 12f // começa a perseguir a até 12 m
+    const val ENIMIGO_VELOCIDADE = 2.7f // m/s (menor que a do jogador)
+    const val ENIMIGO_VISAO = 18f // começa a perseguir a até 12 m
     const val ENIMIGO_PERDE_JOGADOR = 18f // volta a ficar parado acima de 18 m
-    const val ENIMIGO_ALCANCE_ATAQUE = 1.2f
+    const val ENIMIGO_ALCANCE_ATAQUE = 1.5f
     const val ENIMIGO_DANO = 10
-    const val ENIMIGO_INTERVALO_ATAQUE = 1.0f // segundos entre golpes
+    const val ENIMIGO_INTERVALO_ATAQUE = 0.8f // segundos entre golpes
     // Navegacao e vagar dos inimigos (pedido do dono, v2.16)
     const val NAV_CELULA = 0.5f // tamanho da celula da grade do A* (m)
     const val NAV_MARGEM = 0.08f // folga extra alem do raio do inimigo ao engordar as paredes (m)
@@ -559,11 +559,11 @@ object Constantes {
     const val CAMERA_FATOR_MINIMO = 0.2f // a câmera nunca chega mais perto que 20% da distância
 
     // ---- F18: camera e movimento estilo Resident Evil 4 ----
-    const val RE4_DISTANCIA = 3.9f // atras do personagem (um pouco mais longe que a do Leon)
-    const val RE4_DISTANCIA_MIRA = 2.2f
-    const val RE4_OMBRO = 0.50f // camera deslocada para a direita: o personagem fica no lado esquerdo da tela
-    const val RE4_OMBRO_MIRA = 0.72f
-    const val RE4_PIVO_ALTURA = 1.55f
+    const val RE4_DISTANCIA = 2.5f // atras do personagem (um pouco mais longe que a do Leon)
+    const val RE4_DISTANCIA_MIRA = 1.7f
+    const val RE4_OMBRO = 0.80f // camera deslocada para a direita: o personagem fica no lado esquerdo da tela
+    const val RE4_OMBRO_MIRA = 0.90f
+    const val RE4_PIVO_ALTURA = 1.62f
     const val RE4_PITCH_PASSEIO = -9f // inclinacao padrao da camera andando (olhando um pouco para baixo)
     const val RE4_FOV_MIRA = 52f
     const val RE4_SEGUIR_YAW = 7f // quao rapido a camera acompanha o giro do personagem (andando)
@@ -681,7 +681,7 @@ object Constantes {
     const val SPAWN_INTERVALO_S = 7f
     const val SPAWN_DIST_MIN = 45f // so nasce a mais de 45 m do jogador
     const val SPAWN_COS_VISAO = 0.25f // atras/lado da camera: cos do angulo com a frente < 0,25 (~75 graus)
-    const val ENIMIGO_VELOCIDADE_CACA = 1.5f // zumbi novo vem andando ate o jogador
+    const val ENIMIGO_VELOCIDADE_CACA = 2.1f // zumbi novo vem andando ate o jogador
     const val ENIMIGO_CACA_REPLANO_S = 1.5f
     const val ENIMIGO_DY_ATAQUE = 1.5f // so ataca se estiver na mesma altura (andar de cima fica seguro)
     const val ITEM_ARMA_ESCALA_Y = 0.15f

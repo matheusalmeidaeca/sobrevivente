@@ -90,6 +90,11 @@ class Inimigo(modelo: Model, x: Float, z: Float, private val animado: Boolean = 
     private var tempoQueda = 0f
     private var duracaoQueda = 1f
     private var tempoCambaleio = 0f
+    private var empX = 0f
+    private var empZ = 0f
+    /** O ultimo tiro que este zumbi levou foi na cabeca? */
+    var ultimoCritico = false
+        private set
     private var duracaoCambaleio = 1f
     private var tempoImune = 0f
     private var tempoGeral = 0f
@@ -185,6 +190,14 @@ class Inimigo(modelo: Model, x: Float, z: Float, private val animado: Boolean = 
         reacao.atualizar(dt)
         if (tempoImune > 0f) tempoImune -= dt
         if (tempoCambaleio > 0f) tempoCambaleio -= dt
+        if (empX != 0f || empZ != 0f) {
+            posicao.x += empX * dt
+            posicao.z += empZ * dt
+            Colisao.resolver(posicao, Constantes.ENIMIGO_RAIO)
+            val d = maxOf(0f, 1f - 4f * dt)
+            empX *= d; empZ *= d
+            if (abs(empX) < 0.05f && abs(empZ) < 0.05f) { empX = 0f; empZ = 0f }
+        }
 
         if (tempoFlash > 0f) {
             tempoFlash -= dt
@@ -264,6 +277,7 @@ class Inimigo(modelo: Model, x: Float, z: Float, private val animado: Boolean = 
                 ) {
                     mudarEstado(Estado.ATACANDO)
                     tempoAtaque = Constantes.ENIMIGO_ATAQUE_IMPACTO_S // o golpe acerta quando o braco chega
+                    if (distancia > 0.01f && !tipo.especial && tempoQueda <= 0f) empurrar(dx / distancia, dz / distancia, 4.5f) // avanca com o bote
                 } else {
                     tempoReplano -= dt
                     if (tempoReplano <= 0f) {
@@ -460,14 +474,54 @@ class Inimigo(modelo: Model, x: Float, z: Float, private val animado: Boolean = 
         return false
     }
 
+    /** Empurra o zumbi (m/s na direcao dx,dz; decai rapido). Limitado a 16 m/s. */
+    fun empurrar(dx: Float, dz: Float, vel: Float) {
+        val l = sqrt(dx * dx + dz * dz)
+        if (l < 1e-4f || vel <= 0f) return
+        empX += dx / l * vel
+        empZ += dz / l * vel
+        val m = sqrt(empX * empX + empZ * empZ)
+        if (m > 16f) { empX *= 16f / m; empZ *= 16f / m }
+    }
+
     /**
-     * Tiro: dano + balanco (desequilibrio leve na direcao do tiro). Tiro na PERNA (abaixo de PERNA_ALTURA_FRACAO da altura):
-     * o zumbi cai ou cambaleia. `yRelativo` = altura do impacto acima dos pes. Devolve true se matou.
+     * Tiro com zonas: CABECA (acima de 80% da altura) = dano x2,2 e a cabeca estala para tras; PERNAS (abaixo de 45%) =
+     * cai ou cambaleia; TRONCO = recua. Por arma: escopeta EMPURRA longe quanto mais perto (e derruba a queima-roupa);
+     * fuzil causa choque (cambaleia forte); pistola so desequilibra de leve. `dist` = metros da boca ate o zumbi.
+     * Devolve true se matou.
      */
-    fun receberTiro(dano: Int, yRelativo: Float, dx: Float, dz: Float): Boolean {
-        if (receberDano(dano)) return true
-        reacao.disparar(dx, dz, Constantes.IMPACTO_TIRO_ZUMBI, 0.6f)
-        if (!tipo.especial && yRelativo < Constantes.ENIMIGO_ALTURA * escalaAltura * Constantes.PERNA_ALTURA_FRACAO && !imune) {
+    fun receberTiro(dano: Int, yRelativo: Float, dx: Float, dz: Float, arma: TipoArma = TipoArma.PISTOLA, dist: Float = 10f): Boolean {
+        val alt = Constantes.ENIMIGO_ALTURA * escalaAltura
+        val cabeca = yRelativo > alt * 0.80f
+        val perna = yRelativo < alt * Constantes.PERNA_ALTURA_FRACAO
+        ultimoCritico = cabeca
+        val danoFinal = if (cabeca) (dano * 2.2f).toInt() else dano
+        if (receberDano(danoFinal)) return true
+        // chefes quase nao saem do lugar
+        val massa = if (tipo.especial) 0.25f else 1f
+        when (arma) {
+            TipoArma.ESCOPETA -> {
+                val perto = MathUtils.clamp(1f - (dist - 1.5f) / 10f, 0f, 1f)
+                empurrar(dx, dz, 7f * perto * massa)
+                if (!tipo.especial && dist < 4f && !imune && MathUtils.randomBoolean(0.8f)) derrubar(Constantes.ZUMBI_QUEDA_S * 0.8f)
+                reacao.disparar(dx, dz, 0.5f + 0.6f * perto, 0.8f)
+            }
+            TipoArma.FUZIL -> {
+                empurrar(dx, dz, 2.5f * massa)
+                tempoCambaleio = maxOf(tempoCambaleio, Constantes.ZUMBI_CAMBALEIO_S * (if (tipo.especial) 0.4f else 1.1f))
+                duracaoCambaleio = Constantes.ZUMBI_CAMBALEIO_S
+                reacao.disparar(dx, dz, 0.75f, 0.7f)
+            }
+            else -> {
+                if (!tipo.especial) tempoCambaleio = maxOf(tempoCambaleio, 0.3f)
+                reacao.disparar(dx, dz, Constantes.IMPACTO_TIRO_ZUMBI, 0.6f)
+            }
+        }
+        if (cabeca && !tipo.especial) {
+            // cabecada para tras: estala e cambaleia
+            reacao.disparar(dx, dz, 1.2f, 0.9f)
+            tempoCambaleio = maxOf(tempoCambaleio, 1.2f)
+        } else if (perna && !tipo.especial && !imune) {
             if (MathUtils.randomBoolean(Constantes.ZUMBI_QUEDA_CHANCE_PERNA)) {
                 derrubar(Constantes.ZUMBI_QUEDA_S)
             } else {

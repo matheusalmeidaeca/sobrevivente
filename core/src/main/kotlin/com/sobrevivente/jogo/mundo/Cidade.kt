@@ -16,39 +16,85 @@ import com.badlogic.gdx.math.Vector3
 import com.sobrevivente.jogo.Constantes
 
 /**
- * A CIDADE: uma metropole de 4 bairros ligados por UMA avenida, cada passagem fechada por um portao trancado.
- * Todas as coordenadas importantes ficam aqui, para o mapa (`construir`) e a missao (`Cidade`) concordarem.
- * Norte = -Z. O jogador comeca no sul (z +138) e avanca para o norte.
+ * A CIDADE: vielas estreitas (5,3 m) entre predios altos, estilo Resident Evil. Quatro bairros em faixas (sul -> norte),
+ * separados por muralhas com UM portao trancado cada; dentro de cada bairro, barricadas (containers) forcam um caminho
+ * em zigue-zague. Tudo e calculado a partir da grade de ruas (`xs`, `Faixa.zc`) para o mapa e a missao concordarem.
+ * Norte = -Z. O jogador comeca no sul (z ~ +143).
  */
 object CidadeMapa {
-    const val INICIO_X = 0f
-    const val INICIO_Z = 138f
-    val MERCADOR = floatArrayOf(12f, 130f)
+    private const val W = 148f
+    const val SW = 5.3f
+    private const val BW = 27f
 
-    // portoes (ordem fixa = ordem das chamadas `b.portao` em `construir`): A azul, B eletrico, C alavancas, D parceiro, R cela
-    const val PORTAO_A_Z = 60f
-    const val PORTAO_B_Z = -5f
-    const val PORTAO_C_Z = -65f
-    const val PORTAO_D_Z = -100f
-    val CELA = floatArrayOf(-66f, -44.8f)
+    /** Centro da rua vertical k (0..9). */
+    fun xs(k: Int): Float = -W + SW / 2f + k * (BW + SW)
+    /** Borda oeste do bloco da coluna c (0..8). */
+    fun bx0(c: Int): Float = -W + SW + c * (BW + SW)
 
-    val CHAVE_AZUL = floatArrayOf(-90f, 104f)
-    val FUSIVEIS = floatArrayOf(-90f, 25f, 85f, 26f, 43f, 48f)
-    val PAINEL = floatArrayOf(0f, 22f)
-    val NOTAS = floatArrayOf(62f, -25f, 30f, -52f)
-    /** 0 azul, 1 vermelha, 2 amarela. */
-    val ALAVANCAS = floatArrayOf(-41f, -18f, 41f, -52f, 0f, -58f)
-    val ORDEM = intArrayOf(1, 2, 0)
-    val SOBREVIVENTE = floatArrayOf(-66f, -54f)
-    val RADIO = floatArrayOf(0f, -118f)
-    val MINI_SPAWN = floatArrayOf(60f, 32f)
-    val CHEFE_SPAWN = floatArrayOf(0f, -132f)
-    val BAUS = floatArrayOf(
-        -118f, 125f, 70f, 120f, 110f, 95f, -60f, 90f, // bairro 1
-        -114f, 48f, 103f, 48f, -75f, 50f, // bairro 2
-        -98f, -18f, 96f, -20f, 70f, -55f, // bairro 3
-        -50f, -130f, 50f, -135f // bairro 4
+    /** Faixa de z com `n` fileiras de blocos e n+1 ruas horizontais. */
+    class Faixa(val zN: Float, val zS: Float, val n: Int) {
+        val bd: Float = ((zS - zN) - (n + 1) * SW) / n
+        fun zc(r: Int): Float = zN + SW / 2f + r * (bd + SW)
+        fun z0(r: Int): Float = zN + SW + r * (bd + SW)
+        fun z1(r: Int): Float = z0(r) + bd
+    }
+
+    val B1 = Faixa(62f, 146f, 3)
+    val B2 = Faixa(-3f, 58f, 2)
+    val B3 = Faixa(-63f, -7f, 2)
+    val B4 = Faixa(-98f, -67f, 1)
+
+    // portoes A (azul), B (eletrico), C (alavancas), D (parceiro): sempre abordados pelo sul (+z)
+    val PORTAO_Z = floatArrayOf(60f, -5f, -65f, -100f)
+    val PORTAO_X = floatArrayOf(xs(8), xs(1), xs(7), xs(5))
+
+    val INICIO_X = xs(5)
+    val INICIO_Z = B1.zc(3)
+    val MERCADOR = floatArrayOf(xs(4), B1.zc(3))
+
+    // garagem (B1, linha 1, coluna 0)
+    val CHAVE_AZUL = floatArrayOf(bx0(0) + BW / 2f, (B1.z0(1) + B1.z1(1)) / 2f)
+    // supermercado, farmacia, banco
+    val FUSIVEIS = floatArrayOf(
+        bx0(1) + BW / 2f, (B2.z0(0) + B2.z1(0)) / 2f,
+        bx0(7) + BW / 2f, (B2.z0(0) + B2.z1(0)) / 2f,
+        bx0(4) + BW / 2f, (B2.z0(1) + B2.z1(1)) / 2f
     )
+    val PAINEL = floatArrayOf(xs(5), B2.zc(1))
+    val MINI_SPAWN = floatArrayOf(xs(8), B2.zc(1))
+    // metro (B3, linha 1, coluna 6) e uma nota na rua
+    val NOTAS = floatArrayOf(bx0(6) + BW / 2f, (B3.z0(1) + B3.z1(1)) / 2f, xs(3), B3.zc(2))
+    /** 0 azul, 1 vermelha, 2 amarela. */
+    val ALAVANCAS = floatArrayOf(xs(2), B3.zc(0), xs(8), B3.zc(1), xs(5), B3.zc(2))
+    val ORDEM = intArrayOf(1, 2, 0)
+    // delegacia (B3, linha 0, coluna 1): cela ao norte, divisoria em zp
+    private val DX0 = bx0(1)
+    private val DZ0 = B3.z0(0)
+    private val DZP = DZ0 + 8f
+    private val DXG = DX0 + 7f
+    val CELA = floatArrayOf(DXG, DZP + 2f)
+    val SOBREVIVENTE = floatArrayOf(DXG, DZ0 + 4f)
+    val RADIO = floatArrayOf(0f, -124f)
+    val CHEFE_SPAWN = floatArrayOf(0f, -141f)
+
+    /** Intersecoes (faixa, rua horizontal, rua vertical) com bau. */
+    private val BAUS_INTERSECOES = arrayOf(
+        intArrayOf(0, 3, 1), intArrayOf(0, 0, 2), intArrayOf(0, 1, 9), intArrayOf(0, 3, 9),
+        intArrayOf(1, 0, 9), intArrayOf(1, 2, 0), intArrayOf(1, 1, 0),
+        intArrayOf(2, 0, 0), intArrayOf(2, 2, 9), intArrayOf(2, 1, 9),
+        intArrayOf(3, 0, 1), intArrayOf(3, 1, 8), intArrayOf(3, 0, 8)
+    )
+
+    private fun faixas() = listOf(B1, B2, B3, B4)
+
+    val BAUS: FloatArray by lazy {
+        val l = ArrayList<Float>()
+        for (p in BAUS_INTERSECOES) {
+            l.add(xs(p[2]) + 1.3f); l.add(faixas()[p[0]].zc(p[1]) + 1.3f)
+        }
+        l.add(-35f); l.add(-135f); l.add(35f); l.add(-135f)
+        l.toFloatArray()
+    }
 
     fun definicao() = DefFase(
         nome = "A CIDADE", subtitulo = "Capitulo unico", artefato = "Fusivel",
@@ -56,144 +102,157 @@ object CidadeMapa {
         inicio = floatArrayOf(INICIO_X, INICIO_Z), mercador = MERCADOR,
         fragmentos = FloatArray(6), alavancas = ALAVANCAS, ordem = ORDEM, altar = RADIO,
         baus = BAUS, miniSpawn = MINI_SPAWN, chefeSpawn = CHEFE_SPAWN, dicas = arrayOf(),
-        spawnMax = 13, spawnDist = 42f, spawnIntervalo = 6f, fatorVida = 1.8f,
+        spawnMax = 12, spawnDist = 38f, spawnIntervalo = 6f, fatorVida = 1.8f,
         construir = { b -> construir(b) }, cidade = true
     )
 
-    /** Predios altos e maciços com faixas de janelas nas faces norte e sul. */
-    private fun torre(b: MapaBuilder, x0: Float, z0: Float, x1: Float, z1: Float, alt: Float, tipo: Int) {
+    private fun bloco(b: MapaBuilder, f: Faixa, banda: Int, r: Int, c: Int) {
+        val alt = 12f + 4f * ((c * 3 + r * 5 + banda) % 4)
+        val tipo = 12 + (c + r + banda) % 4
+        val x0 = bx0(c); val x1 = x0 + BW; val z0 = f.z0(r); val z1 = f.z1(r)
+        val cx = (x0 + x1) / 2f; val cz = (z0 + z1) / 2f
         b.caixa(x0, z0, x1, z1, alt, tipo)
-        b.dec((x0 + x1) / 2f, alt + 0.15f, (z0 + z1) / 2f, x1 - x0 + 0.4f, 0.3f, z1 - z0 + 0.4f, 0.16f, 0.16f, 0.18f)
-        var y = 3f
-        while (y < alt - 1f) {
-            b.dec((x0 + x1) / 2f, y, z0 - 0.03f, (x1 - x0) * 0.86f, 1.1f, 0.06f, 0.55f, 0.72f, 0.82f)
-            b.dec((x0 + x1) / 2f, y, z1 + 0.03f, (x1 - x0) * 0.86f, 1.1f, 0.06f, 0.55f, 0.72f, 0.82f)
-            y += 4.2f
+        b.dec(cx, alt + 0.15f, cz, BW + 0.4f, 0.3f, (z1 - z0) + 0.4f, 0.16f, 0.16f, 0.18f)
+        // Detalhes que quebram o "bloco": soco escuro na base, cornija que sobressai, quinas, caixa d'agua e ar-condicionado no topo.
+        val hx = BW / 2f; val hz = (z1 - z0) / 2f
+        b.dec(cx, 0.45f, cz, BW + 0.35f, 0.9f, (z1 - z0) + 0.35f, 0.14f, 0.14f, 0.15f)
+        b.dec(cx, alt - 0.25f, cz, BW + 0.7f, 0.5f, (z1 - z0) + 0.7f, 0.50f, 0.49f, 0.47f)
+        b.dec(cx, alt - 0.7f, cz, BW + 0.45f, 0.25f, (z1 - z0) + 0.45f, 0.22f, 0.22f, 0.23f)
+        for (sx in floatArrayOf(-1f, 1f)) for (sz in floatArrayOf(-1f, 1f)) {
+            b.dec(cx + sx * hx, alt * 0.5f, cz + sz * hz, 0.5f, alt, 0.5f, 0.20f, 0.20f, 0.21f)
+        }
+        val h = (c * 5 + r * 11 + banda * 3) % 4
+        if (h == 0) { // caixa d'agua
+            b.dec(cx + 5f, alt + 1.5f, cz, 3.2f, 2.4f, 3.2f, 0.34f, 0.26f, 0.18f, 2)
+        } else if (h == 1) { // casa de maquinas + chamine
+            b.dec(cx - 6f, alt + 1.2f, cz + 2f, 4f, 2.2f, 3.2f, 0.28f, 0.28f, 0.30f)
+            b.dec(cx + 4f, alt + 2f, cz - 3f, 1.0f, 4f, 1.0f, 0.22f, 0.20f, 0.20f, 2)
+        } else if (h == 2) { // ar-condicionado em fileira
+            for (k in -2..2) b.dec(cx + k * 3.5f, alt + 0.6f, cz, 2.2f, 1.1f, 1.8f, 0.55f, 0.56f, 0.58f)
+        }
+        // letreiro/toldo na base voltado para a rua (face sul), alguns blocos
+        if ((c + r + banda) % 3 == 1) {
+            val cor = floatArrayOf(0.62f, 0.14f, 0.12f, 0.12f, 0.30f, 0.46f, 0.55f, 0.45f, 0.10f)
+            val q = ((c + r) % 3) * 3
+            b.dec(cx, 3.1f, z1 + 0.7f, 9f, 0.35f, 1.4f, cor[q], cor[q + 1], cor[q + 2])
         }
     }
 
-    /** Linha de bloqueio de lado a lado da cidade, com um unico vao (o portao) em x = 0. */
-    private fun bloqueio(b: MapaBuilder, z: Float, tipoPortao: Int): Int {
-        b.muro(-148f, z, 148f, z, 3.6f, 8, floatArrayOf(0f), 8f)
-        for (x in floatArrayOf(-36f, 36f)) b.container(x, z + 0.2f, true, 3)
-        val idx = b.portao(-4f, z, 4f, z + 0.4f, 3.6f, tipoPortao)
-        val (r, g, bl) = when (tipoPortao) {
+    /** Muralha de lado a lado com um unico vao (o portao) em gx. Devolve o indice do portao. */
+    private fun separador(b: MapaBuilder, z: Float, gx: Float, tipo: Int): Int {
+        b.caixa(-W + 0.4f, z - 2f, gx - 2f, z + 2f, 7f, 12)
+        b.caixa(gx + 2f, z - 2f, W - 0.4f, z + 2f, 7f, 12)
+        val idx = b.portao(gx - 2f, z - 1.2f, gx + 2f, z + 1.2f, 7f, tipo)
+        val (r, g, bl) = when (tipo) {
             16 -> Triple(0.2f, 0.45f, 0.95f)
             19 -> Triple(0.6f, 0.6f, 0.68f)
             18 -> Triple(0.92f, 0.8f, 0.18f)
             else -> Triple(0.3f, 0.82f, 0.45f)
         }
-        b.dec(-4.3f, 2.2f, z + 0.2f, 0.5f, 4.4f, 0.5f, r, g, bl, 2)
-        b.dec(4.3f, 2.2f, z + 0.2f, 0.5f, 4.4f, 0.5f, r, g, bl, 2)
+        b.dec(gx - 2.1f, 3.5f, z + 2.1f, 0.4f, 7f, 0.4f, r, g, bl, 2)
+        b.dec(gx + 2.1f, 3.5f, z + 2.1f, 0.4f, 7f, 0.4f, r, g, bl, 2)
         return idx
     }
 
+    /** Barricada na rua vertical k, no meio da fileira r (entre as ruas horizontais r e r+1). */
+    private fun barV(b: MapaBuilder, f: Faixa, k: Int, r: Int) = b.container(xs(k), (f.z0(r) + f.z1(r)) / 2f, true, 8)
+
+    /** Barricada na rua horizontal r, no meio da coluna k (entre as ruas verticais k e k+1). */
+    private fun barH(b: MapaBuilder, f: Faixa, r: Int, k: Int) = b.container(bx0(k) + BW / 2f, f.zc(r), false, 3)
+
+    private fun distInicio(x: Float, z: Float): Float {
+        val dx = x - INICIO_X; val dz = z - INICIO_Z
+        return kotlin.math.sqrt(dx * dx + dz * dz)
+    }
+
     fun construir(b: MapaBuilder) {
-        b.cerco(-148f, -148f, 148f, 148f, 4f, 12)
+        b.cerco(-W, -W, W, W, 4f, 12)
+        val fs = faixas()
 
-        // ---- postes de luz ao longo da avenida
-        var z = 140f
-        while (z > -140f) {
-            for (x in floatArrayOf(-9f, 9f)) {
-                b.dec(x, 3f, z, 0.25f, 6f, 0.25f, 0.20f, 0.20f, 0.22f, 2)
-                b.dec(x, 6.1f, z, 0.6f, 0.4f, 0.6f, 1f, 0.9f, 0.6f, 1)
+        // ---- blocos solidos (menos os predios que se pode entrar)
+        val entravel = setOf(
+            Triple(0, 1, 0),   // garagem
+            Triple(1, 0, 1), Triple(1, 0, 7), Triple(1, 1, 4),   // supermercado, farmacia, banco
+            Triple(2, 1, 6), Triple(2, 0, 1)                     // metro, delegacia
+        )
+        for (bi in fs.indices) {
+            val f = fs[bi]
+            for (r in 0 until f.n) for (c in 0..8) {
+                if (Triple(bi, r, c) in entravel) continue
+                bloco(b, f, bi, r, c)
             }
-            z -= 22f
         }
 
-        // =================================================== BAIRRO 1: SUBURBIO (z 60..148)
-        b.predio(-30f, 118f, -14f, 134f, 1, 126f, 3f, 3f, 6)
-        b.predio(-30f, 92f, -14f, 108f, 1, 100f, 3f, 3f, 14)
-        b.predio(-30f, 68f, -14f, 84f, 1, 76f, 3f, 3f, 7)
-        b.predio(14f, 118f, 30f, 134f, 3, 126f, 3f, 3f, 14)
-        b.predio(14f, 92f, 30f, 108f, 3, 100f, 3f, 3f, 6)
-        b.predio(14f, 68f, 30f, 84f, 3, 76f, 3f, 3f, 15)
-        b.predio(-70f, 110f, -52f, 128f, 1, 119f, 3f, 3f, 7)
-        b.predio(-70f, 78f, -52f, 96f, 1, 87f, 3f, 3f, 6)
-        b.predio(-104f, 94f, -80f, 114f, 1, 104f, 4f, 3.2f, 8)    // garagem: chave azul
-        b.predio(52f, 108f, 72f, 128f, 3, 118f, 3f, 3f, 14)
-        b.predio(52f, 76f, 72f, 94f, 3, 85f, 3f, 3f, 7)
-        b.predio(96f, 84f, 118f, 104f, 3, 94f, 3f, 3f, 15)
-        for (x in floatArrayOf(-125f, -100f, 90f, 125f)) { torre(b, x - 9f, 128f, x + 9f, 144f, 11f, 12) }
-        b.carro(-6f, 112f, false, 8); b.carro(6f, 90f, false, 6); b.carro(-4f, 70f, false, 7); b.carro(40f, 120f, true, 8)
-        b.carro(-42f, 100f, true, 6); b.container(-41f, 80f, false, 3); b.container(41f, 104f, false, 8)
-        for (v in floatArrayOf(142f, 124f, 106f, 88f, 70f)) { b.arvore(-10.5f, v, true); b.arvore(10.5f, v - 9f, true) }
-        b.item(-90f, 100f, 0); b.item(-22f, 126f, 1); b.item(22f, 100f, 1); b.item(-60f, 119f, 0); b.item(62f, 118f, 1); b.item(-22f, 76f, 1)
-        b.item(8f, 126f, 1); b.item(106f, 94f, 0)
-        b.zumbi(-4f, 112f); b.zumbi(5f, 98f); b.zumbi(-41f, 90f); b.zumbi(41f, 84f); b.zumbi(-3f, 80f); b.zumbi(-90f, 122f)
+        // ---- predios enteraveis (porta para a viela)
+        val g0 = Triple(B1, 1, 0)
+        b.predio(bx0(0), B1.z0(1), bx0(0) + BW, B1.z1(1), 1, (B1.z0(1) + B1.z1(1)) / 2f, 3f, 5f, 14)
+        b.predio(bx0(1), B2.z0(0), bx0(1) + BW, B2.z1(0), 2, bx0(1) + BW / 2f, 3f, 5f, 13)
+        b.predio(bx0(7), B2.z0(0), bx0(7) + BW, B2.z1(0), 2, bx0(7) + BW / 2f, 3f, 5f, 15)
+        b.predio(bx0(4), B2.z0(1), bx0(4) + BW, B2.z1(1), 0, bx0(4) + BW / 2f, 3f, 5f, 12)
+        b.predio(bx0(6), B3.z0(1), bx0(6) + BW, B3.z1(1), 0, bx0(6) + BW / 2f, 3f, 5f, 12)
+        b.predio(DX0, DZ0, DX0 + BW, B3.z1(0), 2, DX0 + BW / 2f, 3f, 5f, 15)
+        // cela da delegacia
+        b.muro(DX0 + 0.4f, DZP, DX0 + BW - 0.4f, DZP, 4.2f, 15, floatArrayOf(DXG), 3f)
+        val pR = b.portao(DXG - 1.5f, DZP - 0.2f, DXG + 1.5f, DZP + 0.2f, 4.2f, 17)
+        b.item(DX0 + 20f, B3.z1(0) - 4f, 3)
+        b.item(bx0(4) + 6f, (B2.z0(1) + B2.z1(1)) / 2f, 2)
+        b.item(g0.first.zc(0) * 0f + CHAVE_AZUL[0] + 5f, CHAVE_AZUL[1] + 3f, 1)
+        b.item(FUSIVEIS[0] + 5f, FUSIVEIS[1] + 3f, 0)
+        b.item(FUSIVEIS[2] + 5f, FUSIVEIS[3] + 3f, 1)
+        b.item(NOTAS[0] + 5f, NOTAS[1] + 3f, 1)
 
-        // ---- linha de bloqueio A (portao azul)
-        val pA = bloqueio(b, CidadeMapa.PORTAO_A_Z, 16)
+        // ---- barricadas: forcam o zigue-zague
+        for (p in arrayOf(intArrayOf(3, 0), intArrayOf(4, 0), intArrayOf(5, 1), intArrayOf(6, 0))) barV(b, B1, p[0], p[1])
+        for (p in arrayOf(intArrayOf(0, 7), intArrayOf(1, 4), intArrayOf(2, 5), intArrayOf(2, 6), intArrayOf(2, 8), intArrayOf(3, 5))) barH(b, B1, p[0], p[1])
+        for (p in arrayOf(intArrayOf(1, 0), intArrayOf(4, 0), intArrayOf(8, 1))) barV(b, B2, p[0], p[1])
+        for (p in arrayOf(intArrayOf(0, 1), intArrayOf(0, 8), intArrayOf(1, 6), intArrayOf(2, 3), intArrayOf(2, 7))) barH(b, B2, p[0], p[1])
+        for (p in arrayOf(intArrayOf(1, 1), intArrayOf(7, 0), intArrayOf(8, 0))) barV(b, B3, p[0], p[1])
+        for (p in arrayOf(intArrayOf(0, 6), intArrayOf(1, 4), intArrayOf(1, 8), intArrayOf(2, 1), intArrayOf(2, 7))) barH(b, B3, p[0], p[1])
+        for (p in arrayOf(intArrayOf(4, 0), intArrayOf(5, 0), intArrayOf(7, 0))) barV(b, B4, p[0], p[1])
+        for (p in arrayOf(intArrayOf(0, 5), intArrayOf(1, 6))) barH(b, B4, p[0], p[1])
 
-        // =================================================== BAIRRO 2: CENTRO COMERCIAL (z -5..60)
-        b.predio(-110f, 10f, -70f, 40f, 1, 25f, 4f, 4f, 13)         // supermercado: fusivel 1
-        b.predio(70f, 14f, 100f, 38f, 3, 26f, 4f, 4f, 15)           // farmacia: fusivel 2 (acorda o seguranca)
-        b.predio(56f, 38f, 80f, 56f, 2, 66f, 4f, 4f, 12)            // banco: fusivel 3 (porta ao sul)
-        torre(b, -148f + 2f, 0f, -118f, 56f, 26f, 13)
-        torre(b, 106f, 0f, 146f, 56f, 30f, 12)
-        torre(b, -68f, 44f, -54f, 58f, 18f, 12)
-        torre(b, 84f, 42f, 100f, 58f, 22f, 13)
-        torre(b, -26f, 36f, -10f, 56f, 20f, 12)
-        torre(b, 10f, 36f, 26f, 56f, 24f, 13)
-        torre(b, -26f, 0f, -12f, 14f, 16f, 15)
-        torre(b, 12f, 0f, 26f, 14f, 18f, 14)
-        b.container(-41f, 30f, false, 3); b.container(41f, 6f, false, 8); b.carro(-6f, 44f, false, 6); b.carro(5f, 8f, false, 7)
-        b.carro(-41f, 52f, true, 8); b.carro(41f, 24f, true, 6)
-        b.dec(0f, 0.25f, 22f, 6f, 0.5f, 6f, 0.5f, 0.5f, 0.52f)         // praca da caixa de forca
-        b.item(-90f, 20f, 1); b.item(85f, 20f, 0); b.item(43f, 44f, 2); b.item(-41f, 14f, 1); b.item(41f, 44f, 1); b.item(0f, 40f, 0)
-        b.item(-80f, 34f, 1); b.item(92f, 30f, 1)
-        b.zumbi(-4f, 50f); b.zumbi(4f, 34f); b.zumbi(-41f, 42f); b.zumbi(41f, 34f); b.zumbi(-3f, 14f)
-        b.zumbi(41f, 16f); b.zumbi(-41f, 6f); b.zumbi(60f, 46f); b.zumbi(-60f, 28f)
+        // ---- carros encostados nas vielas (sobra ~3 m para passar)
+        for (bi in fs.indices) {
+            val f = fs[bi]
+            for (r in 0 until f.n) for (k in intArrayOf(2, 4, 6, 8)) {
+                if ((k + r + bi) % 3 != 0) continue
+                val zm = (f.z0(r) + f.z1(r)) / 2f + 5f
+                b.carro(xs(k) + 1.4f, zm, false, if (k % 4 == 0) 6 else 7)
+            }
+        }
 
-        val pB = bloqueio(b, CidadeMapa.PORTAO_B_Z, 19)
-
-        // =================================================== BAIRRO 3: METRO E DELEGACIA (z -65..-5)
-        // delegacia (-95,-62)-(-55,-28), porta ao sul em x=-75; a cela fica ao norte da divisoria z=-45
-        b.predio(-95f, -62f, -55f, -28f, 2, -75f, 4f, 4f, 15)
-        b.muro(-94.6f, -45f, -55.4f, -45f, 3.4f, 12, floatArrayOf(-66f), 3f)
-        val pR = b.portao(-67.5f, -45f, -64.5f, -44.6f, 3.4f, 17)
-        b.predio(50f, -36f, 76f, -16f, 3, -25f, 3f, 3.6f, 8)       // entrada do metro: nota 1
-        torre(b, -148f + 2f, -62f, -100f, -10f, 22f, 13)
-        torre(b, 100f, -62f, 146f, -8f, 26f, 12)
-        torre(b, -26f, -62f, -12f, -48f, 14f, 14)
-        torre(b, 12f, -62f, 26f, -48f, 16f, 15)
-        torre(b, -26f, -34f, -12f, -14f, 14f, 12)
-        torre(b, 12f, -34f, 26f, -14f, 12f, 13)
-        torre(b, 80f, -62f, 98f, -40f, 18f, 14)
-        b.container(-41f, -58f, false, 3); b.container(41f, -20f, false, 8); b.carro(-6f, -20f, false, 8); b.carro(6f, -44f, false, 6)
-        b.carro(41f, -38f, true, 7); b.carro(-41f, -30f, true, 6)
-        b.item(-80f, -36f, 3); b.item(-66f, -36f, 1); b.item(62f, -30f, 0); b.item(-41f, -42f, 1); b.item(41f, -58f, 1); b.item(0f, -30f, 0)
-        b.zumbi(-4f, -20f); b.zumbi(4f, -36f); b.zumbi(-41f, -18f); b.zumbi(41f, -30f); b.zumbi(-41f, -50f); b.zumbi(41f, -46f)
-        b.zumbi(-3f, -52f); b.zumbi(-85f, -34f); b.zumbi(63f, -26f)
-
-        val pC = bloqueio(b, CidadeMapa.PORTAO_C_Z, 18)
-
-        // =================================================== BAIRRO 4: A TORRE (z -148..-100)
-        torre(b, -26f, -148f, 26f, -138f, 46f, 13)                    // torre central ao fundo
-        torre(b, -148f + 2f, -146f, -70f, -108f, 20f, 12)
-        torre(b, 70f, -146f, 146f, -108f, 24f, 13)
-        torre(b, -66f, -146f, -54f, -120f, 14f, 15)
-        torre(b, 54f, -146f, 66f, -120f, 16f, 14)
-        b.dec(0f, 0.3f, -118f, 10f, 0.6f, 10f, 0.62f, 0.55f, 0.20f)    // heliponto
-        b.container(-41f, -108f, true, 3); b.container(41f, -108f, true, 8); b.carro(-20f, -126f, true, 7); b.carro(24f, -128f, true, 8)
-        b.item(-30f, -125f, 1); b.item(30f, -125f, 1); b.item(-41f, -118f, 0); b.item(41f, -118f, 0)
-        b.zumbi(-41f, -125f); b.zumbi(41f, -125f); b.zumbi(-20f, -112f); b.zumbi(20f, -112f)
-
-        val pD = bloqueio(b, CidadeMapa.PORTAO_D_Z, 20)
-
-        // ordem: A, B, R, C, D no builder -> reordena para o vetor fixo A, B, C, D, R
-        Fases.portoes = intArrayOf(pA, pB, pC, pD, pR)
-
-        // ---- pontos de nascimento (so em ruas livres: avenida e as duas colunas x = +-41)
+        // ---- itens, zumbis e nascedouros nas intersecoes
         val sp = ArrayList<Float>()
-        for (zz in floatArrayOf(140f, 118f, 95f, 72f, 48f, 30f, 10f, -20f, -35f, -50f, -80f, -90f)) {
-            for (xx in floatArrayOf(-41f, 0f, 41f)) {
-                if ((xx == -41f && zz == 30f) || (xx == 41f && zz == -20f)) continue // containers
-                sp.add(xx); sp.add(zz)
+        for (bi in fs.indices) {
+            val f = fs[bi]
+            for (r in 0..f.n) for (k in 0..9) {
+                val x = xs(k); val z = f.zc(r)
+                if (distInicio(x, z) < 32f) continue
+                val idx = k + r * 3 + bi
+                if (idx % 4 == 0) b.zumbi(x, z)
+                if (idx % 4 == 2) b.item(x - 1.2f, z + 1.2f, if ((k + r) % 3 == 0) 0 else 1)
+                if (idx % 3 == 1) { sp.add(x); sp.add(z) }
             }
         }
-        for (xx in floatArrayOf(-41f, 41f)) for (zz in floatArrayOf(-110f, -125f, -140f)) { sp.add(xx); sp.add(zz) }
-        sp.add(0f); sp.add(-110f)
+
+        // ---- muralhas e portoes
+        val pA = separador(b, PORTAO_Z[0], PORTAO_X[0], 16)
+        val pB = separador(b, PORTAO_Z[1], PORTAO_X[1], 19)
+        val pC = separador(b, PORTAO_Z[2], PORTAO_X[2], 18)
+        val pD = separador(b, PORTAO_Z[3], PORTAO_X[3], 20)
+
+        // ---- arena final: heliponto entre dois paredoes
+        b.caixa(-W + 0.4f, -W + 0.4f, -45f, -102f, 26f, 12)
+        b.caixa(45f, -W + 0.4f, W - 0.4f, -102f, 26f, 13)
+        b.caixa(-45f, -W + 0.4f, 45f, -145f, 40f, 13)
+        b.dec(0f, 0.3f, -124f, 12f, 0.6f, 12f, 0.62f, 0.55f, 0.20f)
+        b.container(-26f, -112f, true, 3); b.container(26f, -112f, true, 8)
+        b.container(-30f, -134f, false, 8); b.container(30f, -134f, false, 3)
+        b.zumbi(-30f, -122f); b.zumbi(30f, -122f); b.zumbi(-14f, -110f); b.zumbi(14f, -110f)
+        b.item(-36f, -122f, 1); b.item(36f, -122f, 1); b.item(0f, -110f, 0)
+        for (v in floatArrayOf(-30f, 30f)) { sp.add(v); sp.add(-110f); sp.add(v); sp.add(-142f) }
+
+        Fases.portoes = intArrayOf(pA, pB, pC, pD, pR)
         b.nascedouros(sp.toFloatArray())
     }
 }
@@ -359,8 +418,7 @@ class Cidade(private val mundo: Mundo, val def: DefFase) : Missao {
             objetos.add(Obj(Tipo.BAU, g.BAUS[i * 2], g.BAUS[i * 2 + 1], i, colocar(mBauFechado, g.BAUS[i * 2], g.BAUS[i * 2 + 1], MathUtils.random(0f, 360f))))
         }
         // portoes: A, B, C, D no centro de cada linha de bloqueio; R na cela (indice = posicao em Fases.portoes)
-        val gz = floatArrayOf(CidadeMapa.PORTAO_A_Z, CidadeMapa.PORTAO_B_Z, CidadeMapa.PORTAO_C_Z, CidadeMapa.PORTAO_D_Z)
-        for (i in 0..3) objetos.add(Obj(Tipo.PORTAO, 0f, gz[i] + 0.2f, i, ModelInstance(mBase)).also { it.ativo = true; escondido(it) })
+        for (i in 0..3) objetos.add(Obj(Tipo.PORTAO, g.PORTAO_X[i], g.PORTAO_Z[i] + 3.5f, i, ModelInstance(mBase)).also { escondido(it) })
         objetos.add(Obj(Tipo.PORTAO, g.CELA[0], g.CELA[1], 4, ModelInstance(mBase)).also { escondido(it) })
         objetos.add(Obj(Tipo.SOBREVIVENTE, g.SOBREVIVENTE[0], g.SOBREVIVENTE[1], 0, colocar(mSobrev, g.SOBREVIVENTE[0], g.SOBREVIVENTE[1], 0f)))
         objetos.add(Obj(Tipo.RADIO, g.RADIO[0], g.RADIO[1], 0, colocar(mRadio, g.RADIO[0], g.RADIO[1], 0f)))
@@ -427,12 +485,12 @@ class Cidade(private val mundo: Mundo, val def: DefFase) : Missao {
         concluida -> ""
         chefe != null -> "Seu parceiro ajuda a atirar!"
         portaoAberto[3] -> "O radio fica no heliponto, no norte."
-        !portaoAberto[0] -> "A chave esta numa garagem no oeste do subúrbio. Siga a avenida ao norte depois."
-        !portaoAberto[1] -> if (painelLigado) "A energia voltou: va ao portao eletrico, na avenida."
+        !portaoAberto[0] -> "A Chave Azul esta numa garagem no extremo oeste. O portao azul fica no leste, no fim das vielas."
+        !portaoAberto[1] -> if (painelLigado) "A energia voltou: o portao eletrico fica no extremo oeste."
             else if (fusiveis >= 3) "Leve os fusiveis a caixa de forca, na praca central."
-            else "Fusiveis: supermercado (oeste), farmacia (leste) e banco (sul)."
+            else "Fusiveis: supermercado (oeste), farmacia (leste) e banco (centro)."
         miniAcordado && !miniMorto -> def.miniNome + " vai soltar a Chave Vermelha."
-        !portaoAberto[2] -> if (puzzleResolvido) "O portao do norte destrancou." else "Leia as notas (metro e rua) e puxe as alavancas na ordem. " + ordemTexto()
+        !portaoAberto[2] -> if (puzzleResolvido) "O portao do norte destrancou (lado leste)." else "Leia as notas (metro e rua) e puxe as alavancas na ordem. " + ordemTexto()
         !salvo -> if (temChaveVermelha) "A cela fica dentro da delegacia, no oeste." else "O Seguranca guarda a Chave Vermelha da delegacia."
         else -> "O sobrevivente sabe o codigo do portao final."
     }

@@ -43,6 +43,8 @@ class ControlesToque : InputAdapter() {
     /** Quando true (pausa), nenhum toque novo é aceito. Use definirBloqueado(). */
     var bloqueado = false
         private set
+    /** O botao PULAR so existe (desenho e toque) diante de um obstaculo baixo. */
+    var pularAtivo = false
 
     /** Quando true (jogador morto), só o botão REINICIAR aceita toque. Use definirMorto(). */
     var morto = false
@@ -476,6 +478,7 @@ class ControlesToque : InputAdapter() {
     /** Índice do botão de ação sob o ponto (x, y), ou -1 se nenhum. */
     private fun acaoEm(x: Float, y: Float): Int {
         for (i in 0 until NUM_ACOES) {
+            if (i == ACAO_PULAR && !pularAtivo) continue
             val dx = x - acoesX[i]
             val dy = y - acoesY[i]
             val alvo = acoesAlvo[i]

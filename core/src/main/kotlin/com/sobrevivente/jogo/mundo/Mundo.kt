@@ -142,8 +142,13 @@ class Mundo : Disposable {
         modelosParedes = Array(totalParedes) { i ->
             val largura = Constantes.PAREDES[i * 4 + 2] - Constantes.PAREDES[i * 4]
             val profundidade = Constantes.PAREDES[i * 4 + 3] - Constantes.PAREDES[i * 4 + 1]
-            val cor = corDaParede(Constantes.PAREDES_TIPO[i])
-            criarModeloCaixa(largura, Constantes.PAREDES_ALTURA[i], profundidade, cor[0], cor[1], cor[2])
+            val tp = Constantes.PAREDES_TIPO[i]
+            if (Fases.atual.cidade && tp in 12..15 && Constantes.PAREDES_ALTURA[i] >= 3f) {
+                Fachadas.criarCaixa(largura, Constantes.PAREDES_ALTURA[i], profundidade, tp, i)
+            } else {
+                val cor = corDaParede(tp)
+                criarModeloCaixa(largura, Constantes.PAREDES_ALTURA[i], profundidade, cor[0], cor[1], cor[2])
+            }
         }
         paredes = Array(totalParedes) { i ->
             val instancia = ModelInstance(modelosParedes[i])
@@ -599,41 +604,63 @@ class Mundo : Disposable {
         return melhor
     }
 
-    fun atirar(origem: Vector3, direcao: Vector3, alcance: Float, dano: Int): Boolean {
+    /** O ultimo tiro acertou a cabeca de um zumbi? */
+    var impactoCritico = false
+
+    private val atravessados = IntArray(3)
+
+    fun atirar(origem: Vector3, direcao: Vector3, alcance: Float, dano: Int, arma: TipoArma = TipoArma.PISTOLA): Boolean {
         raio.set(origem, direcao)
-        var melhor: Inimigo? = null
-        var melhorDistancia = alcance
+        var limite = alcance
         // Vale o primeiro acerto: uma parede mais perto que o inimigo bloqueia o tiro.
         for (i in caixasParedes.indices) {
             if (Intersector.intersectRayBounds(raio, caixasParedes[i], ponto)) {
                 val distanciaParede = ponto.dst(origem)
-                if (distanciaParede < melhorDistancia) melhorDistancia = distanciaParede
-            }
-        }
-        for (i in inimigos.indices) {
-            val inimigo = inimigos[i]
-            if (!inimigo.vivo) continue
-            if (Intersector.intersectRayBounds(raio, inimigo.caixa, ponto)) {
-                val distancia = ponto.dst(origem)
-                if (distancia <= melhorDistancia) {
-                    melhorDistancia = distancia
-                    melhor = inimigo
-                }
+                if (distanciaParede < limite) limite = distanciaParede
             }
         }
         impactoTipo = 0
         impactoMorreu = false
-        val alvo = melhor
-        if (alvo != null) {
+        impactoCritico = false
+        // O fuzil atravessa ate 2 zumbis (o segundo leva menos dano).
+        val maxAlvos = if (arma == TipoArma.FUZIL) 2 else 1
+        var danoAtual = dano
+        var acertos = 0
+        while (acertos < maxAlvos) {
+            var melhor: Inimigo? = null
+            var melhorIdx = -1
+            var melhorDistancia = limite
+            for (i in inimigos.indices) {
+                val inimigo = inimigos[i]
+                if (!inimigo.vivo) continue
+                var ja = false
+                for (k in 0 until acertos) if (atravessados[k] == i) ja = true
+                if (ja) continue
+                if (Intersector.intersectRayBounds(raio, inimigo.caixa, ponto)) {
+                    val distancia = ponto.dst(origem)
+                    if (distancia <= melhorDistancia) {
+                        melhorDistancia = distancia
+                        melhor = inimigo
+                        melhorIdx = i
+                    }
+                }
+            }
+            val alvo = melhor ?: break
+            atravessados[acertos] = melhorIdx
             impactoTipo = 1
             impacto.set(origem).mulAdd(direcao, melhorDistancia)
-            impactoMorreu = alvo.receberTiro(dano, impacto.y - alvo.posicao.y, direcao.x, direcao.z)
-            if (impactoMorreu) soltarLoot(alvo)
-        } else if (melhorDistancia < alcance - 0.01f) {
-            impactoTipo = 2 // parede ou piso
-            impacto.set(origem).mulAdd(direcao, melhorDistancia)
+            val morreu = alvo.receberTiro(danoAtual, impacto.y - alvo.posicao.y, direcao.x, direcao.z, arma, melhorDistancia)
+            impactoMorreu = morreu
+            if (alvo.ultimoCritico) impactoCritico = true
+            if (morreu) soltarLoot(alvo)
+            acertos++
+            danoAtual = (danoAtual * 0.6f).toInt().coerceAtLeast(1)
         }
-        return alvo != null
+        if (acertos == 0 && limite < alcance - 0.01f) {
+            impactoTipo = 2 // parede ou piso
+            impacto.set(origem).mulAdd(direcao, limite)
+        }
+        return acertos > 0
     }
 
     private fun criarMaterial(r: Float, g: Float, b: Float): Material {
@@ -740,5 +767,6 @@ class Mundo : Disposable {
         for (mp in modelosPisos) mp.dispose()
         modeloArmaFuzil?.dispose()
         modeloArmaEscopeta?.dispose()
+        Fachadas.limpar()
     }
 }

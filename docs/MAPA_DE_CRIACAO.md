@@ -1092,3 +1092,10 @@ Estado em 15/11/2026: o `gerar-modelo.yml` já está no repositório com a etapa
 - `Desempenho.kt`: mede o FPS (janelas de 0,5 s). Abaixo de 40 FPS por 2 s sobe o nivel (1: sombras so de perto + desenho ate 110 m; 2: sem sombras + desenho ate 70 m); acima de 56 FPS por 8 s desce. So afeta o que e desenhado.
 - `Mundo.paredePerto`; `TelaJogo` usa o regulador nas sombras, nas paredes e nos zumbis. Junto com o culling por frustum da F21.
 - Nao medido em aparelho real: os limites (40/56 FPS, 110/70 m) sao palpites a ajustar.
+
+## F23 — Camera livre, combate e visual
+- **Camera:** toque direito gira a camera (yaw/pitch livres), camera no ombro direito (dist 2,5 m; 1,7 m mirando). O analogico anda relativo a camera e o corpo vira para onde anda; mirando, o corpo segue a camera e anda de lado devagar. A mira levantada so por causa do tiro baixa sozinha apos 1,6 s sem atirar (a do botao MIRAR fica).
+- **Laser removido.** **Pulo:** o botao PULAR so aparece (e so aceita toque) com obstaculo baixo (topo 0,35–1,1 m) logo a frente (`Colisao.obstaculoPulavel`, `Jogador.podePular`).
+- **Zumbis:** cabeca = dano x2,2 + estalo + cambaleio; pernas = cai/cambaleia; tronco = recua. Escopeta empurra (ate ~4 m a queima-roupa; derruba a <4 m, 80%); fuzil atravessa ate 2 zumbis (2o com 60% do dano) e causa choque (cambaleio longo); pistola desequilibra de leve. Chefes quase nao saem do lugar. Zumbis mais rapidos (2,7 m/s), visao 18 m, golpe a 1,5 m com bote (avanca ao atacar).
+- **Visual:** `Fachadas.kt` gera texturas de concreto/tijolo/vidro/reboco com janelas (3 variantes: apagada, acesa, quebrada), UV em metros reais; predios com soco, cornija, quinas e coberturas variadas; arvores irregulares (copa de varios tufos, pinheiros em camadas, arvores secas).
+- Nao testado em aparelho: sensibilidade da camera, intensidade do empurrao e custo das texturas precisam de ajuste fino.

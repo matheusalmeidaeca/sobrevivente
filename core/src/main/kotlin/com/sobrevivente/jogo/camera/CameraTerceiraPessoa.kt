@@ -47,20 +47,11 @@ class CameraTerceiraPessoa {
     }
 
     /**
-     * F18 (estilo RE4): a camera fica atras do personagem. Andando, acompanha o giro dele com um leve atraso;
-     * mirando, fica colada no yaw dele (o tiro sai exatamente por onde o laser aponta).
-     * `ajustePitch` (graus) so vale mirando; fora da mira a inclinacao volta ao padrao.
+     * Camera livre no ombro: o toque direito gira (ver `girar`); aqui so se entra/sai da mira (camera mais colada, FOV menor).
      */
-    fun atualizar(dt: Float, alvo: Vector3, yawJogador: Float, mirando: Boolean, ajustePitch: Float) {
+    fun atualizar(dt: Float, alvo: Vector3, mirando: Boolean) {
         val k = minOf(1f, Constantes.RE4_ENTRAR_MIRA * dt)
         mira += ((if (mirando) 1f else 0f) - mira) * k
-        val taxa = if (mirando) 40f else Constantes.RE4_SEGUIR_YAW
-        yaw = MathUtils.lerpAngleDeg(yaw, yawJogador, minOf(1f, taxa * dt))
-        if (mirando) {
-            pitch = MathUtils.clamp(pitch + ajustePitch, Constantes.CAMERA_PITCH_MIN, Constantes.CAMERA_PITCH_MAX)
-        } else {
-            pitch += (Constantes.RE4_PITCH_PASSEIO - pitch) * minOf(1f, 4f * dt)
-        }
         seguir(alvo)
     }
 

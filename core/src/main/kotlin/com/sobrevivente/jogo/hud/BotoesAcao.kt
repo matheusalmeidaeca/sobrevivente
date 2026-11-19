@@ -68,6 +68,7 @@ class BotoesAcao(
     /** Chamar entre forma.begin(Filled) e forma.end(), com blending ligado. */
     fun desenharFormas(forma: ShapeRenderer) {
         for (i in 0 until n) {
+            if (i == ControlesToque.ACAO_PULAR && !controles.pularAtivo) continue
             val pressionado = controles.acaoPressionada(i)
             val raio = controles.acaoRaio(i) * (if (pressionado) Constantes.BOTAO_ESCALA_PRESSIONADO else 1f)
             val fator = if (pressionado) Constantes.BOTAO_ESCURECER else 1f
@@ -132,6 +133,7 @@ class BotoesAcao(
     /** Chamar entre lote.begin() e lote.end(). */
     fun desenharTextos(lote: SpriteBatch) {
         for (i in 0 until n) {
+            if (i == ControlesToque.ACAO_PULAR && !controles.pularAtivo) continue
             val layout = layouts[i]
             fonte.data.setScale(escalas[i])
             val cy = if (temSimbolo(i)) controles.acaoY(i) - controles.acaoRaio(i) * 0.50f else controles.acaoY(i)

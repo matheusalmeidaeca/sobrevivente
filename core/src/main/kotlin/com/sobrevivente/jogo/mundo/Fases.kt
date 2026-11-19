@@ -130,12 +130,37 @@ class MapaBuilder {
 
     fun arvore(x: Float, z: Float, pinheiro: Boolean = false) {
         caixa(x - 0.3f, z - 0.3f, x + 0.3f, z + 0.3f, 3f, 5)
-        dec(x, 1.6f, z, 0.55f, 3.2f, 0.55f, 0.32f, 0.22f, 0.13f, 2)
+        // variacao deterministica por posicao: cada arvore e diferente
+        val h = kotlin.math.abs(kotlin.math.sin(x * 12.9898f + z * 78.233f) * 43758.547f)
+        val f = h - kotlin.math.floor(h)
+        val f2 = (f * 7.13f) - kotlin.math.floor(f * 7.13f)
+        val tom = 0.85f + f2 * 0.3f
+        // raizes e tronco afunilado (casca escura, rugosa)
+        dec(x, 0.35f, z, 0.95f, 0.7f, 0.95f, 0.22f * tom, 0.16f * tom, 0.11f * tom, 3)
+        dec(x, 1.9f, z, 0.46f, 3.2f, 0.46f, 0.26f * tom, 0.19f * tom, 0.13f * tom, 2)
         if (pinheiro) {
-            dec(x, 3.0f, z, 3.0f, 2.6f, 3.0f, 0.10f, 0.26f, 0.14f, 3)
-            dec(x, 4.6f, z, 2.2f, 2.4f, 2.2f, 0.12f, 0.30f, 0.16f, 3)
+            // pinheiro em camadas irregulares, verde bem escuro
+            var y = 2.4f; var w = 3.1f
+            for (k in 0 until 5) {
+                val d = (f2 - 0.5f) * 0.4f
+                dec(x + d, y, z - d, w, 1.9f, w, 0.05f + 0.02f * k, 0.15f + 0.03f * k + f * 0.04f, 0.08f + 0.01f * k, 3)
+                y += 1.15f; w *= 0.8f
+            }
+        } else if (f < 0.4f) {
+            // arvore seca (estilo survival horror): galhos finos tortos, sem folhas
+            dec(x, 4.0f, z, 0.30f, 2.2f, 0.30f, 0.20f, 0.17f, 0.14f, 2)
+            dec(x + 0.7f, 4.6f, z + 0.2f, 0.16f, 2.0f, 0.16f, 0.19f, 0.16f, 0.13f, 2)
+            dec(x - 0.8f, 4.3f, z - 0.3f, 0.16f, 1.8f, 0.16f, 0.19f, 0.16f, 0.13f, 2)
+            dec(x + 0.3f, 5.4f, z - 0.9f, 0.12f, 1.5f, 0.12f, 0.18f, 0.15f, 0.12f, 2)
+            dec(x - 0.4f, 5.6f, z + 0.8f, 0.12f, 1.4f, 0.12f, 0.18f, 0.15f, 0.12f, 2)
+            dec(x + 1.3f, 5.0f, z + 0.9f, 0.10f, 1.1f, 0.10f, 0.17f, 0.14f, 0.11f, 2)
         } else {
-            dec(x, 4.2f, z, 3.4f, 3.0f, 3.4f, 0.18f, 0.34f, 0.15f, 1)
+            // copa irregular: varios tufos de tamanhos e tons diferentes, sombra por baixo
+            dec(x, 3.9f, z, 2.4f * tom, 1.4f, 2.4f * tom, 0.07f, 0.14f, 0.07f, 1)
+            dec(x + 0.9f, 4.7f, z + 0.5f, 1.9f, 1.7f, 1.8f, 0.11f * tom, 0.24f * tom, 0.10f * tom, 1)
+            dec(x - 0.8f, 4.9f, z - 0.4f, 2.0f, 1.8f, 1.9f, 0.13f * tom, 0.27f * tom, 0.11f * tom, 1)
+            dec(x + 0.1f, 5.7f, z + 0.1f, 1.7f, 1.5f, 1.7f, 0.15f * tom, 0.30f * tom, 0.12f * tom, 1)
+            dec(x - 0.2f, 4.6f, z + 1.0f, 1.3f, 1.2f, 1.3f, 0.10f, 0.21f, 0.09f, 1)
         }
     }
 

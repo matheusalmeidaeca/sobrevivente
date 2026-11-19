@@ -55,6 +55,28 @@ object Colisao {
         }
     }
 
+    /** Obstaculo baixo (base no chao, topo entre 0,35 e 1,1 m) a ate ~1,1 m a frente e nada alto no mesmo ponto? */
+    fun obstaculoPulavel(x: Float, z: Float, dx: Float, dz: Float, y: Float): Boolean {
+        val caixas = Constantes.PAREDES
+        val total = caixas.size / 4
+        var baixo = false
+        for (passo in 1..3) {
+            val px = x + dx * 0.4f * passo
+            val pz = z + dz * 0.4f * passo
+            for (i in 0 until total) {
+                val minX = caixas[i * 4]; val minZ = caixas[i * 4 + 1]
+                val maxX = caixas[i * 4 + 2]; val maxZ = caixas[i * 4 + 3]
+                if (px < minX - 0.35f || px > maxX + 0.35f || pz < minZ - 0.35f || pz > maxZ + 0.35f) continue
+                val base = Constantes.PAREDES_BASE[i]
+                val topo = base + Constantes.PAREDES_ALTURA[i]
+                if (y >= topo - 0.2f || y + 1.8f <= base + 0.2f) continue
+                if (base <= 0.05f && topo >= 0.35f && topo <= 1.1f) baixo = true else return false
+            }
+            if (baixo) return true
+        }
+        return false
+    }
+
     /** Zumbis nao pisam na escada (Constantes.BLOQUEIOS_INIMIGO): empurra para fora como uma parede. */
     fun resolverBloqueiosInimigo(posicao: Vector3, raio: Float) {
         val caixas = Constantes.BLOQUEIOS_INIMIGO

@@ -305,44 +305,42 @@ class Jogador : Disposable {
      *  - Mirando: o personagem fica parado; X gira devagar o corpo (a mira acompanha).
      * Sem alocacao.
      */
-    fun mover(dt: Float, entradaX: Float, entradaY: Float, mirando: Boolean) {
+    fun mover(dt: Float, entradaX: Float, entradaY: Float, mirando: Boolean, camYaw: Float) {
         val recarregando = recarregandoArma
         if (reacao.ativa) tempoDor += dt
 
-        // --- giro do corpo ---
+        // --- camera livre (toque direito): o analogico anda RELATIVO a camera; o corpo vira para onde anda ---
+        val mag = minOf(1f, kotlin.math.sqrt(entradaX * entradaX + entradaY * entradaY))
+        val cr = camYaw * MathUtils.degreesToRadians
+        val camFx = -MathUtils.sin(cr)
+        val camFz = -MathUtils.cos(cr)
+        val camDx = MathUtils.cos(cr)
+        val camDz = -MathUtils.sin(cr)
+        var dirX = camFx * entradaY + camDx * entradaX
+        var dirZ = camFz * entradaY + camDz * entradaX
+        val dl = kotlin.math.sqrt(dirX * dirX + dirZ * dirZ)
+        if (dl > 0.0001f) { dirX /= dl; dirZ /= dl }
         if (tempoDeslize <= 0f) {
-            if (giroRapidoRestante > 0f) {
-                val passo = minOf(giroRapidoRestante, Constantes.RE4_GIRO_RAPIDO_VEL * dt)
-                yaw += passo
-                giroRapidoRestante -= passo
-            } else {
-                if (entradaY > -0.3f) giroRapidoTravado = false
-                if (!mirando && !giroRapidoTravado && entradaY < -0.7f && kotlin.math.abs(entradaX) < 0.45f && !agachado) {
-                    giroRapidoRestante = 180f
-                    giroRapidoTravado = true
-                } else {
-                    val vel = when {
-                        mirando -> Constantes.RE4_GIRO_MIRANDO
-                        entradaY > Constantes.JOGADOR_SPRINT_LIMIAR * 0.9f -> Constantes.RE4_GIRO_CORRENDO
-                        else -> Constantes.RE4_GIRO_ANDANDO
-                    }
-                    yaw -= entradaX * vel * dt
-                }
+            if (mirando) {
+                yaw = MathUtils.lerpAngleDeg(yaw, camYaw, minOf(1f, 18f * dt))
+            } else if (mag > 0.12f) {
+                val alvoYaw = MathUtils.atan2(-dirX, -dirZ) * MathUtils.radiansToDegrees
+                yaw = MathUtils.lerpAngleDeg(yaw, alvoYaw, minOf(1f, 14f * dt))
             }
             yaw = ((yaw % 360f) + 360f) % 360f
         }
 
         // --- avanco ---
-        val avanco = if (mirando || giroRapidoRestante > 0f) 0f else maxOf(0f, entradaY)
+        val avanco = if (mag > 0.12f) mag else 0f
         intensidadeMovimento = avanco
         val deslocando = avanco > 0.05f
-        val rad = yaw * MathUtils.degreesToRadians
-        val frenteX = -MathUtils.sin(rad)
-        val frenteZ = -MathUtils.cos(rad)
+        val frenteX = dirX
+        val frenteZ = dirZ
 
         fatorMov = when {
             agachado -> Constantes.JOGADOR_FATOR_AGACHADO
             recarregando -> Constantes.JOGADOR_FATOR_ATIRANDO
+            mirando -> 0.55f
             avanco >= Constantes.JOGADOR_SPRINT_LIMIAR -> Constantes.JOGADOR_SPRINT_FATOR
             else -> 0.8f // andar (o Leon anda mais devagar do que corre)
         }
@@ -415,6 +413,11 @@ class Jogador : Disposable {
         pousou = false
         return v
     }
+
+    /** Ha, logo a frente de quem anda, um obstaculo baixo (<= 1,1 m) que da para pular? */
+    val podePular: Boolean
+        get() = noChao && !agachado && vida > 0 && tempoDeslize <= 0f && intensidadeMovimento > 0.3f &&
+            Colisao.obstaculoPulavel(posicao.x, posicao.z, ultDirX, ultDirZ, posicao.y)
 
     /** PULAR: so no chao e em pe. */
     fun pular() {

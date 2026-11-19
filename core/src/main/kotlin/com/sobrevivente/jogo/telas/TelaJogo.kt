@@ -75,17 +75,9 @@ class TelaJogo(
     private var tempoCliqueVazio = 0f
     private var recarregandoAntes = false
     private var mirandoAntes = false
+    private var mirandoManual = false
+    private var tempoSemAtirar = 0f
     private var chefeAvisado = false
-    private val laserModelo: Model = ModelBuilder().createBox(
-        1f, 1f, 1f,
-        Material(ColorAttribute.createDiffuse(1f, 0.05f, 0.05f, 1f), ColorAttribute.createEmissive(1f, 0.05f, 0.05f, 1f)),
-        (Usage.Position or Usage.Normal).toLong()
-    )
-    private val laserFeixe = ModelInstance(laserModelo)
-    private val laserPonto = ModelInstance(laserModelo)
-    private val laserOrigem = Vector3()
-    private val laserAlvo = Vector3()
-    private val laserDir = Vector3()
     private val controles = ControlesToque()
     private val joystick = Joystick(controles)
     private val maleta = Maleta()
@@ -318,26 +310,24 @@ class TelaJogo(
 
     /** Câmera, movimento e tiro (só com o jogador vivo e o jogo rodando). */
     private fun atualizarJogador(dt: Float, densidade: Float) {
-        // F18: RE4. Botao MIRAR liga/desliga a mira; apertar ATIRAR sem mira levanta a arma primeiro.
+        // Camera livre no ombro: o toque direito gira a camera; o analogico anda relativo a ela.
         val giroX = controles.consumirGiroX() / densidade
         val giroY = controles.consumirGiroY() / densidade
-        if (controles.consumirPressao(ControlesToque.ACAO_MIRAR) && !arma.faca) mirando = !mirando
+        cameraJogo.girar(giroX, giroY)
+        if (controles.consumirPressao(ControlesToque.ACAO_MIRAR) && !arma.faca) { mirando = !mirando; mirandoManual = mirando }
         val apertouAtirar = controles.acaoPressionada(ControlesToque.ACAO_ATIRAR) ||
             controles.acaoPressionada(ControlesToque.ACAO_ATIRAR_ESQ)
-        if (arma.faca) mirando = false
+        if (arma.faca) { mirando = false; mirandoManual = false }
         else if (apertouAtirar && !mirando) mirando = true
-        var ajustePitch = 0f
-        if (mirando) {
-            // arrastar o dedo na direita refina a mira (yaw do corpo + pitch)
-            jogador.yaw = (jogador.yaw - giroX * Constantes.RE4_ARRASTO_SENS * 4f + 360f) % 360f
-            ajustePitch = giroY * Constantes.RE4_ARRASTO_SENS * 4f + controles.movimentoY * Constantes.RE4_PITCH_MIRANDO_VEL * dt
-        }
-        if (mirando && !mirandoAntes) som.tocar("laser_liga", 0.6f)
+        // mira levantada so por causa do tiro baixa sozinha depois de um tempo sem atirar
+        if (apertouAtirar) tempoSemAtirar = 0f else tempoSemAtirar += dt
+        if (mirando && !mirandoManual && tempoSemAtirar > 1.6f) mirando = false
         mirandoAntes = mirando
-        jogador.mover(dt, controles.movimentoX, controles.movimentoY, mirando)
+        jogador.mover(dt, controles.movimentoX, controles.movimentoY, mirando, cameraJogo.yaw)
         if (mirando) jogador.manterMira()
-        cameraJogo.atualizar(dt, jogador.posicao, jogador.yaw, mirando, ajustePitch)
+        cameraJogo.atualizar(dt, jogador.posicao, mirando)
         hud.mirando = mirando && cameraJogo.mira > 0.5f
+        controles.pularAtivo = jogador.podePular
 
         // Tiro: o raio sai da câmera, atravessa o centro da tela (onde fica a mira)
         val atirando = apertouAtirar && (arma.faca || cameraJogo.mira >= Constantes.RE4_MIRA_PRONTA)
@@ -359,7 +349,7 @@ class TelaJogo(
                     val d = tipo.dispersao
                     direcaoTiro.add(MathUtils.random(-d, d), MathUtils.random(-d, d), MathUtils.random(-d, d)).nor()
                 }
-                if (mundo.atirar(cameraJogo.camera.position, direcaoTiro, tipo.alcance, tipo.dano)) acertou = true
+                if (mundo.atirar(cameraJogo.camera.position, direcaoTiro, tipo.alcance, tipo.dano, tipo)) acertou = true
             }
             if (acertou) hud.mostrarAcerto()
             // recuo: o tiro desequilibra um pouco o personagem para tras (escopeta bem mais)
@@ -400,27 +390,6 @@ class TelaJogo(
         jogador.definirRecarga(arma.recarregando)
         if (controles.consumirPressao(ControlesToque.ACAO_INTERAGIR)) interagir()
         jogador.atualizarTiro(dt, jogador.yaw, atirou || arma.golpeFaca)
-    }
-
-    /** Posiciona o feixe vermelho (da arma ate onde a mira bate) e o ponto de impacto. Devolve false se nao deve aparecer. */
-    private fun atualizarLaser(): Boolean {
-        val c = cameraJogo.camera
-        val d = mundo.alcanceLivre(c.position, c.direction, Constantes.RE4_LASER_ALCANCE)
-        laserAlvo.set(c.direction).scl(d).add(c.position)
-        val rad = jogador.yaw * MathUtils.degreesToRadians
-        laserOrigem.set(
-            jogador.posicao.x - MathUtils.sin(rad) * 0.65f + MathUtils.cos(rad) * 0.18f,
-            jogador.posicao.y + 1.38f,
-            jogador.posicao.z - MathUtils.cos(rad) * 0.65f - MathUtils.sin(rad) * 0.18f
-        )
-        laserDir.set(laserAlvo).sub(laserOrigem)
-        val len = laserDir.len()
-        if (len < 0.6f) return false
-        laserDir.scl(1f / len)
-        tmp.set(laserOrigem).add(laserAlvo).scl(0.5f)
-        laserFeixe.transform.setToWorld(tmp, laserDir, Vector3.Y).scale(0.012f, 0.012f, len)
-        laserPonto.transform.idt().translate(laserAlvo.x, laserAlvo.y, laserAlvo.z).scale(0.09f, 0.09f, 0.09f)
-        return true
     }
 
     private fun nomeEquipado(): String = if (arma.faca) "Faca" else arma.tipo.nome
@@ -784,10 +753,6 @@ class TelaJogo(
         jogador.armaVisivel?.let { loteModelos.render(it, mundo.ambiente) }
         jogador.facaCabo?.let { loteModelos.render(it, mundo.ambiente) }
         if (jogador.claraoVisivel) loteModelos.render(jogador.clarao, mundo.ambiente)
-        if (!morto && mirando && cameraJogo.mira > 0.6f && atualizarLaser()) {
-            loteModelos.render(laserFeixe)
-            loteModelos.render(laserPonto)
-        }
         for (i in mundo.inimigos.indices) {
             val inimigo = mundo.inimigos[i]
             if (inimigo.visivel && perto(inimigo.posicao.x, inimigo.posicao.z)) loteModelos.render(inimigo.instancia, mundo.ambiente)
@@ -835,7 +800,6 @@ class TelaJogo(
 
     override fun dispose() {
         som.dispose()
-        laserModelo.dispose()
         loteModelos.dispose()
         loteSombra.dispose()
         pos.dispose()
