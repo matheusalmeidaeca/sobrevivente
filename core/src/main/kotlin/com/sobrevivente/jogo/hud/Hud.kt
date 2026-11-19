@@ -42,6 +42,8 @@ class Hud(
     /** Linhas extras no menu (ex.: ouro na loja). */
     var menuSubtitulo = ""
     var morto = false
+    var tempoMorto = 0f
+    var tempoClima = 0f
     var maletaAberta = false
     var inimigosVivos = 0
     private var jogadorX = 0f
@@ -268,6 +270,7 @@ class Hud(
     /** Chamar entre forma.begin(Filled) e forma.end(), com blending ligado. */
     fun desenharFormas(forma: ShapeRenderer) {
         desenharVinhetaDor(forma)
+        minimapa.alvo = if (minimapa.aberto) historia?.alvoMapa() else null
         minimapa.desenhar(forma, jogadorX, jogadorZ, jogadorYaw, mundo)
         barraVida.desenharFormas(forma)
         desenharAvatar(forma)
@@ -278,12 +281,32 @@ class Hud(
         desenharSlotsArma(forma)
         desenharIconeMenu(forma)
         if (!pausado && !morto && !maletaAberta) desenharBarraChefe(forma)
+        if (!pausado && !maletaAberta) desenharClima(forma)
         if (pausado) {
             desenharFormasPausa(forma)
         } else if (morto) {
             desenharFormasMorte(forma)
         } else if (maletaAberta) {
             desenharFormasMaleta(forma)
+        }
+    }
+
+    /** Chuva e neblina em 2D: ciclo lento (cerca de 4 min: seco -> garoa -> chuva forte). So desenho, custo minimo. */
+    private fun desenharClima(forma: ShapeRenderer) {
+        val ciclo = 0.5f + 0.5f * kotlin.math.sin(tempoClima / 38f - 1.2f)
+        val chuva = ((ciclo - 0.45f) / 0.55f).coerceIn(0f, 1f)
+        if (chuva <= 0.02f) return
+        forma.setColor(0.55f, 0.6f, 0.68f, 0.16f * chuva)
+        forma.rect(0f, 0f, largura, altura)
+        val n = (30 + 90 * chuva).toInt()
+        forma.setColor(0.8f, 0.86f, 0.95f, 0.35f)
+        val fase = tempoClima * 900f
+        for (i in 0 until n) {
+            val sx = ((i * 7919) % 1000) / 1000f
+            val sy = ((i * 104729) % 1000) / 1000f
+            val x = (sx * largura + fase * 0.18f) % largura
+            val y = altura - ((sy * altura + fase + i * 37f) % altura)
+            forma.rectLine(x, y, x - 6f, y - 28f, 1.6f)
         }
     }
 
@@ -569,7 +592,7 @@ class Hud(
             Constantes.MORTE_FUNDO_R,
             Constantes.MORTE_FUNDO_G,
             Constantes.MORTE_FUNDO_B,
-            Constantes.MORTE_FUNDO_ALFA
+            Constantes.MORTE_FUNDO_ALFA + 0.3f * minOf(1f, tempoMorto / 2f)
         )
         forma.rect(0f, 0f, largura, altura)
 
@@ -601,6 +624,12 @@ class Hud(
         definirEscala(Constantes.FONTE_ESCALA_HUD)
         barraVida.desenharTexto(lote, fonte)
         overlayDebug.desenhar(lote, fonte, fps, inimigosVivos, debugX, debugYTopo)
+        if (minimapa.aberto) {
+            definirEscala(Constantes.FONTE_ESCALA_HUD * 0.8f)
+            fonte.setColor(1f, 0.95f, 0.6f, 1f)
+            minimapa.desenharNomes(lote, fonte)
+            fonte.setColor(1f, 1f, 1f, 1f)
+        }
         if (maletaAberta) {
             desenharTextosMaleta(lote)
         } else {

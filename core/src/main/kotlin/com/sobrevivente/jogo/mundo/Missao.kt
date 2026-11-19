@@ -18,4 +18,6 @@ interface Missao : Disposable {
     fun interagir(x: Float, z: Float): Boolean
     fun dicaProximo(x: Float, z: Float): String?
     fun desenhar(lote: ModelBatch, ambiente: Environment)
+    /** Posicao (x,z) do objetivo atual para o mapa grande, ou null. Devolve sempre o mesmo array. */
+    fun alvoMapa(): FloatArray? = null
 }

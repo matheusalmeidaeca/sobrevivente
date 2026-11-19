@@ -26,6 +26,8 @@ class Minimapa {
 
     private var textura: Texture? = null
     var aberto = false
+    /** Objetivo atual (x,z) ou null; posto pela Hud. */
+    var alvo: FloatArray? = null
 
     // retangulo do mapa grande (pixels de tela)
     var grandeX = 0f
@@ -200,8 +202,25 @@ class Minimapa {
             if (!e.vivo) continue
             forma.circle(telaXGr(e.posicao.x), telaYGr(e.posicao.z), raioPonto * 0.7f, 8)
         }
+        val a = alvo
+        if (a != null) {
+            val ax = telaXGr(a[0]); val ay = telaYGr(a[1])
+            val pulso = 1f + 0.25f * kotlin.math.sin(System.nanoTime() * 4e-9f)
+            forma.setColor(1f, 0.85f, 0.1f, 1f)
+            forma.circle(ax, ay, raioPonto * 1.9f * pulso, 20)
+            forma.setColor(0.9f, 0.1f, 0.1f, 1f)
+            forma.circle(ax, ay, raioPonto * 1.1f, 16)
+        }
         forma.setColor(0.2f, 0.8f, 1f, 1f)
         seta(forma, telaXGr(jx), telaYGr(jz), raioPonto * 1.3f, yaw)
+    }
+
+    /** Nomes dos bairros sobre o mapa grande (so quando aberto). */
+    fun desenharNomes(lote: SpriteBatch, fonte: com.badlogic.gdx.graphics.g2d.BitmapFont) {
+        if (!aberto || !temImagem) return
+        for (b in com.sobrevivente.jogo.mundo.CidadeMapa.BAIRROS) {
+            fonte.draw(lote, b.first, telaXGr(b.second[0]) - 80f, telaYGr(b.second[1]) + fonte.capHeight * 0.5f, 160f, com.badlogic.gdx.utils.Align.center, false)
+        }
     }
 
     companion object {

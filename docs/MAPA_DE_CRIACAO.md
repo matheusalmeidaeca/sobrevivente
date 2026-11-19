@@ -1120,3 +1120,10 @@ Estado em 15/11/2026: o `gerar-modelo.yml` já está no repositório com a etapa
 - Mira: sprint abaixa a arma; andando a dispersao abre (coronha segura); sprint 1.6x.
 - Ondas: a cada 12 abates sobe a onda (velocidade ate 1.7x, vida ate 2.2x), com aviso na tela.
 - F30: novas armas SUBMETRALHADORA (12 tiros/s, 32 balas) e SNIPER (dano 140, atravessa 3, zoom FOV 30/20) usando modelo/animacao do fuzil; 6 slots no HUD (ACAO_ARMA0 = 8..13, MENU = 14, MIRAR = 15); compra no mercador (220 / 320) e acessorios valem para elas.
+
+## F32 - Progresso salvo, tremor, chuva, mapa com objetivo
+- `Progresso.salvar()/carregar()` (Preferences "sobrevivente"): carrega ao abrir o menu, salva ao concluir fase e a cada compra na loja.
+- Tremor de camera (`CameraTerceiraPessoa.tremor`): tiro (escopeta/sniper mais forte) e dano.
+- Tela de morte escurece/avermelha gradualmente (`Hud.tempoMorto`).
+- Chuva/neblina 2D em ciclo (`Hud.desenharClima`).
+- Mapa grande: nomes dos bairros (`CidadeMapa.BAIRROS`) e marcador pulsante do objetivo (`Missao.alvoMapa()`).

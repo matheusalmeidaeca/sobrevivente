@@ -22,6 +22,8 @@ import com.sobrevivente.jogo.mundo.Progresso
  */
 class TelaMenu(private val jogo: Game) : ScreenAdapter() {
 
+    init { Progresso.carregar() }
+
     private val forma = ShapeRenderer()
     private val lote = SpriteBatch()
     private val fonte = BitmapFont()

@@ -122,6 +122,20 @@ object CidadeMapa {
 
     private fun faixas() = listOf(B1, B2, B3, B4)
 
+    /** Nomes dos bairros no mapa grande: (nome, x, z) ja deformados. */
+    val BAIRROS: List<Pair<String, FloatArray>> by lazy {
+        fun p(x: Float, z: Float) = wa(floatArrayOf(x, z))
+        listOf(
+            "ZONA INDUSTRIAL" to p(100f, -20f),
+            "CENTRO" to p(0f, -20f),
+            "BAIRRO RESIDENCIAL" to p(-105f, -20f),
+            "HOSPITAL" to p(bx0(3) + BW / 2f, B2.z0(0) + 10f),
+            "ESTADIO" to p(bx0(7) + BW / 2f, B1.zc(2)),
+            "PARQUE" to p(bx0(1) + BW / 2f, B1.zc(2)),
+            "COMERCIO" to p(0f, 100f)
+        )
+    }
+
     val BAUS: FloatArray by lazy {
         val l = ArrayList<Float>()
         for (p in BAUS_INTERSECOES) {
@@ -647,6 +661,29 @@ class Cidade(private val mundo: Mundo, val def: DefFase) : Missao {
         val b = if (notaLida[1]) nomes[o[1]] else "?"
         val c = if (notaLida[1]) nomes[o[2]] else "?"
         return "(ordem: $a, $b, $c)"
+    }
+
+    private val alvo = FloatArray(2)
+    private fun ir(x: Float, z: Float): FloatArray { alvo[0] = x; alvo[1] = z; return alvo }
+    private fun obj(t: Tipo, i: Int = -1): Obj? = objetos.firstOrNull { it.tipo == t && (i < 0 || it.indice == i) }
+
+    override fun alvoMapa(): FloatArray? {
+        if (concluida) return null
+        val c = chefe
+        if (c != null) return ir(c.posicao.x, c.posicao.z)
+        val g = CidadeMapa
+        return when {
+            portaoAberto[3] -> ir(g.RADIO_W[0], g.RADIO_W[1])
+            !portaoAberto[0] -> ir(g.CHAVE_AZUL_W[0], g.CHAVE_AZUL_W[1])
+            !portaoAberto[1] -> if (painelLigado) obj(Tipo.PORTAO, 1)?.let { ir(it.x, it.z) }
+                else if (fusiveis >= 3) ir(g.PAINEL_W[0], g.PAINEL_W[1])
+                else objetos.firstOrNull { it.tipo == Tipo.FUSIVEL && it.ativo }?.let { ir(it.x, it.z) }
+            miniAcordado && !miniMorto -> mini?.let { ir(it.posicao.x, it.posicao.z) }
+            !portaoAberto[2] -> if (puzzleResolvido) obj(Tipo.PORTAO, 2)?.let { ir(it.x, it.z) }
+                else objetos.firstOrNull { it.tipo == Tipo.NOTA && it.ativo }?.let { ir(it.x, it.z) }
+            !salvo -> ir(g.CELA_W[0], g.CELA_W[1])
+            else -> obj(Tipo.PORTAO, 3)?.let { ir(it.x, it.z) }
+        }
     }
 
     override fun chefeAtual(): Inimigo? {

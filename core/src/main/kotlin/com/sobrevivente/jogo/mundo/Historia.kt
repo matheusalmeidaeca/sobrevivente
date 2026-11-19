@@ -33,6 +33,37 @@ object Progresso {
     fun novo() {
         ouro = 0; fuzil = false; escopeta = false; smg = false; sniper = false; reserva = 0; curas = 0; java.util.Arrays.fill(mods, 0)
     }
+
+    private var carregado = false
+
+    /** Grava no aparelho (Preferences). Ignora silenciosamente fora do jogo (testes). */
+    fun salvar() {
+        try {
+            val app = com.badlogic.gdx.Gdx.app ?: return
+            val p = app.getPreferences("sobrevivente")
+            p.putInteger("ouro", ouro); p.putBoolean("fuzil", fuzil); p.putBoolean("escopeta", escopeta)
+            p.putBoolean("smg", smg); p.putBoolean("sniper", sniper); p.putInteger("reserva", reserva)
+            p.putInteger("curas", curas); p.putInteger("fase", faseMaxima)
+            p.putString("mods", mods.joinToString(","))
+            p.flush()
+        } catch (e: Exception) { }
+    }
+
+    /** Le do aparelho uma unica vez por execucao. */
+    fun carregar() {
+        if (carregado) return
+        carregado = true
+        try {
+            val app = com.badlogic.gdx.Gdx.app ?: return
+            val p = app.getPreferences("sobrevivente")
+            if (!p.contains("fase")) return
+            ouro = p.getInteger("ouro"); fuzil = p.getBoolean("fuzil"); escopeta = p.getBoolean("escopeta")
+            smg = p.getBoolean("smg"); sniper = p.getBoolean("sniper"); reserva = p.getInteger("reserva")
+            curas = p.getInteger("curas"); faseMaxima = p.getInteger("fase")
+            val m = p.getString("mods").split(",")
+            for (i in mods.indices) mods[i] = m.getOrNull(i)?.toIntOrNull() ?: 0
+        } catch (e: Exception) { }
+    }
 }
 
 /**
@@ -201,6 +232,19 @@ class Historia(private val mundo: Mundo, val def: DefFase) : Missao {
     private fun recalcular() {
         objetivoTexto = objetivo()
         dicaTexto = dica()
+    }
+
+    private val alvo = FloatArray(2)
+    private fun ir(x: Float, z: Float): FloatArray { alvo[0] = x; alvo[1] = z; return alvo }
+
+    override fun alvoMapa(): FloatArray? {
+        if (concluida) return null
+        val c = chefe
+        if (c != null) return ir(c.posicao.x, c.posicao.z)
+        if (fragmentos >= 3) return ir(def.altar[0], def.altar[1])
+        val m = mini
+        if (miniAcordado && !miniMorto && m != null) return ir(m.posicao.x, m.posicao.z)
+        return objetos.firstOrNull { it.tipo == Tipo.FRAGMENTO && it.ativo && !it.estado }?.let { ir(it.x, it.z) }
     }
 
     private fun objetivo(): String = when {

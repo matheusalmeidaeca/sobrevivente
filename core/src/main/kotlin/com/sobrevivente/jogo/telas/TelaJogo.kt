@@ -137,7 +137,7 @@ class TelaJogo(
         hud.mostrarMensagem(Fases.atual.subtitulo + ": " + Fases.atual.nome)
     }
 
-    private fun concluirFase() {
+    private fun sincronizarProgresso() {
         Progresso.fuzil = arma.estaLiberada(TipoArma.FUZIL)
         Progresso.escopeta = arma.estaLiberada(TipoArma.ESCOPETA)
         Progresso.smg = arma.estaLiberada(TipoArma.SUBMETRALHADORA)
@@ -145,6 +145,11 @@ class TelaJogo(
         Progresso.reserva = arma.reserva
         arma.exportar(Progresso.mods)
         Progresso.curas = maleta.total(TipoItem.CURA)
+    }
+
+    private fun concluirFase() {
+        sincronizarProgresso()
+        Progresso.salvar()
         som.tocar("fase_completa", 0.9f)
         abrirMenu(2)
     }
@@ -316,6 +321,8 @@ class TelaJogo(
         val msg = efeito()
         if (msg == null) return
         Progresso.ouro -= preco
+        sincronizarProgresso()
+        Progresso.salvar()
         montarLoja(msg)
     }
 
@@ -414,6 +421,12 @@ class TelaJogo(
         val atirou = arma.atualizar(dt, atirando, controles.consumirPressao(ControlesToque.ACAO_RECARREGAR))
         if (atirou) {
             val tipo = arma.tipo
+            cameraJogo.tremor = maxOf(cameraJogo.tremor, when (tipo) {
+                com.sobrevivente.jogo.mundo.TipoArma.ESCOPETA -> 0.7f
+                com.sobrevivente.jogo.mundo.TipoArma.SNIPER -> 0.9f
+                com.sobrevivente.jogo.mundo.TipoArma.PISTOLA -> 0.2f
+                else -> 0.3f
+            })
             som.tocar(
                 when (tipo) {
                     com.sobrevivente.jogo.mundo.TipoArma.PISTOLA -> "tiro_pistola"
@@ -554,6 +567,10 @@ class TelaJogo(
         }
         // dor
         tempoDorSom -= dt
+        if (jogador.vida < vidaAnterior) cameraJogo.tremor = maxOf(cameraJogo.tremor, 1f)
+        cameraJogo.tremor = maxOf(0f, cameraJogo.tremor - dt * 4f)
+        if (morto) hud.tempoMorto += dt
+        hud.tempoClima += dt
         if (jogador.vida < vidaAnterior && tempoDorSom <= 0f) {
             som.tocarVariante("jogador_dor", 2, 0.9f)
             som.tocar("zumbi_ataque", 0.45f)
@@ -696,6 +713,7 @@ class TelaJogo(
 
     private fun morrer() {
         morto = true
+        hud.tempoMorto = 0f
         hud.morto = true
         controles.definirMorto(true) // solta os dedos; só REINICIAR responde
         Gdx.app.log("TELA", "jogador morreu")

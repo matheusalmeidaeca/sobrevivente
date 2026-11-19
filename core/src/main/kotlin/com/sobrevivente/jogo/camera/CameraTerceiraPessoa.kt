@@ -60,6 +60,9 @@ class CameraTerceiraPessoa {
     }
 
     /** `alvo` = posição dos pés do jogador. Sem alocação. */
+    /** Tremor de camera (0..1); decai em TelaJogo. */
+    var tremor = 0f
+
     fun seguir(alvo: Vector3) {
         val yawRad = yaw * MathUtils.degreesToRadians
         val pitchRad = pitch * MathUtils.degreesToRadians
@@ -104,7 +107,8 @@ class CameraTerceiraPessoa {
 
         val cx = alvo.x + dx * fator; val cz = alvo.z + dz * fator
         cameraY = maxOf(cameraY, com.sobrevivente.jogo.mundo.Terreno.alturaChao(cx, cz) + 0.5f)
-        camera.position.set(cx, cameraY, cz)
+        val tr = tremor * 0.12f
+        camera.position.set(cx + com.badlogic.gdx.math.MathUtils.random(-tr, tr), cameraY + com.badlogic.gdx.math.MathUtils.random(-tr, tr), cz + com.badlogic.gdx.math.MathUtils.random(-tr, tr))
         camera.direction.set(frenteX, frenteY, frenteZ)
         camera.up.set(0f, 1f, 0f)
         camera.update()
