@@ -740,6 +740,7 @@ class TelaJogo(
         loteModelos.end()
         loteModelos.begin(cameraJogo.camera)
         loteModelos.render(mundo.chao, mundo.ambiente)
+        mundo.agua?.let { loteModelos.render(it, mundo.ambiente) }
         loteModelos.render(mundo.cenario.decoracao, mundo.ambiente)
         for (i in mundo.cenario.telhados.indices) {
             if (mundo.cenario.telhadoVisivel(i)) loteModelos.render(mundo.cenario.telhados[i], mundo.ambiente)

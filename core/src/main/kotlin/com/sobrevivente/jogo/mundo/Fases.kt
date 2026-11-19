@@ -322,7 +322,11 @@ class MapaBuilder {
     private fun aplicarRelevo() {
         val p = Constantes.PAREDES
         for (k in 0 until p.size / 4) {
-            if (Constantes.PAREDES_BASE[k] != 0f) {
+            if (Constantes.PAREDES_BASE[k] == 0f) {
+                val mn = Terreno.minEm(p[k * 4], p[k * 4 + 1], p[k * 4 + 2], p[k * 4 + 3])
+                if (mn < -0.01f) { Constantes.PAREDES_BASE[k] = mn; Constantes.PAREDES_ALTURA[k] -= mn }
+            }
+            if (Constantes.PAREDES_BASE[k] > 0f) {
                 Constantes.PAREDES_BASE[k] += Terreno.alturaChao((p[k * 4] + p[k * 4 + 2]) / 2f, (p[k * 4 + 1] + p[k * 4 + 3]) / 2f) // verga de porta
                 continue
             }

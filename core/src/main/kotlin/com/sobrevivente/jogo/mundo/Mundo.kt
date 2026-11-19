@@ -32,6 +32,10 @@ class Mundo : Disposable {
     var luzSol: DirectionalShadowLight? = null
         private set
     val chao: ModelInstance
+    /** Agua dos rios (so na cidade). */
+    var agua: ModelInstance? = null
+        private set
+    private var modeloAgua: Model? = null
     private val modeloChao: Model
     /** Modelo animado do zumbi (F2); null = capsula placeholder. */
     private val modeloZumbi: Model? = CarregadorModelos.carregar(Constantes.MODELO_ZUMBI)
@@ -115,6 +119,8 @@ class Mundo : Disposable {
         sombras = Array(Constantes.INIMIGOS_POOL.coerceAtLeast(Constantes.INIMIGOS_XZ.size / 2) + 1) { ModelInstance(modeloSombra) }
         modeloChao = criarModeloChao()
         chao = ModelInstance(modeloChao)
+        modeloAgua = criarModeloAgua()
+        agua = modeloAgua?.let { ModelInstance(it) }
 
         // Pool de zumbis: os primeiros ja nascem na vila; o resto fica "morto e invisivel" esperando o respawn.
         modeloInimigo = modeloZumbi ?: criarModeloInimigo()
@@ -732,6 +738,31 @@ class Mundo : Disposable {
         )
     }
 
+    /** Faixa de agua azul translucida seguindo cada rio. */
+    private fun criarModeloAgua(): Model? {
+        val rios = Terreno.rios
+        if (rios.isEmpty()) return null
+        val atributos = (Usage.Position or Usage.Normal).toLong()
+        val mb = ModelBuilder()
+        mb.begin()
+        val mat = Material(
+            ColorAttribute.createDiffuse(0.10f, 0.28f, 0.40f, 1f),
+            com.badlogic.gdx.graphics.g3d.attributes.BlendingAttribute(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA, 0.72f),
+            IntAttribute.createCullFace(GL20.GL_NONE)
+        )
+        val parte = mb.part("agua", GL20.GL_TRIANGLES, atributos, mat)
+        val y = Terreno.NIVEL_AGUA
+        val meia = 11f
+        for (rio in rios) for (k in 0 until rio.size / 2 - 1) {
+            val ax = rio[k * 2]; val az = rio[k * 2 + 1]; val bx = rio[k * 2 + 2]; val bz = rio[k * 2 + 3]
+            val dx = bx - ax; val dz = bz - az
+            val l = kotlin.math.sqrt(dx * dx + dz * dz).coerceAtLeast(0.01f)
+            val nx = -dz / l * meia; val nz = dx / l * meia
+            parte.rect(ax - nx, y, az - nz, ax + nx, y, az + nz, bx + nx, y, bz + nz, bx - nx, y, bz - nz, 0f, 1f, 0f)
+        }
+        return mb.end()
+    }
+
     /** Chao em quadrados, cada um com um tom diferente (cor por vertice). Na cidade segue o relevo (Terreno). */
     private fun criarModeloChao(): Model {
         val atributos = (Usage.Position or Usage.Normal or Usage.ColorPacked).toLong()
@@ -755,7 +786,11 @@ class Mundo : Disposable {
                 val onda = MathUtils.sin(i * 0.23f * lado / 4f) * MathUtils.cos(j * 0.19f * lado / 4f) * 0.5f + 0.5f
                 val seco = MathUtils.clamp(onda * 0.8f + rnd.nextFloat() * 0.25f - 0.1f, 0f, 1f)
                 val brilho = 0.86f + rnd.nextFloat() * 0.22f
-                if (asfalto) {
+                val hMedia = (Terreno.alturaChao(x0 + lado / 2f, z0 + lado / 2f))
+                if (relevo && hMedia < 0.4f) { // leito/margem do rio: lama escura
+                    val l = MathUtils.clamp(0.4f - hMedia, 0f, 1f)
+                    parte.setColor(MathUtils.lerp(0.22f, 0.20f, l) * brilho, MathUtils.lerp(0.21f, 0.17f, l) * brilho, MathUtils.lerp(0.20f, 0.12f, l) * brilho, 1f)
+                } else if (asfalto) {
                     val t = 0.20f + seco * 0.07f
                     parte.setColor(t * brilho, (t + 0.01f) * brilho, (t + 0.03f) * brilho, 1f)
                 } else parte.setColor(
@@ -783,6 +818,7 @@ class Mundo : Disposable {
 
     override fun dispose() {
         modeloChao.dispose()
+        modeloAgua?.dispose()
         luzSol?.dispose()
         modeloSombra.dispose()
         cenario.dispose()

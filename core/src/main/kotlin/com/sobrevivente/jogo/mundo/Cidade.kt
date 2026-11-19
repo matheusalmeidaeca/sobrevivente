@@ -202,7 +202,15 @@ object CidadeMapa {
 
     fun construir(b: MapaBuilder) {
         b.warp = { x, z -> w(x, z) }
-        Terreno.construir()
+        // rios (decoracao + vale) ao longo das muralhas dos portoes A e C: o portao vira a ponte
+        val rios = ArrayList<FloatArray>()
+        for (zl in floatArrayOf(PORTAO_Z[0], PORTAO_Z[2])) {
+            val pts = ArrayList<Float>()
+            var xl = -W
+            while (xl <= W + 0.1f) { val r = w(xl, zl); pts.add(r[0]); pts.add(r[1]); xl += 6f }
+            rios.add(pts.toFloatArray())
+        }
+        Terreno.construir(rios)
         b.cerco(-W, -W, W, W, 4f, 12)
         val fs = faixas()
 
@@ -491,13 +499,13 @@ class Cidade(private val mundo: Mundo, val def: DefFase) : Missao {
 
     private fun colocar(m: Model, x: Float, z: Float, graus: Float): ModelInstance {
         val inst = ModelInstance(m)
-        inst.transform.setToTranslation(x, 0f, z).rotate(Vector3.Y, graus)
+        inst.transform.setToTranslation(x, Terreno.alturaChao(x, z), z).rotate(Vector3.Y, graus)
         return inst
     }
 
     private fun posicionarHaste(o: Obj) {
         val h = o.haste ?: return
-        h.transform.setToTranslation(o.x, 0.2f, o.z).rotate(Vector3.X, if (o.estado) 38f else -38f)
+        h.transform.setToTranslation(o.x, 0.2f + Terreno.alturaChao(o.x, o.z), o.z).rotate(Vector3.X, if (o.estado) 38f else -38f)
     }
 
     // ------------------------------------------------------------------ textos do HUD
@@ -557,9 +565,9 @@ class Cidade(private val mundo: Mundo, val def: DefFase) : Missao {
         for (o in objetos) {
             if (!o.ativo) continue
             when (o.tipo) {
-                Tipo.FUSIVEL, Tipo.CHAVE -> o.instancia.transform.setToTranslation(o.x, 1.0f + MathUtils.sin(tempo * 2.2f) * 0.12f, o.z)
+                Tipo.FUSIVEL, Tipo.CHAVE -> o.instancia.transform.setToTranslation(o.x, Terreno.alturaChao(o.x, o.z) + 1.0f + MathUtils.sin(tempo * 2.2f) * 0.12f, o.z)
                     .rotate(Vector3.Y, tempo * 80f)
-                Tipo.NOTA -> o.instancia.transform.setToTranslation(o.x, 0.9f + MathUtils.sin(tempo * 2.0f) * 0.08f, o.z)
+                Tipo.NOTA -> o.instancia.transform.setToTranslation(o.x, Terreno.alturaChao(o.x, o.z) + 0.9f + MathUtils.sin(tempo * 2.0f) * 0.08f, o.z)
                     .rotate(Vector3.Y, tempo * 50f).rotate(Vector3.X, 20f)
                 else -> {}
             }

@@ -16,7 +16,12 @@ object Terreno {
     /** Relevo ligado (so na cidade). */
     val ativo: Boolean get() = raster != null
 
-    fun limpar() { raster = null }
+    /** Rios: cada um e uma lista de pontos (x, z, x, z, ...) no mundo. */
+    var rios: List<FloatArray> = emptyList()
+        private set
+    const val NIVEL_AGUA = -0.3f
+
+    fun limpar() { raster = null; rios = emptyList() }
 
     /** Relevo base: colinas suaves (inclinacao maxima ~0,26). */
     private fun base(x: Float, z: Float): Float {
@@ -26,10 +31,48 @@ object Terreno {
     }
 
     /** Monta o mapa de alturas (1 m). Chamar ANTES de criar paredes e decoracao (elas se ajustam ao relevo). */
-    fun construir() {
+    fun construir(riosMundo: List<FloatArray> = emptyList()) {
+        rios = riosMundo
         val r = FloatArray(N * N)
-        for (j in 0 until N) for (i in 0 until N) r[j * N + i] = base(ORIGEM + i, ORIGEM + j)
+        for (j in 0 until N) for (i in 0 until N) {
+            val x = ORIGEM + i; val z = ORIGEM + j
+            var h = base(x, z)
+            for (rio in riosMundo) {
+                val d = distancia(rio, x, z)
+                if (d >= 13f) continue
+                val t = if (d <= 5f) 0f else (d - 5f) / 8f
+                val w = 1f - t * t * (3f - 2f * t)
+                h += (-1.0f - h) * w // leito do rio
+            }
+            r[j * N + i] = h
+        }
         raster = r
+    }
+
+    private fun distancia(rio: FloatArray, x: Float, z: Float): Float {
+        var m = 1e9f
+        for (k in 0 until rio.size / 2 - 1) {
+            val ax = rio[k * 2]; val az = rio[k * 2 + 1]; val bx = rio[k * 2 + 2]; val bz = rio[k * 2 + 3]
+            val dx = bx - ax; val dz = bz - az
+            val l2 = dx * dx + dz * dz
+            val t = if (l2 < 0.0001f) 0f else (((x - ax) * dx + (z - az) * dz) / l2).coerceIn(0f, 1f)
+            val ex = ax + dx * t - x; val ez = az + dz * t - z
+            val q = ex * ex + ez * ez
+            if (q < m) m = q
+        }
+        return kotlin.math.sqrt(m)
+    }
+
+    /** Menor altura do chao dentro do retangulo. */
+    fun minEm(x0: Float, z0: Float, x1: Float, z1: Float): Float {
+        if (raster == null) return 0f
+        var m = 1e9f
+        val nx = ((x1 - x0) / 2f).toInt() + 1; val nz = ((z1 - z0) / 2f).toInt() + 1
+        for (a in 0..nx) for (b in 0..nz) {
+            val h = alturaChao(x0 + (x1 - x0) * a / nx, z0 + (z1 - z0) * b / nz)
+            if (h < m) m = h
+        }
+        return m
     }
 
     /** Altura do chao natural em (x, z). 0 se nao ha relevo. */
