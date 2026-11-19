@@ -95,7 +95,7 @@ class TelaMenu(private val jogo: Game) : ScreenAdapter() {
         when (acao) {
             0 -> {
                 acao = -1
-                jogo.setScreen(TelaJogo(jogo))
+                jogo.setScreen(TelaCarregando(jogo))
                 dispose()
                 return
             }
@@ -103,7 +103,7 @@ class TelaMenu(private val jogo: Game) : ScreenAdapter() {
                 acao = -1
                 // Modo historia: comeca na fase liberada (a memoria dura ate fechar o app; ainda sem salvar em disco)
                 if (Progresso.faseMaxima == 0) Progresso.novo()
-                jogo.setScreen(TelaJogo(jogo, true, Progresso.faseMaxima.coerceAtMost(Fases.total - 1)))
+                jogo.setScreen(TelaCarregando(jogo, true, Progresso.faseMaxima.coerceAtMost(Fases.total - 1)))
                 dispose()
                 return
             }

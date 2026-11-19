@@ -654,7 +654,7 @@ class TelaJogo(
         if (proximaFase >= 0) { // fase concluida -> proxima fase: nova tela com o mapa novo
             val n = proximaFase
             proximaFase = -1
-            jogo.setScreen(TelaJogo(jogo, true, n))
+            jogo.setScreen(TelaCarregando(jogo, true, n))
             dispose()
             return
         }
