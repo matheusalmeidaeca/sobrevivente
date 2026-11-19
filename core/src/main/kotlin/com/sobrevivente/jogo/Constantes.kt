@@ -172,6 +172,21 @@ object Constantes {
     const val FUZIL_RESERVA_INICIAL = 90
     const val FUZIL_RECARGA_S = 2.2f
     const val FUZIL_ALCANCE = 45f
+    // Submetralhadora: cadencia alta, dano baixo, carregador grande
+    const val SMG_DANO = 12
+    const val SMG_CADENCIA = 12f
+    const val SMG_CARREGADOR = 32
+    const val SMG_RESERVA_INICIAL = 96
+    const val SMG_RECARGA_S = 1.8f
+    const val SMG_ALCANCE = 28f
+    const val SMG_DISPERSAO = 0.020f
+    // Rifle de precisao: 1 tiro forte, atravessa, alcance longo
+    const val SNIPER_DANO = 140
+    const val SNIPER_CADENCIA = 0.9f
+    const val SNIPER_CARREGADOR = 5
+    const val SNIPER_RESERVA_INICIAL = 15
+    const val SNIPER_RECARGA_S = 2.8f
+    const val SNIPER_ALCANCE = 110f
     const val ESCOPETA_DANO = 14 // por bago
     const val ESCOPETA_PROJETEIS = 6
     const val ESCOPETA_DISPERSAO = 0.045f // radianos

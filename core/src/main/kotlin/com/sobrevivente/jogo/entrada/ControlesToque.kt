@@ -257,14 +257,14 @@ class ControlesToque : InputAdapter() {
         val raioSlot = Constantes.SLOT_ARMA_LADO_DP * 0.5f * densidade
         val passoSlot = 2f * raioSlot + Constantes.SLOT_ARMA_ESPACO_DP * densidade
         val ySlot = Constantes.SLOT_ARMA_BASE_DP * densidade + raioSlot
-        for (k in 0..3) {
-            definirAcao(ACAO_ARMA0 + k, largura * 0.5f + (k - 1.5f) * passoSlot, ySlot, raioSlot, raioSlot)
+        for (k in 0..5) {
+            definirAcao(ACAO_ARMA0 + k, largura * 0.5f + (k - 2.5f) * passoSlot, ySlot, raioSlot, raioSlot)
         }
         // icone do menu (start): topo, centro da tela
         val raioMenu = Constantes.MENU_ICONE_DIAMETRO_DP * 0.5f * densidade
         definirAcao(ACAO_MENU, largura * 0.5f, altura - margem - raioMenu, raioMenu, alvoMinimo)
         val raioCura = Constantes.CURAR_RAPIDO_DIAMETRO_DP * 0.5f * densidade
-        definirAcao(ACAO_CURAR, largura * 0.5f - 2.5f * passoSlot, ySlot, raioCura, alvoMinimo)
+        definirAcao(ACAO_CURAR, largura * 0.5f - 3.5f * passoSlot, ySlot, raioCura, alvoMinimo)
     }
 
     /** Botão REINICIAR: centrado na largura, logo abaixo do meio da tela (o título fica acima). */
@@ -699,11 +699,11 @@ class ControlesToque : InputAdapter() {
         const val ACAO_AGACHAR = 5
         const val ACAO_CURAR = 6
         const val ACAO_ATIRAR_ESQ = 7
-        const val ACAO_ARMA0 = 8 // 8..11 = slots de arma (pistola, fuzil, escopeta, faca)
-        const val NUM_BOTOES_CIRCULARES = 8 // 0..7 sao desenhados por BotoesAcao; 8..11 pelo Hud
-        const val ACAO_MENU = 12 // icone de menu (start) no topo; desenhado pelo Hud
-        const val ACAO_MIRAR = 13 // botao de mira (liga/desliga a mira com laser); desenhado pelo Hud
-        const val NUM_ACOES = 14
+        const val ACAO_ARMA0 = 8 // 8..13 = slots de arma (pistola, fuzil, escopeta, submetralhadora, rifle, faca)
+        const val NUM_BOTOES_CIRCULARES = 8 // 0..7 sao desenhados por BotoesAcao; 8..13 pelo Hud
+        const val ACAO_MENU = 14 // icone de menu (start) no topo; desenhado pelo Hud
+        const val ACAO_MIRAR = 15 // botao de mira (liga/desliga a mira com laser); desenhado pelo Hud
+        const val NUM_ACOES = 16
         const val NUM_PAUSA = 6
         private const val SEM_PONTEIRO = -1
         private const val SEM_SLOT = -1

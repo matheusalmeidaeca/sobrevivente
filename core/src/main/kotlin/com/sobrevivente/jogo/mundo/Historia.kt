@@ -21,15 +21,17 @@ object Progresso {
     var ouro = 0
     var fuzil = false
     var escopeta = false
+    var smg = false
+    var sniper = false
     var reserva = 0
     var curas = 0
     /** Melhorias das armas (4 numeros por arma: nivel, pente, coronha, mira). */
-    val mods = IntArray(16)
+    val mods = IntArray(20)
     /** Maior fase ja liberada (0 = so a primeira). */
     var faseMaxima = 0
 
     fun novo() {
-        ouro = 0; fuzil = false; escopeta = false; reserva = 0; curas = 0; java.util.Arrays.fill(mods, 0)
+        ouro = 0; fuzil = false; escopeta = false; smg = false; sniper = false; reserva = 0; curas = 0; java.util.Arrays.fill(mods, 0)
     }
 }
 

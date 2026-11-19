@@ -114,6 +114,8 @@ class TelaJogo(
     private fun aplicarProgresso() {
         if (Progresso.fuzil && maleta.adicionarArma(TipoArma.FUZIL)) arma.liberar(TipoArma.FUZIL)
         if (Progresso.escopeta && maleta.adicionarArma(TipoArma.ESCOPETA)) arma.liberar(TipoArma.ESCOPETA)
+        if (Progresso.smg && maleta.adicionarArma(TipoArma.SUBMETRALHADORA)) arma.liberar(TipoArma.SUBMETRALHADORA)
+        if (Progresso.sniper && maleta.adicionarArma(TipoArma.SNIPER)) arma.liberar(TipoArma.SNIPER)
         arma.importar(Progresso.mods)
         arma.adicionarReserva(Progresso.reserva)
         if (Progresso.curas > 0) maleta.adicionar(TipoItem.CURA, Progresso.curas)
@@ -138,6 +140,8 @@ class TelaJogo(
     private fun concluirFase() {
         Progresso.fuzil = arma.estaLiberada(TipoArma.FUZIL)
         Progresso.escopeta = arma.estaLiberada(TipoArma.ESCOPETA)
+        Progresso.smg = arma.estaLiberada(TipoArma.SUBMETRALHADORA)
+        Progresso.sniper = arma.estaLiberada(TipoArma.SNIPER)
         Progresso.reserva = arma.reserva
         arma.exportar(Progresso.mods)
         Progresso.curas = maleta.total(TipoItem.CURA)
@@ -261,6 +265,8 @@ class TelaJogo(
     private val PRECO_CURA = 35
     private val PRECO_FUZIL = 150
     private val PRECO_ESCOPETA = 180
+    private val PRECO_SMG = 220
+    private val PRECO_SNIPER = 320
     private val PRECO_PENTE = 120
     private val PRECO_CORONHA = 100
     private val PRECO_MIRA = 110
@@ -273,9 +279,11 @@ class TelaJogo(
                 r = arrayOf(
                     if (arma.estaLiberada(TipoArma.FUZIL)) "FUZIL  (ja tem)" else "FUZIL  ($PRECO_FUZIL)",
                     if (arma.estaLiberada(TipoArma.ESCOPETA)) "ESCOPETA  (ja tem)" else "ESCOPETA  ($PRECO_ESCOPETA)",
+                    if (arma.estaLiberada(TipoArma.SUBMETRALHADORA)) "SUBMETRALHADORA  (ja tem)" else "SUBMETRALHADORA  ($PRECO_SMG)",
+                    if (arma.estaLiberada(TipoArma.SNIPER)) "RIFLE DE PRECISAO  (ja tem)" else "RIFLE DE PRECISAO  ($PRECO_SNIPER)",
                     "VOLTAR"
                 )
-                c = intArrayOf(2, 2, 1)
+                c = intArrayOf(2, 2, 2, 2, 1)
             }
             2 -> {
                 val f = arma.faca
@@ -326,6 +334,10 @@ class TelaJogo(
                      else gastar(PRECO_FUZIL) { if (maleta.adicionarArma(TipoArma.FUZIL)) { arma.liberar(TipoArma.FUZIL); "Comprou o fuzil" } else { montarLoja(Constantes.MSG_MALETA_CHEIA); null } }
                 1 -> if (arma.estaLiberada(TipoArma.ESCOPETA)) montarLoja("Voce ja tem a escopeta")
                      else gastar(PRECO_ESCOPETA) { if (maleta.adicionarArma(TipoArma.ESCOPETA)) { arma.liberar(TipoArma.ESCOPETA); "Comprou a escopeta" } else { montarLoja(Constantes.MSG_MALETA_CHEIA); null } }
+                2 -> if (arma.estaLiberada(TipoArma.SUBMETRALHADORA)) montarLoja("Voce ja tem a submetralhadora")
+                     else gastar(PRECO_SMG) { if (maleta.adicionarArma(TipoArma.SUBMETRALHADORA)) { arma.liberar(TipoArma.SUBMETRALHADORA); "Comprou a submetralhadora" } else { montarLoja(Constantes.MSG_MALETA_CHEIA); null } }
+                3 -> if (arma.estaLiberada(TipoArma.SNIPER)) montarLoja("Voce ja tem o rifle")
+                     else gastar(PRECO_SNIPER) { if (maleta.adicionarArma(TipoArma.SNIPER)) { arma.liberar(TipoArma.SNIPER); "Comprou o rifle de precisao" } else { montarLoja(Constantes.MSG_MALETA_CHEIA); null } }
                 else -> { lojaPagina = 0; montarLoja("") }
             }
             else -> {
@@ -403,7 +415,7 @@ class TelaJogo(
             som.tocar(
                 when (tipo) {
                     com.sobrevivente.jogo.mundo.TipoArma.PISTOLA -> "tiro_pistola"
-                    com.sobrevivente.jogo.mundo.TipoArma.FUZIL -> "tiro_fuzil"
+                    com.sobrevivente.jogo.mundo.TipoArma.FUZIL, com.sobrevivente.jogo.mundo.TipoArma.SUBMETRALHADORA, com.sobrevivente.jogo.mundo.TipoArma.SNIPER -> "tiro_fuzil"
                     else -> "tiro_escopeta"
                 },
                 1f, 0f, 0.03f
@@ -447,7 +459,7 @@ class TelaJogo(
             if (arma.trocar()) hud.mostrarMensagem(nomeEquipado())
             else hud.mostrarMensagem("Sem outra arma")
         }
-        for (k in 0..3) {
+        for (k in 0..5) {
             if (controles.consumirPressao(ControlesToque.ACAO_ARMA0 + k)) escolherSlotArma(k)
         }
         if (controles.consumirPressao(ControlesToque.ACAO_CURAR)) usarCuraRapida()
@@ -776,7 +788,7 @@ class TelaJogo(
         }
         if (arma.faca) hud.definirMunicao("FACA", -1, 0, false)
         else hud.definirMunicao(arma.nomeComNivel, arma.carregador, arma.reserva, arma.recarregando)
-        hud.definirArmas(arma.slotAtivo, arma.estaLiberada(com.sobrevivente.jogo.mundo.TipoArma.FUZIL), arma.estaLiberada(com.sobrevivente.jogo.mundo.TipoArma.ESCOPETA))
+        hud.definirArmas(arma.slotAtivo, arma.estaLiberada(TipoArma.FUZIL), arma.estaLiberada(TipoArma.ESCOPETA), arma.estaLiberada(TipoArma.SUBMETRALHADORA), arma.estaLiberada(TipoArma.SNIPER))
         hud.definirAbates(mundo.abates)
         hud.definirCuras(maleta.total(TipoItem.CURA))
         hud.definirDor(jogador.dor)

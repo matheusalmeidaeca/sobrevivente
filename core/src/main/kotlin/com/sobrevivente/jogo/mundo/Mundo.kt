@@ -658,7 +658,7 @@ class Mundo : Disposable {
         impactoMorreu = false
         impactoCritico = false
         // O fuzil atravessa ate 2 zumbis (o segundo leva menos dano).
-        val maxAlvos = if (arma == TipoArma.FUZIL) 2 else 1
+        val maxAlvos = if (arma == TipoArma.SNIPER) 3 else if (arma == TipoArma.FUZIL) 2 else 1
         var danoAtual = dano
         var acertos = 0
         while (acertos < maxAlvos) {

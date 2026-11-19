@@ -59,7 +59,7 @@ class Hud(
 
     // F10: slots de arma, abates, cura rapida, dor
     private var slotAtivo = 0
-    private val slotLiberado = booleanArrayOf(true, false, false, true)
+    private val slotLiberado = booleanArrayOf(true, false, false, false, false, true)
     private var abates = 0
     private var curas = 0
     private var dor = 0f
@@ -106,10 +106,12 @@ class Hud(
     }
 
     /** Slot ativo (0..2 = armas de fogo, 3 = faca) e quais armas ja foram achadas (a faca e a pistola sempre). */
-    fun definirArmas(ativo: Int, fuzilLiberado: Boolean, escopetaLiberada: Boolean) {
+    fun definirArmas(ativo: Int, fuzilLiberado: Boolean, escopetaLiberada: Boolean, smgLiberada: Boolean, sniperLiberado: Boolean) {
         slotAtivo = ativo
         slotLiberado[1] = fuzilLiberado
         slotLiberado[2] = escopetaLiberada
+        slotLiberado[3] = smgLiberada
+        slotLiberado[4] = sniperLiberado
     }
 
     fun definirAbates(valor: Int) {
@@ -426,6 +428,17 @@ class Hud(
                 forma.rect(cx - hw * 1.0f, cy - hh * 0.45f, hw * 0.5f, hh * 0.65f)
                 forma.rect(cx + hw * 0.0f, cy - hh * 0.30f, hw * 0.5f, hh * 0.22f)
             }
+            3 -> { // submetralhadora: corpo curto e carregador longo
+                forma.rect(cx - hw * 0.75f, cy - hh * 0.05f, hw * 1.5f, hh * 0.32f)
+                forma.rect(cx - hw * 0.15f, cy - hh * 0.8f, hw * 0.3f, hh * 0.8f)
+                forma.rect(cx - hw * 0.9f, cy - hh * 0.3f, hw * 0.35f, hh * 0.45f)
+                forma.rect(cx + hw * 0.7f, cy + hh * 0.05f, hw * 0.3f, hh * 0.12f)
+            }
+            4 -> { // rifle de precisao: cano longo e luneta
+                forma.rect(cx - hw * 1.0f, cy - hh * 0.05f, hw * 2.0f, hh * 0.2f)
+                forma.rect(cx - hw * 1.0f, cy - hh * 0.3f, hw * 0.5f, hh * 0.4f)
+                forma.rect(cx - hw * 0.3f, cy + hh * 0.15f, hw * 0.6f, hh * 0.22f)
+            }
             else -> { // faca
                 forma.rectLine(cx - hw * 0.15f, cy - hh * 0.7f, cx + hw * 0.55f, cy + hh * 0.7f, hh * 0.32f)
                 forma.rectLine(cx - hw * 0.55f, cy - hh * 0.9f, cx - hw * 0.25f, cy - hh * 0.35f, hh * 0.3f)
@@ -436,7 +449,7 @@ class Hud(
     /** Fileira de 4 slots (3 armas + faca), estilo Free Fire: o ativo tem moldura amarela; os nao achados ficam apagados. */
     private fun desenharSlotsArma(forma: ShapeRenderer) {
         val borda = 2f * densidade
-        for (k in 0..3) {
+        for (k in 0..5) {
             val i = ControlesToque.ACAO_ARMA0 + k
             val pressionado = controles.acaoPressionada(i)
             val r = controles.acaoRaio(i) * (if (pressionado) Constantes.BOTAO_ESCALA_PRESSIONADO else 1f)
@@ -533,7 +546,7 @@ class Hud(
             forma.setColor(1f, 1f, 1f, 0.85f)
             when (item.tipo) {
                 TipoItem.ARMA -> desenharIconeArma(forma, item.arma!!.ordinal, x + w * 0.5f, y + h * 0.58f, w * 0.40f, h * 0.30f)
-                TipoItem.FACA -> desenharIconeArma(forma, 3, x + w * 0.5f, y + h * 0.58f, w * 0.40f, h * 0.30f)
+                TipoItem.FACA -> desenharIconeArma(forma, 5, x + w * 0.5f, y + h * 0.58f, w * 0.40f, h * 0.30f)
                 TipoItem.MUNICAO -> {
                     val bw = w * 0.14f
                     for (k in -1..1) {
@@ -548,7 +561,7 @@ class Hud(
         }
     }
 
-    private fun facaEquipada(): Boolean = slotAtivo == 3
+    private fun facaEquipada(): Boolean = slotAtivo == 5
 
     /** Véu vermelho sobre a tela e o botão REINICIAR (mais escuro enquanto o dedo está nele). */
     private fun desenharFormasMorte(forma: ShapeRenderer) {

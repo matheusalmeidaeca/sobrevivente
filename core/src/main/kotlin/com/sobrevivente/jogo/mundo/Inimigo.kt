@@ -525,6 +525,12 @@ class Inimigo(modelo: Model, x: Float, z: Float, private val animado: Boolean = 
                 if (!tipo.especial && dist < 4f && !imune && MathUtils.randomBoolean(0.8f)) derrubar(Constantes.ZUMBI_QUEDA_S * 0.8f)
                 reacao.disparar(dx, dz, 0.5f + 0.6f * perto, 0.8f)
             }
+            TipoArma.SNIPER -> {
+                empurrar(dx, dz, 5f * massa)
+                tempoCambaleio = maxOf(tempoCambaleio, Constantes.ZUMBI_CAMBALEIO_S * (if (tipo.especial) 0.5f else 1.6f))
+                duracaoCambaleio = Constantes.ZUMBI_CAMBALEIO_S
+                reacao.disparar(dx, dz, 1.1f, 0.9f)
+            }
             TipoArma.FUZIL -> {
                 empurrar(dx, dz, 2.5f * massa)
                 tempoCambaleio = maxOf(tempoCambaleio, Constantes.ZUMBI_CAMBALEIO_S * (if (tipo.especial) 0.4f else 1.1f))

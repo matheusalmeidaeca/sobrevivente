@@ -39,6 +39,19 @@ enum class TipoArma(
         Constantes.ESCOPETA_CADENCIA, Constantes.ESCOPETA_CARREGADOR, Constantes.ESCOPETA_RESERVA_INICIAL,
         Constantes.ESCOPETA_RECARGA_S, Constantes.ESCOPETA_ALCANCE, Constantes.ESCOPETA_TEMPO_ENCARAR_S,
         0f, 0.090f, -0.850f
+    ),
+    // reutilizam o modelo e as animacoes do fuzil
+    SUBMETRALHADORA(
+        "Submetralhadora", "fuzil", Constantes.MODELO_ARMA_FUZIL,
+        Constantes.SMG_DANO, 1, Constantes.SMG_DISPERSAO, Constantes.SMG_CADENCIA, Constantes.SMG_CARREGADOR,
+        Constantes.SMG_RESERVA_INICIAL, Constantes.SMG_RECARGA_S, Constantes.SMG_ALCANCE,
+        Constantes.PISTOLA_TEMPO_ENCARAR_S, 0f, 0.075f, -0.690f
+    ),
+    SNIPER(
+        "Rifle de precisao", "fuzil", Constantes.MODELO_ARMA_FUZIL,
+        Constantes.SNIPER_DANO, 1, 0f, Constantes.SNIPER_CADENCIA, Constantes.SNIPER_CARREGADOR,
+        Constantes.SNIPER_RESERVA_INICIAL, Constantes.SNIPER_RECARGA_S, Constantes.SNIPER_ALCANCE,
+        Constantes.PISTOLA_TEMPO_ENCARAR_S, 0f, 0.075f, -0.690f
     )
 }
 
@@ -78,7 +91,7 @@ class Arma {
     private fun cadenciaAtual(): Float = tipo.cadencia * (1f + 0.08f * nivel[tipo.ordinal])
     private fun recargaAtual(): Float = tipo.recargaS * (1f + 0.15f * pente[tipo.ordinal]) * (1f - 0.10f * nivel[tipo.ordinal])
     /** FOV da mira: mira telescopica aproxima mais. */
-    val fovMira: Float get() = if (mira[tipo.ordinal] > 0) 38f else Constantes.RE4_FOV_MIRA
+    val fovMira: Float get() = if (tipo == TipoArma.SNIPER) (if (mira[tipo.ordinal] > 0) 20f else 30f) else if (mira[tipo.ordinal] > 0) 38f else Constantes.RE4_FOV_MIRA
     /** Velocidade de levantar a mira (coronha ajuda). */
     val velMira: Float get() = Constantes.RE4_ENTRAR_MIRA * (1f + 0.35f * coronha[tipo.ordinal])
     val nomeComNivel: String get() = if (nivel[tipo.ordinal] > 0) tipo.nome + " +" + nivel[tipo.ordinal] else tipo.nome
@@ -110,9 +123,9 @@ class Arma {
     var golpeFaca = false
         private set
 
-    /** Slot ativo no HUD: 0..2 = armas de fogo, 3 = faca. */
+    /** Slot ativo no HUD: 0..4 = armas de fogo, 5 = faca. */
     val slotAtivo: Int
-        get() = if (faca) 3 else tipo.ordinal
+        get() = if (faca) tipos.size else tipo.ordinal
 
     var recarregando = false
         private set
@@ -165,19 +178,19 @@ class Arma {
     fun trocar(): Boolean {
         if (recarregando) return false
         val atual = slotAtivo
-        for (k in 1..4) {
-            val c = (atual + k) % 4
+        for (k in 1..tipos.size + 1) {
+            val c = (atual + k) % (tipos.size + 1)
             if (slotDisponivel(c)) return selecionarSlot(c)
         }
         return false
     }
 
-    fun slotDisponivel(slot: Int): Boolean = if (slot == 3) true else slot in 0..2 && liberadas[slot]
+    fun slotDisponivel(slot: Int): Boolean = if (slot == tipos.size) true else slot in 0 until tipos.size && liberadas[slot]
 
     /** Equipa o slot (0..2 arma de fogo, 3 faca). Devolve true se mudou. */
     fun selecionarSlot(slot: Int): Boolean {
         if (recarregando || !slotDisponivel(slot) || slot == slotAtivo) return false
-        if (slot == 3) {
+        if (slot == tipos.size) {
             faca = true
         } else {
             faca = false
