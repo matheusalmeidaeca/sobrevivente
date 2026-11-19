@@ -36,7 +36,7 @@ object Progresso {
  * Fluxo: achar o fragmento 1 -> o fragmento 2 acorda o mini chefe -> alavancas na ordem certa revelam o fragmento 3
  * -> levar os 3 ao altar chama o chefe -> derrota-lo conclui a fase. Os dados de cada fase vem de `DefFase`.
  */
-class Historia(private val mundo: Mundo, val def: DefFase) : Disposable {
+class Historia(private val mundo: Mundo, val def: DefFase) : Missao {
 
     enum class Tipo { MERCADOR, BAU, ALAVANCA, FRAGMENTO, ALTAR }
 
@@ -67,9 +67,9 @@ class Historia(private val mundo: Mundo, val def: DefFase) : Disposable {
     private val m4 = Matrix4()
 
     /** Callbacks para a tela: mensagem curta, abrir a loja, fase concluida. */
-    var aoMensagem: ((String) -> Unit)? = null
-    var aoAbrirLoja: (() -> Unit)? = null
-    var aoConcluir: (() -> Unit)? = null
+    override var aoMensagem: ((String) -> Unit)? = null
+    override var aoAbrirLoja: (() -> Unit)? = null
+    override var aoConcluir: (() -> Unit)? = null
 
     private val modeloBauFechado: Model
     private val modeloBauAberto: Model
@@ -177,7 +177,7 @@ class Historia(private val mundo: Mundo, val def: DefFase) : Disposable {
 
     // ------------------------------------------------------------------ estado e texto do HUD
     /** Chefe que a barra de vida mostra agora (mini chefe ou chefe vivo), ou null. */
-    fun chefeAtual(): Inimigo? {
+    override fun chefeAtual(): Inimigo? {
         val c = chefe
         if (c != null && c.vivo) return c
         val m = mini
@@ -185,12 +185,12 @@ class Historia(private val mundo: Mundo, val def: DefFase) : Disposable {
         return null
     }
 
-    fun nomeChefeAtual(): String = if (chefe?.vivo == true) def.chefeNome else def.miniNome
+    override fun nomeChefeAtual(): String = if (chefe?.vivo == true) def.chefeNome else def.miniNome
 
     /** Textos do HUD: recalculados so quando o estado muda (sem alocacao por frame). */
-    var objetivoTexto = ""
+    override var objetivoTexto = ""
         private set
-    var dicaTexto = ""
+    override var dicaTexto = ""
         private set
     private val tPegar = "INTERAGIR: pegar " + def.artefato
 
@@ -224,7 +224,7 @@ class Historia(private val mundo: Mundo, val def: DefFase) : Disposable {
     }
 
     // ------------------------------------------------------------------ jogo
-    fun atualizar(dt: Float) {
+    override fun atualizar(dt: Float) {
         tempo += dt
         for (o in objetos) {
             if (!o.ativo || o.tipo != Tipo.FRAGMENTO) continue
@@ -278,7 +278,7 @@ class Historia(private val mundo: Mundo, val def: DefFase) : Disposable {
     }
 
     /** Texto de ajuda perto de um objeto ("Toque em INTERAGIR..."), ou null. */
-    fun dicaProximo(x: Float, z: Float): String? {
+    override fun dicaProximo(x: Float, z: Float): String? {
         val o = maisPerto(x, z, RAIO) ?: return null
         return when (o.tipo) {
             Tipo.MERCADOR -> "INTERAGIR: falar com o Mercador"
@@ -290,7 +290,7 @@ class Historia(private val mundo: Mundo, val def: DefFase) : Disposable {
     }
 
     /** INTERAGIR: age no objeto mais perto. Devolve true se havia um (a tela entao nao procura item no chao). */
-    fun interagir(x: Float, z: Float): Boolean {
+    override fun interagir(x: Float, z: Float): Boolean {
         val o = maisPerto(x, z, RAIO) ?: return false
         when (o.tipo) {
             Tipo.MERCADOR -> aoAbrirLoja?.invoke()
@@ -362,7 +362,7 @@ class Historia(private val mundo: Mundo, val def: DefFase) : Disposable {
     }
 
     /** Desenha os objetos da fase (chamar dentro de um begin/end do ModelBatch). */
-    fun desenhar(lote: ModelBatch, ambiente: Environment) {
+    override fun desenhar(lote: ModelBatch, ambiente: Environment) {
         for (o in objetos) {
             if (!o.ativo) continue
             lote.render(o.instancia, ambiente)

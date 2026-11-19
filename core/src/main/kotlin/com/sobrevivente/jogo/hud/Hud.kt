@@ -12,7 +12,7 @@ import com.sobrevivente.jogo.entrada.ControlesToque
 import com.sobrevivente.jogo.inventario.Item
 import com.sobrevivente.jogo.inventario.Maleta
 import com.sobrevivente.jogo.inventario.TipoItem
-import com.sobrevivente.jogo.mundo.Historia
+import com.sobrevivente.jogo.mundo.Missao
 import com.sobrevivente.jogo.mundo.Mundo
 import com.sobrevivente.jogo.mundo.TipoArma
 
@@ -126,7 +126,7 @@ class Hud(
     }
 
     // ---------- F17: modo historia (objetivo, dica, ouro, barra do chefe) ----------
-    var historia: Historia? = null
+    var historia: Missao? = null
     private var ouro = 0
     private var dicaProximo: String? = null
     private val textoOuro = StringBuilder(32)

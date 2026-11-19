@@ -1080,3 +1080,9 @@ Estado em 15/11/2026: o `gerar-modelo.yml` já está no repositório com a etapa
 - `Constantes.USAR_ESQUELETO_HUMANO = false` por padrao. Ligando (true), `Jogador.kt` carrega o modelo humano e reage nos ossos `coluna2`, `pescoco`, `cabeca`, `clavicula_esq/dir`; a arma continua presa em `mao_dir`.
 - Por que desligado: o modelo antigo tem poses armadas (pistola/fuzil/escopeta, recarregar, andarmirar...) que o humano nao tem; com ele ligado o jogo usa as animacoes sem arma. Proximo passo para ligar de vez: gerar as poses armadas no `gerar_g3dj.py`.
 - NAO compilado nem testado no celular (sem LibGDX no ambiente da IA).
+
+## F21 — A CIDADE (cenario metropolitano)
+- `mundo/Cidade.kt`: `CidadeMapa` (mapa 296x296 m, 4 bairros ligados por uma avenida) e `Cidade : Missao` (logica).
+- Fluxo: Chave Azul (garagem, oeste) -> portao A; 3 fusiveis (supermercado, farmacia, banco) -> caixa de forca -> portao B (o 2o fusivel acorda o Seguranca, que larga a Chave Vermelha); 2 notas + 3 alavancas na ordem certa -> portao C; Chave Vermelha abre a cela na delegacia -> sobrevivente vira parceiro de IA (`Companheiro.kt`) -> abre o portao D; radio no heliponto chama o Hospedeiro; derrota-lo conclui.
+- Portoes = paredes removiveis (`Mundo.removerParede`, `Fases.portoes`). Culling por frustum nas paredes.
+- Limites: parceiro imortal e ignorado pelos zumbis; fases antigas continuam no codigo, fora da lista.

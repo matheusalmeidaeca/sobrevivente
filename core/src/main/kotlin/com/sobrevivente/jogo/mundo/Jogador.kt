@@ -34,6 +34,9 @@ class Jogador : Disposable {
         if (Constantes.USAR_ESQUELETO_HUMANO) Constantes.MODELO_JOGADOR_HUMANO else Constantes.MODELO_JOGADOR
     )
     val animado: Boolean = modeloAnimado != null
+    /** Modelo do protagonista para o parceiro de IA reutilizar (null = capsula). */
+    val modeloAnimadoCompartilhado: Model?
+        get() = modeloAnimado
 
     private val modeloCorpo: Model
     private val modeloNariz: Model

@@ -25,6 +25,8 @@ import com.sobrevivente.jogo.inventario.TipoItem
 /** Cena: luz, chão, vila (paredes, casas, andar alto), inimigos (com respawn) e itens no chão. Sem desenho de HUD aqui. */
 class Mundo : Disposable {
 
+    private companion object { const val FORA = 5000f }
+
     val ambiente = Environment()
     /** Sol com sombra real (null se Constantes.SOMBRAS_REAIS = false). Quem desenha chama begin/end dela. */
     var luzSol: DirectionalShadowLight? = null
@@ -48,6 +50,10 @@ class Mundo : Disposable {
     private val modelosParedes: Array<Model>
     val paredes: Array<ModelInstance>
     private val caixasParedes: Array<BoundingBox> // para o tiro (hitscan) não atravessar paredes
+    /** Copia das paredes como nasceram: portoes abertos voltam ao fechar (reiniciar a fase). */
+    private val paredesOriginais: FloatArray = Constantes.PAREDES.copyOf()
+    private val alturasOriginais: FloatArray = Constantes.PAREDES_ALTURA.copyOf()
+    private val removida = BooleanArray(Constantes.PAREDES.size / 4)
     private val modelosPisos = ArrayList<Model>()
     /** Pisos das casas, andares altos e rampas (so desenho). */
     val pisos = ArrayList<ModelInstance>()
@@ -183,6 +189,51 @@ class Mundo : Disposable {
         Navegacao.livre(0f, 0f) // monta a grade de navegacao agora (e nao no meio do jogo)
     }
 
+    /** Abre um portao: some a colisao, o desenho e o bloqueio do tiro/A*. */
+    fun removerParede(i: Int) {
+        if (i < 0 || i >= removida.size || removida[i]) return
+        removida[i] = true
+        val c = Constantes.PAREDES
+        c[i * 4] = FORA; c[i * 4 + 1] = FORA; c[i * 4 + 2] = FORA + 0.1f; c[i * 4 + 3] = FORA + 0.1f
+        Constantes.PAREDES_ALTURA[i] = 0.1f
+        caixasParedes[i].set(Vector3(FORA, 0f, FORA), Vector3(FORA + 0.1f, 0.1f, FORA + 0.1f))
+        paredes[i].transform.setToTranslation(FORA, -50f, FORA)
+        Navegacao.reconstruir()
+    }
+
+    /** Fecha de novo os portoes abertos (ao reiniciar a fase). */
+    private fun restaurarParedes() {
+        var mudou = false
+        for (i in removida.indices) {
+            if (!removida[i]) continue
+            removida[i] = false
+            mudou = true
+            val c = Constantes.PAREDES
+            for (k in 0..3) c[i * 4 + k] = paredesOriginais[i * 4 + k]
+            Constantes.PAREDES_ALTURA[i] = alturasOriginais[i]
+            caixasParedes[i].set(
+                Vector3(c[i * 4], Constantes.PAREDES_BASE[i], c[i * 4 + 1]),
+                Vector3(c[i * 4 + 2], Constantes.PAREDES_BASE[i] + alturasOriginais[i], c[i * 4 + 3])
+            )
+            paredes[i].transform.setToTranslation(
+                (c[i * 4] + c[i * 4 + 2]) * 0.5f,
+                Constantes.PAREDES_BASE[i] + alturasOriginais[i] * 0.5f,
+                (c[i * 4 + 1] + c[i * 4 + 3]) * 0.5f
+            )
+        }
+        if (mudou) Navegacao.reconstruir()
+    }
+
+    /** A parede `i` esta (ao menos em parte) dentro do campo de visao da camera? So desenho. */
+    fun paredeNoCampo(i: Int, frustum: com.badlogic.gdx.math.Frustum): Boolean =
+        !removida[i] && frustum.boundsInFrustum(caixasParedes[i])
+
+    /** Tiro do parceiro de IA: dano direto (sem efeitos de impacto do jogador). Cuida do loot e do ouro. */
+    fun danoAliado(alvo: Inimigo, dano: Int, dx: Float, dz: Float) {
+        if (!alvo.vivo) return
+        if (alvo.receberTiro(dano, 1.2f, dx, dz)) soltarLoot(alvo)
+    }
+
     /** Cercas, troncos, caixotes/barris, poco e fardos so colidem; o desenho deles vem da decoracao (Cenario). */
     fun paredeVisivel(i: Int): Boolean {
         val t = Constantes.PAREDES_TIPO[i]
@@ -198,6 +249,15 @@ class Mundo : Disposable {
         6 -> floatArrayOf(0.74f, 0.66f, 0.50f) // reboco creme
         7 -> floatArrayOf(0.70f, 0.52f, 0.34f) // ocre
         8 -> floatArrayOf(0.56f, 0.60f, 0.60f) // cinza azulado
+        12 -> floatArrayOf(0.36f, 0.38f, 0.42f) // concreto escuro (predios da cidade)
+        13 -> floatArrayOf(0.30f, 0.45f, 0.58f) // vidro azulado
+        14 -> floatArrayOf(0.52f, 0.28f, 0.24f) // tijolo
+        15 -> floatArrayOf(0.74f, 0.73f, 0.68f) // branco sujo
+        16 -> floatArrayOf(0.20f, 0.45f, 0.95f) // portao azul
+        17 -> floatArrayOf(0.90f, 0.20f, 0.18f) // portao vermelho
+        18 -> floatArrayOf(0.92f, 0.80f, 0.18f) // portao amarelo (alavancas)
+        19 -> floatArrayOf(0.55f, 0.56f, 0.62f) // portao eletrico
+        20 -> floatArrayOf(0.30f, 0.82f, 0.45f) // portao verde (parceiro)
         else -> floatArrayOf(Constantes.PAREDE_COR_CASA_R, Constantes.PAREDE_COR_CASA_G, Constantes.PAREDE_COR_CASA_B)
     }
 
@@ -450,6 +510,7 @@ class Mundo : Disposable {
     /** Volta ao inicio: zumbis iniciais vivos, resto some, itens no chao. */
     fun reiniciar() {
         abates = 0
+        restaurarParedes()
         val iniciais = Constantes.INIMIGOS_XZ.size / 2
         for (i in inimigos.indices) {
             if (i < iniciais) {
@@ -628,6 +689,7 @@ class Mundo : Disposable {
             "chao", GL20.GL_TRIANGLES, atributos,
             Material(IntAttribute.createCullFace(GL20.GL_NONE))
         )
+        val asfalto = Fases.atual.cidade
         val rnd = java.util.Random(42)
         for (i in 0 until quantidade) {
             for (j in 0 until quantidade) {
@@ -637,7 +699,10 @@ class Mundo : Disposable {
                 val onda = MathUtils.sin(i * 0.23f) * MathUtils.cos(j * 0.19f) * 0.5f + 0.5f
                 val seco = MathUtils.clamp(onda * 0.8f + rnd.nextFloat() * 0.25f - 0.1f, 0f, 1f)
                 val brilho = 0.86f + rnd.nextFloat() * 0.22f
-                parte.setColor(
+                if (asfalto) {
+                    val t = 0.20f + seco * 0.07f
+                    parte.setColor(t * brilho, (t + 0.01f) * brilho, (t + 0.03f) * brilho, 1f)
+                } else parte.setColor(
                     MathUtils.lerp(0.30f, 0.46f, seco) * brilho,
                     MathUtils.lerp(0.42f, 0.44f, seco) * brilho,
                     MathUtils.lerp(0.20f, 0.24f, seco) * brilho,

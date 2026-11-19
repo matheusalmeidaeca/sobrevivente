@@ -32,7 +32,9 @@ class DefFase(
     val spawnIntervalo: Float,
     /** Multiplica a vida dos chefes (fases mais dificeis). */
     val fatorVida: Float,
-    val construir: ((MapaBuilder) -> Unit)?
+    val construir: ((MapaBuilder) -> Unit)?,
+    /** Cidade metropolitana (chao de asfalto, missao `Cidade` em vez de `Historia`). */
+    val cidade: Boolean = false
 )
 
 /** Monta paredes, pisos, telhados, decoracao, itens e zumbis de uma fase e despeja tudo em `Constantes`. */
@@ -49,11 +51,20 @@ class MapaBuilder {
     private val itensTipo = ArrayList<Int>()
     private val zumbis = ArrayList<Float>()
     private val spawns = ArrayList<Float>()
+    private val portoes = ArrayList<Int>()
 
     /** Caixa de colisao e desenho (tipo: 0 casa, 1 pedra, 3 celeiro, 4 grade, 6 creme, 7 ocre, 8 cinza azulado; 5 tronco e 9 caixote so colidem). */
     fun caixa(x0: Float, z0: Float, x1: Float, z1: Float, alt: Float = 3f, tipo: Int = 0, base: Float = 0f) {
         par.add(minOf(x0, x1)); par.add(minOf(z0, z1)); par.add(maxOf(x0, x1)); par.add(maxOf(z0, z1))
         parBase.add(base); parAlt.add(alt); parTipo.add(tipo)
+    }
+
+    /** Caixa de colisao que o jogo pode REMOVER depois (portao trancado). Devolve o indice da parede. */
+    fun portao(x0: Float, z0: Float, x1: Float, z1: Float, alt: Float = 3.4f, tipo: Int = 16): Int {
+        caixa(x0, z0, x1, z1, alt, tipo)
+        val idx = par.size / 4 - 1
+        portoes.add(idx)
+        return idx
     }
 
     /** Parede reta (espessura 0,4) de (xa, za) a (xb, zb), horizontal ou vertical, com vaos (centros) de largura `larg`. */
@@ -175,6 +186,7 @@ class MapaBuilder {
         Constantes.SPAWNS_XZ = spawns.toFloatArray()
         VilaDecoracao.CAIXAS = decor.toFloatArray()
         VilaDecoracao.TELHADOS = telhados.toFloatArray()
+        Fases.portoes = portoes.toIntArray()
     }
 }
 
@@ -210,6 +222,9 @@ object Fases {
     var indice = 0
         private set
 
+    /** Indices (em Constantes.PAREDES) das caixas que sao portoes da fase carregada. */
+    var portoes = IntArray(0)
+
     val total: Int
         get() = definicoes().size
 
@@ -218,7 +233,7 @@ object Fases {
     fun definicoes(): List<DefFase> {
         val c = cache
         if (c != null) return c
-        val lista = listOf(vila(), posto(), hospital(), bunker())
+        val lista = listOf(CidadeMapa.definicao())
         cache = lista
         return lista
     }
@@ -229,6 +244,7 @@ object Fases {
         indice = definicoes().indexOf(d)
         atual = d
         val construir = d.construir
+        portoes = IntArray(0)
         if (construir == null) {
             restaurarVila()
         } else {

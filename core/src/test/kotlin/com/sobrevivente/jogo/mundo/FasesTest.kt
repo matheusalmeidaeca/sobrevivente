@@ -67,6 +67,9 @@ class FasesTest {
         for (i in 0 until Fases.total) {
             Fases.carregar(i)
             val d = Fases.atual
+            // cidade: portoes fechados dividem o mapa; abre todos para checar o alcance (a ordem das chaves e logica da missao)
+            if (d.cidade) for (g in Fases.portoes) for (q in 0..3) Constantes.PAREDES[g * 4 + q] = 5000f
+            if (d.cidade) Navegacao.reconstruir()
             val vis = alcancaveis(d.inicio[0], d.inicio[1])
             val c = Constantes.NAV_CELULA
             val lado = (Constantes.CHAO_TAMANHO / c).toInt()
@@ -79,7 +82,7 @@ class FasesTest {
             }
             ok("inicio", d.inicio[0], d.inicio[1])
             ok("mercador", d.mercador[0], d.mercador[1])
-            for (k in 0..2) ok("fragmento" + k, d.fragmentos[k * 2], d.fragmentos[k * 2 + 1])
+            if (!d.cidade) for (k in 0..2) ok("fragmento" + k, d.fragmentos[k * 2], d.fragmentos[k * 2 + 1])
             for (k in 0..2) ok("alavanca" + k, d.alavancas[k * 2], d.alavancas[k * 2 + 1])
             ok("altar", d.altar[0], d.altar[1])
             for (k in 0 until d.baus.size / 2) ok("bau" + k, d.baus[k * 2], d.baus[k * 2 + 1])

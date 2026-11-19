@@ -16,8 +16,8 @@ object Constantes {
     const val COR_CEU_B = 0.72f
 
     // Chão: quadrados alternados claro/escuro (ajuda a perceber movimento)
-    const val CHAO_TAMANHO = 160f
-    const val CHAO_LADO_QUADRADO = 2f
+    const val CHAO_TAMANHO = 320f
+    const val CHAO_LADO_QUADRADO = 4f
     const val CHAO_CLARO_R = 0.40f
     const val CHAO_CLARO_G = 0.46f
     const val CHAO_CLARO_B = 0.28f

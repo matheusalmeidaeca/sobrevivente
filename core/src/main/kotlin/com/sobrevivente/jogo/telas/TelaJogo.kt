@@ -36,7 +36,9 @@ import com.sobrevivente.jogo.mundo.Arma
 import com.sobrevivente.jogo.mundo.Jogador
 import com.sobrevivente.jogo.mundo.Mundo
 import com.sobrevivente.jogo.mundo.Fases
+import com.sobrevivente.jogo.mundo.Cidade
 import com.sobrevivente.jogo.mundo.Historia
+import com.sobrevivente.jogo.mundo.Missao
 import com.sobrevivente.jogo.mundo.Progresso
 import com.sobrevivente.jogo.mundo.TipoArma
 
@@ -51,7 +53,7 @@ class TelaJogo(
     private val cargaFase: Unit = Fases.carregar(if (modoHistoria) fase else 0)
 
     private val mundo = Mundo()
-    private var historia: Historia? = null
+    private var historia: Missao? = null
     private var ouroNoInicio = 0
     /** Menu modal aberto: 0 = pausa, 1 = loja do mercador, 2 = fase concluida. */
     private var modo = 0
@@ -124,7 +126,12 @@ class TelaJogo(
     }
 
     private fun iniciarHistoria() {
-        val h = Historia(mundo, Fases.atual)
+        val h: Missao = if (Fases.atual.cidade) {
+            Cidade(mundo, Fases.atual).also {
+                it.jogador = jogador
+                it.aoSom = { nome, vol -> som.tocar(nome, vol, 0f, 0.05f) }
+            }
+        } else Historia(mundo, Fases.atual)
         h.aoMensagem = { t -> hud.mostrarMensagem(t) }
         h.aoAbrirLoja = { abrirMenu(1) }
         h.aoConcluir = { concluirFase() }
@@ -760,7 +767,7 @@ class TelaJogo(
             loteModelos.render(mundo.pisos[i], mundo.ambiente)
         }
         for (i in mundo.paredes.indices) {
-            if (mundo.paredeVisivel(i)) loteModelos.render(mundo.paredes[i], mundo.ambiente)
+            if (mundo.paredeVisivel(i) && mundo.paredeNoCampo(i, cameraJogo.camera.frustum)) loteModelos.render(mundo.paredes[i], mundo.ambiente)
         }
         loteModelos.render(jogador.corpo, mundo.ambiente)
         if (!jogador.animado) loteModelos.render(jogador.nariz, mundo.ambiente)
