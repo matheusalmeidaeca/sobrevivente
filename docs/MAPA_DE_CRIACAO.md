@@ -1081,8 +1081,14 @@ Estado em 15/11/2026: o `gerar-modelo.yml` já está no repositório com a etapa
 - Por que desligado: o modelo antigo tem poses armadas (pistola/fuzil/escopeta, recarregar, andarmirar...) que o humano nao tem; com ele ligado o jogo usa as animacoes sem arma. Proximo passo para ligar de vez: gerar as poses armadas no `gerar_g3dj.py`.
 - NAO compilado nem testado no celular (sem LibGDX no ambiente da IA).
 
-## F21 — A CIDADE (cenario metropolitano)
-- `mundo/Cidade.kt`: `CidadeMapa` (mapa 296x296 m, 4 bairros ligados por uma avenida) e `Cidade : Missao` (logica).
-- Fluxo: Chave Azul (garagem, oeste) -> portao A; 3 fusiveis (supermercado, farmacia, banco) -> caixa de forca -> portao B (o 2o fusivel acorda o Seguranca, que larga a Chave Vermelha); 2 notas + 3 alavancas na ordem certa -> portao C; Chave Vermelha abre a cela na delegacia -> sobrevivente vira parceiro de IA (`Companheiro.kt`) -> abre o portao D; radio no heliponto chama o Hospedeiro; derrota-lo conclui.
-- Portoes = paredes removiveis (`Mundo.removerParede`, `Fases.portoes`). Culling por frustum nas paredes.
+## F21 — A CIDADE (vielas estilo Resident Evil)
+- `mundo/Cidade.kt`: `CidadeMapa` (grade de vielas de 5,3 m entre blocos de 27 m, 4 bairros em faixas sul->norte) e `Cidade : Missao` (logica).
+- Cada bairro e separado por uma muralha com 1 portao trancado (A azul, B eletrico, C amarelo, D parceiro); containers barricam trechos de viela e forcam zigue-zague (conjuntos escolhidos por busca, todos os pontos alcancaveis).
+- Fluxo: Chave Azul (garagem, oeste) -> portao A (leste); 3 fusiveis (supermercado, farmacia, banco) -> caixa de forca -> portao B (oeste; o 2o fusivel acorda o Seguranca, que larga a Chave Vermelha); 2 notas + 3 alavancas na ordem certa -> portao C; Chave Vermelha abre a cela na delegacia -> sobrevivente vira parceiro de IA (`Companheiro.kt`) -> abre o portao D; radio no heliponto chama o Hospedeiro; derrota-lo conclui.
+- Portoes = paredes removiveis (`Mundo.removerParede`, `Fases.portoes`). Culling por frustum nas paredes. `FasesTest` abre os portoes antes de checar o alcance.
 - Limites: parceiro imortal e ignorado pelos zumbis; fases antigas continuam no codigo, fora da lista.
+
+## F22 — Regulador de desempenho
+- `Desempenho.kt`: mede o FPS (janelas de 0,5 s). Abaixo de 40 FPS por 2 s sobe o nivel (1: sombras so de perto + desenho ate 110 m; 2: sem sombras + desenho ate 70 m); acima de 56 FPS por 8 s desce. So afeta o que e desenhado.
+- `Mundo.paredePerto`; `TelaJogo` usa o regulador nas sombras, nas paredes e nos zumbis. Junto com o culling por frustum da F21.
+- Nao medido em aparelho real: os limites (40/56 FPS, 110/70 m) sao palpites a ajustar.

@@ -224,6 +224,14 @@ class Mundo : Disposable {
         if (mudou) Navegacao.reconstruir()
     }
 
+    /** A parede `i` esta a menos de `raio` metros de (px, pz)? So desenho. */
+    fun paredePerto(i: Int, px: Float, pz: Float, raio: Float): Boolean {
+        val c = caixasParedes[i]
+        val dx = if (px < c.min.x) c.min.x - px else if (px > c.max.x) px - c.max.x else 0f
+        val dz = if (pz < c.min.z) c.min.z - pz else if (pz > c.max.z) pz - c.max.z else 0f
+        return dx * dx + dz * dz <= raio * raio
+    }
+
     /** A parede `i` esta (ao menos em parte) dentro do campo de visao da camera? So desenho. */
     fun paredeNoCampo(i: Int, frustum: com.badlogic.gdx.math.Frustum): Boolean =
         !removida[i] && frustum.boundsInFrustum(caixasParedes[i])

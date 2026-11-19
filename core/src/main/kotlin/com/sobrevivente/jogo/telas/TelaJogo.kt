@@ -24,6 +24,7 @@ import com.badlogic.gdx.math.MathUtils
 import com.badlogic.gdx.math.Vector3
 import com.badlogic.gdx.utils.ScreenUtils
 import com.sobrevivente.jogo.Constantes
+import com.sobrevivente.jogo.Desempenho
 import com.sobrevivente.jogo.audio.Som
 import com.sobrevivente.jogo.audio.Trilha
 import com.sobrevivente.jogo.camera.CameraTerceiraPessoa
@@ -164,12 +165,20 @@ class TelaJogo(
     }
 
     /** Desenha no mapa de sombra tudo que projeta sombra (personagens, casas, decoracao). */
+    private fun perto(x: Float, z: Float): Boolean {
+        val r = Desempenho.raioDesenho
+        val dx = x - jogador.posicao.x
+        val dz = z - jogador.posicao.z
+        return dx * dx + dz * dz <= r * r
+    }
+
     private fun desenharSombras() {
         val luz = mundo.luzSol ?: return
+        if (!Desempenho.sombras) return
         luz.begin(jogador.posicao, cameraJogo.camera.direction)
         loteSombra.begin(luz.camera)
         for (i in mundo.paredes.indices) {
-            if (mundo.paredeVisivel(i)) loteSombra.render(mundo.paredes[i])
+            if (mundo.paredeVisivel(i) && mundo.paredePerto(i, jogador.posicao.x, jogador.posicao.z, Desempenho.raioSombra)) loteSombra.render(mundo.paredes[i])
         }
         loteSombra.render(mundo.cenario.decoracao)
         for (i in mundo.cenario.telhados.indices) {
@@ -686,6 +695,7 @@ class TelaJogo(
             return
         }
         val dt = minOf(delta, Constantes.DELTA_MAXIMO)
+        Desempenho.medir(delta)
         val densidade = Gdx.graphics.density
 
         // Entrada de alto nível
@@ -767,7 +777,7 @@ class TelaJogo(
             loteModelos.render(mundo.pisos[i], mundo.ambiente)
         }
         for (i in mundo.paredes.indices) {
-            if (mundo.paredeVisivel(i) && mundo.paredeNoCampo(i, cameraJogo.camera.frustum)) loteModelos.render(mundo.paredes[i], mundo.ambiente)
+            if (mundo.paredeVisivel(i) && mundo.paredePerto(i, jogador.posicao.x, jogador.posicao.z, Desempenho.raioDesenho) && mundo.paredeNoCampo(i, cameraJogo.camera.frustum)) loteModelos.render(mundo.paredes[i], mundo.ambiente)
         }
         loteModelos.render(jogador.corpo, mundo.ambiente)
         if (!jogador.animado) loteModelos.render(jogador.nariz, mundo.ambiente)
@@ -780,7 +790,7 @@ class TelaJogo(
         }
         for (i in mundo.inimigos.indices) {
             val inimigo = mundo.inimigos[i]
-            if (inimigo.visivel) loteModelos.render(inimigo.instancia, mundo.ambiente)
+            if (inimigo.visivel && perto(inimigo.posicao.x, inimigo.posicao.z)) loteModelos.render(inimigo.instancia, mundo.ambiente)
             mundo.marcadorLoot(i)?.let { loteModelos.render(it, mundo.ambiente) }
         }
         for (i in mundo.itens.indices) {
