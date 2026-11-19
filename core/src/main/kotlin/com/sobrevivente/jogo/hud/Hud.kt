@@ -184,10 +184,33 @@ class Hud(
     }
 
     /** Posição do jogador no plano XZ (para o minimapa). Chamar todo frame. */
-    fun definirJogador(x: Float, z: Float) {
+    fun definirJogador(x: Float, z: Float, yaw: Float = 0f) {
         jogadorX = x
         jogadorZ = z
+        jogadorYaw = yaw
     }
+
+    private var jogadorYaw = 0f
+
+    /** Fase da cidade usa a imagem do mapa; as antigas, o minimapa de paredes. */
+    fun configurarMapa(usarImagem: Boolean) {
+        minimapa.configurar(usarImagem)
+        minimapa.redimensionar(largura.toInt(), altura.toInt(), densidade)
+    }
+
+    fun alternarMapa() { if (minimapa.temImagem) minimapa.aberto = !minimapa.aberto }
+    val mapaAberto: Boolean get() = minimapa.aberto
+    val mapaGrandeX: Float get() = minimapa.grandeX
+    val mapaGrandeY: Float get() = minimapa.grandeY
+    val mapaGrandeW: Float get() = minimapa.grandeW
+    val mapaGrandeH: Float get() = minimapa.grandeH
+    val minimapaX: Float get() = minimapa.minX
+    val minimapaY: Float get() = minimapa.minY
+    val minimapaLado: Float get() = minimapa.minLado
+    val minimapaTemImagem: Boolean get() = minimapa.temImagem
+
+    /** Chamar entre lote.begin() e lote.end(), antes das formas. */
+    fun desenharImagemMapa(lote: SpriteBatch, x: Float, z: Float) = minimapa.desenharImagem(lote, x, z)
 
     fun mostrarAcerto() {
         tempoAcerto = Constantes.ACERTO_DURACAO_S
@@ -243,7 +266,7 @@ class Hud(
     /** Chamar entre forma.begin(Filled) e forma.end(), com blending ligado. */
     fun desenharFormas(forma: ShapeRenderer) {
         desenharVinhetaDor(forma)
-        minimapa.desenhar(forma, jogadorX, jogadorZ, mundo)
+        minimapa.desenhar(forma, jogadorX, jogadorZ, jogadorYaw, mundo)
         barraVida.desenharFormas(forma)
         desenharAvatar(forma)
         desenharPilulas(forma)
@@ -758,5 +781,6 @@ class Hud(
 
     override fun dispose() {
         fonte.dispose()
+        minimapa.dispose()
     }
 }

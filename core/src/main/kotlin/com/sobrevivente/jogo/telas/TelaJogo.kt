@@ -103,6 +103,7 @@ class TelaJogo(
         mundo.spawnIntervalo = Fases.atual.spawnIntervalo
         jogador.posicao.set(Fases.atual.inicio[0], 0f, Fases.atual.inicio[1])
         cameraJogo.seguir(jogador.posicao)
+        hud.configurarMapa(Fases.atual.cidade)
         if (modoHistoria) {
             ouroNoInicio = Progresso.ouro
             aplicarProgresso()
@@ -714,7 +715,12 @@ class TelaJogo(
         hud.definirDor(jogador.dor)
         hud.definirVida(maxOf(jogador.vida, 0), Constantes.JOGADOR_VIDA_MAXIMA)
         hud.inimigosVivos = mundo.contarInimigosVivos()
-        hud.definirJogador(jogador.posicao.x, jogador.posicao.z)
+        hud.definirJogador(jogador.posicao.x, jogador.posicao.z, jogador.yaw)
+        if (controles.consumirMapa()) hud.alternarMapa()
+        controles.definirMapa(
+            hud.minimapaTemImagem, hud.minimapaX, hud.minimapaY, hud.minimapaLado,
+            hud.mapaAberto, hud.mapaGrandeX, hud.mapaGrandeY, hud.mapaGrandeW, hud.mapaGrandeH
+        )
         hud.definirHistoria(Progresso.ouro, historia?.dicaProximo(jogador.posicao.x, jogador.posicao.z))
 
         // Desenho 3D (primeiro o mapa de sombra, depois a cena numa textura com pos-processamento)
@@ -775,6 +781,11 @@ class TelaJogo(
         // HUD: formas com transparência, depois textos
         Gdx.gl.glEnable(GL20.GL_BLEND)
         Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA)
+        if (hud.minimapaTemImagem) {
+            lote.begin()
+            hud.desenharImagemMapa(lote, jogador.posicao.x, jogador.posicao.z)
+            lote.end()
+        }
         forma.begin(ShapeRenderer.ShapeType.Filled)
         if (!maletaAberta) joystick.desenhar(forma)
         hud.desenharFormas(forma)

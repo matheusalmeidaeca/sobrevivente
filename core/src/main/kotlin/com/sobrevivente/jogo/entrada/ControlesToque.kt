@@ -167,6 +167,28 @@ class ControlesToque : InputAdapter() {
     }
 
     // Zona e toque longo do overlay de debug
+    // ---- mapa (estilo Free Fire): tocar no minimapa abre/fecha o mapa grande ----
+    private var mapaTemImagem = false
+    private var minX = 0f; private var minY = 0f; private var minLado = 0f
+    private var mapaGrandeAberto = false
+    private var gx = 0f; private var gy = 0f; private var gw = 0f; private var gh = 0f
+    private var mapaPendente = false
+
+    fun definirMapa(
+        temImagem: Boolean, mx: Float, my: Float, mlado: Float,
+        aberto: Boolean, grandeX: Float, grandeY: Float, grandeW: Float, grandeH: Float
+    ) {
+        mapaTemImagem = temImagem; minX = mx; minY = my; minLado = mlado
+        mapaGrandeAberto = aberto; gx = grandeX; gy = grandeY; gw = grandeW; gh = grandeH
+    }
+
+    /** true uma vez quando o jogador tocou no minimapa (abrir) ou no mapa grande (fechar). */
+    fun consumirMapa(): Boolean {
+        val v = mapaPendente
+        mapaPendente = false
+        return v
+    }
+
     private var debugLargura = 0f
     private var debugAltura = 0f
     private var ponteiroDebug = SEM_PONTEIRO
@@ -527,6 +549,16 @@ class ControlesToque : InputAdapter() {
                 }
             }
             return false
+        }
+
+        // 0c) Mapa: tocar no minimapa abre; com o mapa grande aberto, tocar nele (ou no minimapa) fecha.
+        if (mapaTemImagem) {
+            val noMini = x >= minX && x <= minX + minLado && y >= minY && y <= minY + minLado
+            val noGrande = mapaGrandeAberto && x >= gx && x <= gx + gw && y >= gy && y <= gy + gh
+            if (noMini || noGrande) {
+                mapaPendente = true
+                return true
+            }
         }
 
         // 1) Zona de debug (canto superior esquerdo): só conta o toque longo.
