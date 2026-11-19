@@ -141,19 +141,119 @@ object CidadeMapa {
         construir = { b -> construir(b) }, cidade = true
     )
 
+    /** Bairros (imagem Ravenport): 0 comercial em L, 1 residencial, 2 industrial, 3 centro (torres), 4 hospital, 5 estadio, 6 parque. */
+    private fun estilo(bi: Int, r: Int, c: Int, f: Faixa): Int {
+        val cx = bx0(c) + BW / 2f
+        val cz = (f.z0(r) + f.z1(r)) / 2f
+        if (bi == 1 && r == 0 && c == 3) return 4
+        if (bi == 0 && r == 2 && c == 7) return 5
+        if (bi == 0 && r == 2 && c == 1) return 6
+        if (cx > 50f && cz < 30f) return 2
+        if (kotlin.math.abs(cx) < 60f && cz > -70f && cz < 30f) return 3
+        if (cx < -40f && cz < 30f) return 1
+        return 0
+    }
+
     private fun bloco(b: MapaBuilder, f: Faixa, banda: Int, r: Int, c: Int) {
+        val e = estilo(banda, r, c, f)
+        if (e != 0) { blocoBairro(b, f, banda, r, c, e); return }
+        blocoL(b, f, banda, r, c)
+    }
+
+    private fun blocoBairro(b: MapaBuilder, f: Faixa, banda: Int, r: Int, c: Int, e: Int) {
+        val x0 = bx0(c); val x1 = x0 + BW; val z0 = f.z0(r); val z1 = f.z1(r)
+        val cx = (x0 + x1) / 2f; val cz = (z0 + z1) / 2f
+        val dz = z1 - z0
+        val v = (c * 3 + r * 5 + banda * 7)
+        when (e) {
+            1 -> { // casas em quatro lotes, com jardim
+                val w = (BW - 6f) / 2f; val d = (dz - 6f) / 2f
+                for (i in 0..1) for (j in 0..1) {
+                    val hx0 = x0 + 1.5f + i * (w + 3f); val hz0 = z0 + 1.5f + j * (d + 3f)
+                    val alt = 5.5f + ((v + i * 2 + j) % 3) * 1.2f
+                    val tipo = if ((v + i + j) % 2 == 0) 14 else 15
+                    b.caixa(hx0, hz0, hx0 + w, hz0 + d, alt, tipo)
+                    // telhado: laje larga + cumeeira
+                    b.dec(hx0 + w / 2f, alt + 0.3f, hz0 + d / 2f, w + 1.2f, 0.6f, d + 1.2f, 0.32f, 0.17f, 0.13f)
+                    b.dec(hx0 + w / 2f, alt + 1.2f, hz0 + d / 2f, w * 0.7f, 1.2f, d * 0.55f, 0.28f, 0.15f, 0.12f)
+                    if ((v + i + j) % 3 != 0) b.arvore(hx0 + w / 2f, hz0 + d + 1.4f)
+                }
+            }
+            2 -> { // galpao + silos + containers
+                val dg = dz * 0.55f
+                b.caixa(x0 + 1f, z0 + 1f, x1 - 1f, z0 + 1f + dg, 9f, 12)
+                b.dec(cx, 9.3f, z0 + 1f + dg / 2f, BW - 1.4f, 0.6f, dg + 0.6f, 0.30f, 0.30f, 0.32f)
+                for (k in 0..1) {
+                    val sx = x0 + 6f + k * 9f; val sz = z1 - 5f
+                    b.caixa(sx - 2.5f, sz - 2.5f, sx + 2.5f, sz + 2.5f, 12f, 12)
+                    b.dec(sx, 12.3f, sz, 5.2f, 0.6f, 5.2f, 0.45f, 0.45f, 0.47f, 2)
+                }
+                b.container(x1 - 6f, z1 - 4.5f, true, 3)
+                b.container(x1 - 6f, z1 - 7.5f, true, 8)
+                b.dec(x0 + 5f, 14f, z0 + 4f, 0.8f, 8f, 0.8f, 0.22f, 0.20f, 0.20f, 2)
+            }
+            3 -> { // centro: podio + torre
+                val alt = 10f + (v % 3) * 2f
+                b.caixa(x0, z0, x1, z1, alt, 13)
+                val tx = if (v % 2 == 0) x0 + 1.5f else x1 - 15f
+                val th = 28f + (v % 4) * 6f
+                b.caixa(tx, z0 + 3f, tx + 13.5f, z1 - 3f, th, 13 + (v % 2))
+                b.dec(tx + 6.75f, th + 0.25f, cz, 14f, 0.5f, dz - 5.5f, 0.16f, 0.16f, 0.18f)
+                b.dec(tx + 6.75f, th + 5f, cz, 0.4f, 10f, 0.4f, 0.55f, 0.1f, 0.1f, 2)
+                b.dec(cx, 0.45f, cz, BW + 0.35f, 0.9f, dz + 0.35f, 0.14f, 0.14f, 0.15f)
+            }
+            4 -> { // hospital: duas alas e corredor, cruz vermelha e heliponto
+                val alt = 17f
+                b.caixa(x0 + 1f, z0 + 1f, x0 + 9f, z1 - 1f, alt, 13)
+                b.caixa(x1 - 9f, z0 + 1f, x1 - 1f, z1 - 1f, alt, 13)
+                b.caixa(x0 + 9f, cz - 4f, x1 - 9f, cz + 4f, 10f, 13)
+                b.dec(x0 + 5f, alt + 0.2f, cz, 8.4f, 0.4f, dz - 1.6f, 0.85f, 0.85f, 0.88f)
+                b.dec(x1 - 5f, alt + 0.1f, cz, 7f, 0.2f, 7f, 0.20f, 0.45f, 0.30f)
+                // cruz vermelha na fachada sul
+                b.dec(x0 + 5f, 9f, z1 - 0.5f, 3f, 1f, 0.3f, 0.85f, 0.1f, 0.1f)
+                b.dec(x0 + 5f, 9f, z1 - 0.5f, 1f, 3f, 0.3f, 0.85f, 0.1f, 0.1f)
+            }
+            5 -> { // estadio: anel de arquibancadas com abertura ao sul e gramado
+                val alt = 10f
+                b.caixa(x0 + 1f, z0 + 1f, x1 - 1f, z0 + 5f, alt, 14)
+                b.caixa(x0 + 1f, z0 + 5f, x0 + 5f, z1 - 1f, alt, 14)
+                b.caixa(x1 - 5f, z0 + 5f, x1 - 1f, z1 - 1f, alt, 14)
+                b.caixa(x0 + 5f, z1 - 5f, cx - 4f, z1 - 1f, alt, 14)
+                b.caixa(cx + 4f, z1 - 5f, x1 - 5f, z1 - 1f, alt, 14)
+                b.dec(cx, 0.12f, cz, BW - 10f, 0.24f, dz - 10f, 0.16f, 0.45f, 0.18f)
+                for (k in 0..3) { val a = if (k % 2 == 0) x0 + 1f else x1 - 1f; val bz = if (k < 2) z0 + 1f else z1 - 1f
+                    b.dec(a, 14f, bz, 0.5f, 8f, 0.5f, 0.6f, 0.6f, 0.62f, 2); b.dec(a, 18.3f, bz, 1.6f, 0.5f, 1.6f, 0.95f, 0.95f, 0.8f, 1) }
+            }
+            6 -> { // parque: gramado, lago e arvores
+                b.dec(cx, 0.1f, cz, BW - 1f, 0.2f, dz - 1f, 0.17f, 0.38f, 0.16f)
+                b.dec(cx, 0.22f, cz, 10f, 0.1f, 7f, 0.10f, 0.26f, 0.40f, 2)
+                for (k in 0 until 9) {
+                    val tx = x0 + 3f + ((k * 7 + v) % 5) * 5.2f; val tz = z0 + 3f + ((k * 3 + v) % 3) * (dz - 6f) / 2f
+                    if (kotlin.math.abs(tx - cx) < 7f && kotlin.math.abs(tz - cz) < 5f) continue
+                    b.arvore(tx, tz, k % 3 == 0)
+                }
+                b.bancada(x0 + 3f, cz - 0.5f, x0 + 5.5f, cz + 0.5f, 1)
+            }
+        }
+    }
+
+    private fun blocoL(b: MapaBuilder, f: Faixa, banda: Int, r: Int, c: Int) {
         val alt = 12f + 4f * ((c * 3 + r * 5 + banda) % 4)
         val tipo = 12 + (c + r + banda) % 4
         val x0 = bx0(c); val x1 = x0 + BW; val z0 = f.z0(r); val z1 = f.z1(r)
         val cx = (x0 + x1) / 2f; val cz = (z0 + z1) / 2f
-        b.caixa(x0, z0, x1, z1, alt, tipo)
-        b.dec(cx, alt + 0.15f, cz, BW + 0.4f, 0.3f, (z1 - z0) + 0.4f, 0.16f, 0.16f, 0.18f)
+        val ele = (c + r * 2 + banda) % 3 == 0
+        if (ele) { // forma em L: ala principal + ala mais baixa
+            b.caixa(x0, z0, x1, z0 + (z1 - z0) * 0.6f, alt, tipo)
+            b.caixa(x0, z0 + (z1 - z0) * 0.6f - 0.2f, x0 + BW * 0.5f, z1, alt * 0.6f, tipo)
+        } else b.caixa(x0, z0, x1, z1, alt, tipo)
+        if (!ele) b.dec(cx, alt + 0.15f, cz, BW + 0.4f, 0.3f, (z1 - z0) + 0.4f, 0.16f, 0.16f, 0.18f)
         // Detalhes que quebram o "bloco": soco escuro na base, cornija que sobressai, quinas, caixa d'agua e ar-condicionado no topo.
         val hx = BW / 2f; val hz = (z1 - z0) / 2f
-        b.dec(cx, 0.45f, cz, BW + 0.35f, 0.9f, (z1 - z0) + 0.35f, 0.14f, 0.14f, 0.15f)
-        b.dec(cx, alt - 0.25f, cz, BW + 0.7f, 0.5f, (z1 - z0) + 0.7f, 0.50f, 0.49f, 0.47f)
-        b.dec(cx, alt - 0.7f, cz, BW + 0.45f, 0.25f, (z1 - z0) + 0.45f, 0.22f, 0.22f, 0.23f)
-        for (sx in floatArrayOf(-1f, 1f)) for (sz in floatArrayOf(-1f, 1f)) {
+        if (!ele) b.dec(cx, 0.45f, cz, BW + 0.35f, 0.9f, (z1 - z0) + 0.35f, 0.14f, 0.14f, 0.15f)
+        if (!ele) b.dec(cx, alt - 0.25f, cz, BW + 0.7f, 0.5f, (z1 - z0) + 0.7f, 0.50f, 0.49f, 0.47f)
+        if (!ele) b.dec(cx, alt - 0.7f, cz, BW + 0.45f, 0.25f, (z1 - z0) + 0.45f, 0.22f, 0.22f, 0.23f)
+        if (!ele) for (sx in floatArrayOf(-1f, 1f)) for (sz in floatArrayOf(-1f, 1f)) {
             b.dec(cx + sx * hx, alt * 0.5f, cz + sz * hz, 0.5f, alt, 0.5f, 0.20f, 0.20f, 0.21f)
         }
         val h = (c * 5 + r * 11 + banda * 3) % 4
