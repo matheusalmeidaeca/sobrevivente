@@ -400,6 +400,8 @@ class TelaJogo(
         if (mirando && !apertouAtirar && kotlin.math.sqrt(controles.movimentoX * controles.movimentoX + controles.movimentoY * controles.movimentoY) >= Constantes.JOGADOR_SPRINT_LIMIAR) {
             mirando = false; mirandoManual = false
         }
+        // recarregar abaixa a mira e nao atrasa: da para fugir recarregando
+        if (arma.recarregando && !apertouAtirar) { mirando = false; mirandoManual = false }
         mirandoAntes = mirando
         jogador.mover(dt, controles.movimentoX, controles.movimentoY, mirando, cameraJogo.yaw)
         if (mirando) jogador.manterMira()

@@ -340,8 +340,7 @@ class Jogador : Disposable {
 
         fatorMov = when {
             agachado -> Constantes.JOGADOR_FATOR_AGACHADO
-            recarregando -> Constantes.JOGADOR_FATOR_ATIRANDO
-            mirando -> 0.55f
+            mirando && !recarregando -> 0.55f
             avanco >= Constantes.JOGADOR_SPRINT_LIMIAR -> Constantes.JOGADOR_SPRINT_FATOR
             else -> 0.8f // andar (o Leon anda mais devagar do que corre)
         }
