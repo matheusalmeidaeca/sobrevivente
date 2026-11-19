@@ -31,6 +31,26 @@ object CidadeMapa {
     /** Borda oeste do bloco da coluna c (0..8). */
     fun bx0(c: Int): Float = -W + SW + c * (BW + SW)
 
+    /** Deformacao organica do mapa: ruas curvas, quarteiroes inclinados. Devolve (x, z, giro em radianos). Deslocamento maximo ~10 m, inclinacao ~0,2. */
+    fun w(x: Float, z: Float): FloatArray {
+        fun fx(a: Float, b: Float) = a + 7f * kotlin.math.sin(b / 55f + 0.7f) + 3f * kotlin.math.sin((a + b) / 40f + 2.1f)
+        fun fz(a: Float, b: Float) = b + 7f * kotlin.math.sin(a / 62f + 1.9f) + 3f * kotlin.math.sin((a - b) / 47f + 0.4f)
+        val e = 1.5f
+        // direcao do eixo +x e do eixo +z deformados; o giro medio vira o giro rigido do quarteirao
+        val ax = fx(x + e, z) - fx(x - e, z); val az = fz(x + e, z) - fz(x - e, z)
+        val bx = fx(x, z + e) - fx(x, z - e); val bz = fz(x, z + e) - fz(x, z - e)
+        val g1 = kotlin.math.atan2(-az, ax)
+        val g2 = kotlin.math.atan2(bx, bz)
+        return floatArrayOf(fx(x, z), fz(x, z), (g1 + g2) / 2f)
+    }
+
+    /** Pares (x, z) do mapa reto -> mundo. */
+    fun wa(a: FloatArray): FloatArray {
+        val o = FloatArray(a.size)
+        for (k in 0 until a.size / 2) { val r = w(a[k * 2], a[k * 2 + 1]); o[k * 2] = r[0]; o[k * 2 + 1] = r[1] }
+        return o
+    }
+
     /** Faixa de z com `n` fileiras de blocos e n+1 ruas horizontais. */
     class Faixa(val zN: Float, val zS: Float, val n: Int) {
         val bd: Float = ((zS - zN) - (n + 1) * SW) / n
@@ -85,6 +105,21 @@ object CidadeMapa {
         intArrayOf(3, 0, 1), intArrayOf(3, 1, 8), intArrayOf(3, 0, 8)
     )
 
+    val MERCADOR_W by lazy { wa(MERCADOR) }
+    val CHAVE_AZUL_W by lazy { wa(CHAVE_AZUL) }
+    val FUSIVEIS_W by lazy { wa(FUSIVEIS) }
+    val PAINEL_W by lazy { wa(PAINEL) }
+    val NOTAS_W by lazy { wa(NOTAS) }
+    val ALAVANCAS_W by lazy { wa(ALAVANCAS) }
+    val CELA_W by lazy { wa(CELA) }
+    val SOBREVIVENTE_W by lazy { wa(SOBREVIVENTE) }
+    val RADIO_W by lazy { wa(RADIO) }
+    val MINI_SPAWN_W by lazy { wa(MINI_SPAWN) }
+    val CHEFE_SPAWN_W by lazy { wa(CHEFE_SPAWN) }
+    val BAUS_W by lazy { wa(BAUS) }
+    /** Objetos dos portoes (um pouco ao sul de cada muralha). */
+    val PORTAO_OBJ_W by lazy { wa(FloatArray(8) { if (it % 2 == 0) PORTAO_X[it / 2] else PORTAO_Z[it / 2] + 3.5f }) }
+
     private fun faixas() = listOf(B1, B2, B3, B4)
 
     val BAUS: FloatArray by lazy {
@@ -99,9 +134,9 @@ object CidadeMapa {
     fun definicao() = DefFase(
         nome = "A CIDADE", subtitulo = "Capitulo unico", artefato = "Fusivel",
         miniNome = "O Seguranca", chefeNome = "O Hospedeiro",
-        inicio = floatArrayOf(INICIO_X, INICIO_Z), mercador = MERCADOR,
-        fragmentos = FloatArray(6), alavancas = ALAVANCAS, ordem = ORDEM, altar = RADIO,
-        baus = BAUS, miniSpawn = MINI_SPAWN, chefeSpawn = CHEFE_SPAWN, dicas = arrayOf(),
+        inicio = wa(floatArrayOf(INICIO_X, INICIO_Z)), mercador = wa(MERCADOR),
+        fragmentos = FloatArray(6), alavancas = wa(ALAVANCAS), ordem = ORDEM, altar = wa(RADIO),
+        baus = wa(BAUS), miniSpawn = wa(MINI_SPAWN), chefeSpawn = wa(CHEFE_SPAWN), dicas = arrayOf(),
         spawnMax = 12, spawnDist = 38f, spawnIntervalo = 6f, fatorVida = 1.8f,
         construir = { b -> construir(b) }, cidade = true
     )
@@ -166,6 +201,8 @@ object CidadeMapa {
     }
 
     fun construir(b: MapaBuilder) {
+        b.warp = { x, z -> w(x, z) }
+        Terreno.construir()
         b.cerco(-W, -W, W, W, 4f, 12)
         val fs = faixas()
 
@@ -179,7 +216,7 @@ object CidadeMapa {
             val f = fs[bi]
             for (r in 0 until f.n) for (c in 0..8) {
                 if (Triple(bi, r, c) in entravel) continue
-                bloco(b, f, bi, r, c)
+                b.grupo(bx0(c) + BW / 2f, (f.z0(r) + f.z1(r)) / 2f, 0.88f) { bloco(b, f, bi, r, c) }
             }
         }
 
@@ -403,25 +440,25 @@ class Cidade(private val mundo: Mundo, val def: DefFase) : Missao {
         ), false)
 
         val g = CidadeMapa
-        objetos.add(Obj(Tipo.MERCADOR, g.MERCADOR[0], g.MERCADOR[1], 0, colocar(mMercador, g.MERCADOR[0], g.MERCADOR[1], 180f)))
-        objetos.add(Obj(Tipo.CHAVE, g.CHAVE_AZUL[0], g.CHAVE_AZUL[1], 0, ModelInstance(mChaveAzul)))
-        for (i in 0..2) objetos.add(Obj(Tipo.FUSIVEL, g.FUSIVEIS[i * 2], g.FUSIVEIS[i * 2 + 1], i, ModelInstance(mFusivel)))
-        objetos.add(Obj(Tipo.PAINEL, g.PAINEL[0], g.PAINEL[1], 0, colocar(mPainel, g.PAINEL[0], g.PAINEL[1], 0f)))
-        for (i in 0..1) objetos.add(Obj(Tipo.NOTA, g.NOTAS[i * 2], g.NOTAS[i * 2 + 1], i, ModelInstance(mNota)))
+        objetos.add(Obj(Tipo.MERCADOR, g.MERCADOR_W[0], g.MERCADOR_W[1], 0, colocar(mMercador, g.MERCADOR_W[0], g.MERCADOR_W[1], 180f)))
+        objetos.add(Obj(Tipo.CHAVE, g.CHAVE_AZUL_W[0], g.CHAVE_AZUL_W[1], 0, ModelInstance(mChaveAzul)))
+        for (i in 0..2) objetos.add(Obj(Tipo.FUSIVEL, g.FUSIVEIS_W[i * 2], g.FUSIVEIS_W[i * 2 + 1], i, ModelInstance(mFusivel)))
+        objetos.add(Obj(Tipo.PAINEL, g.PAINEL_W[0], g.PAINEL_W[1], 0, colocar(mPainel, g.PAINEL_W[0], g.PAINEL_W[1], 0f)))
+        for (i in 0..1) objetos.add(Obj(Tipo.NOTA, g.NOTAS_W[i * 2], g.NOTAS_W[i * 2 + 1], i, ModelInstance(mNota)))
         for (i in 0..2) {
-            val o = Obj(Tipo.ALAVANCA, g.ALAVANCAS[i * 2], g.ALAVANCAS[i * 2 + 1], i,
-                colocar(mBase, g.ALAVANCAS[i * 2], g.ALAVANCAS[i * 2 + 1], 0f), ModelInstance(mHaste[i]!!))
+            val o = Obj(Tipo.ALAVANCA, g.ALAVANCAS_W[i * 2], g.ALAVANCAS_W[i * 2 + 1], i,
+                colocar(mBase, g.ALAVANCAS_W[i * 2], g.ALAVANCAS_W[i * 2 + 1], 0f), ModelInstance(mHaste[i]!!))
             posicionarHaste(o)
             objetos.add(o)
         }
-        for (i in 0 until g.BAUS.size / 2) {
-            objetos.add(Obj(Tipo.BAU, g.BAUS[i * 2], g.BAUS[i * 2 + 1], i, colocar(mBauFechado, g.BAUS[i * 2], g.BAUS[i * 2 + 1], MathUtils.random(0f, 360f))))
+        for (i in 0 until g.BAUS_W.size / 2) {
+            objetos.add(Obj(Tipo.BAU, g.BAUS_W[i * 2], g.BAUS_W[i * 2 + 1], i, colocar(mBauFechado, g.BAUS_W[i * 2], g.BAUS_W[i * 2 + 1], MathUtils.random(0f, 360f))))
         }
         // portoes: A, B, C, D no centro de cada linha de bloqueio; R na cela (indice = posicao em Fases.portoes)
-        for (i in 0..3) objetos.add(Obj(Tipo.PORTAO, g.PORTAO_X[i], g.PORTAO_Z[i] + 3.5f, i, ModelInstance(mBase)).also { escondido(it) })
-        objetos.add(Obj(Tipo.PORTAO, g.CELA[0], g.CELA[1], 4, ModelInstance(mBase)).also { escondido(it) })
-        objetos.add(Obj(Tipo.SOBREVIVENTE, g.SOBREVIVENTE[0], g.SOBREVIVENTE[1], 0, colocar(mSobrev, g.SOBREVIVENTE[0], g.SOBREVIVENTE[1], 0f)))
-        objetos.add(Obj(Tipo.RADIO, g.RADIO[0], g.RADIO[1], 0, colocar(mRadio, g.RADIO[0], g.RADIO[1], 0f)))
+        for (i in 0..3) objetos.add(Obj(Tipo.PORTAO, g.PORTAO_OBJ_W[i * 2], g.PORTAO_OBJ_W[i * 2 + 1], i, ModelInstance(mBase)).also { escondido(it) })
+        objetos.add(Obj(Tipo.PORTAO, g.CELA_W[0], g.CELA_W[1], 4, ModelInstance(mBase)).also { escondido(it) })
+        objetos.add(Obj(Tipo.SOBREVIVENTE, g.SOBREVIVENTE_W[0], g.SOBREVIVENTE_W[1], 0, colocar(mSobrev, g.SOBREVIVENTE_W[0], g.SOBREVIVENTE_W[1], 0f)))
+        objetos.add(Obj(Tipo.RADIO, g.RADIO_W[0], g.RADIO_W[1], 0, colocar(mRadio, g.RADIO_W[0], g.RADIO_W[1], 0f)))
 
         mundo.aoMatar = { z -> aoMatar(z) }
         recalcular()
@@ -639,7 +676,7 @@ class Cidade(private val mundo: Mundo, val def: DefFase) : Missao {
         aoMensagem?.invoke("Pegou um fusivel (" + fusiveis + "/3)")
         if (o.indice == 1 && !miniAcordado) {
             miniAcordado = true
-            mini = mundo.nascerEspecial(TipoZumbi.MINICHEFE, CidadeMapa.MINI_SPAWN[0], CidadeMapa.MINI_SPAWN[1], def.fatorVida)
+            mini = mundo.nascerEspecial(TipoZumbi.MINICHEFE, CidadeMapa.MINI_SPAWN_W[0], CidadeMapa.MINI_SPAWN_W[1], def.fatorVida)
             recalcular()
             aoMensagem?.invoke(def.miniNome + " apareceu! Cuidado!")
         }
@@ -734,7 +771,7 @@ class Cidade(private val mundo: Mundo, val def: DefFase) : Missao {
 
     private fun usarRadio() {
         if (chefe == null) {
-            chefe = mundo.nascerEspecial(TipoZumbi.CHEFE, CidadeMapa.CHEFE_SPAWN[0], CidadeMapa.CHEFE_SPAWN[1], def.fatorVida)
+            chefe = mundo.nascerEspecial(TipoZumbi.CHEFE, CidadeMapa.CHEFE_SPAWN_W[0], CidadeMapa.CHEFE_SPAWN_W[1], def.fatorVida)
             recalcular()
             aoMensagem?.invoke("O radio atraiu " + def.chefeNome + "!")
         } else if (!concluida) {

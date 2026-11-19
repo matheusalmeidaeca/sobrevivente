@@ -49,6 +49,7 @@ class Mundo : Disposable {
     private var tempoGlobal = 0f
     private val modelosParedes: Array<Model>
     val paredes: Array<ModelInstance>
+    private val caixasLocais: Array<BoundingBox> // paredes giradas: caixa no espaco local
     private val caixasParedes: Array<BoundingBox> // para o tiro (hitscan) não atravessar paredes
     /** Copia das paredes como nasceram: portoes abertos voltam ao fechar (reiniciar a fase). */
     private val paredesOriginais: FloatArray = Constantes.PAREDES.copyOf()
@@ -140,8 +141,9 @@ class Mundo : Disposable {
         marcadoresCura = Array(inimigos.size) { ModelInstance(modeloItemCura) }
         val totalParedes = Constantes.PAREDES.size / 4
         modelosParedes = Array(totalParedes) { i ->
-            val largura = Constantes.PAREDES[i * 4 + 2] - Constantes.PAREDES[i * 4]
-            val profundidade = Constantes.PAREDES[i * 4 + 3] - Constantes.PAREDES[i * 4 + 1]
+            val girada = ang(i) != 0f
+            val largura = if (girada) Constantes.PAREDES_OBB[i * 4 + 2] * 2f else Constantes.PAREDES[i * 4 + 2] - Constantes.PAREDES[i * 4]
+            val profundidade = if (girada) Constantes.PAREDES_OBB[i * 4 + 3] * 2f else Constantes.PAREDES[i * 4 + 3] - Constantes.PAREDES[i * 4 + 1]
             val tp = Constantes.PAREDES_TIPO[i]
             if (Fases.atual.cidade && tp in 12..15 && Constantes.PAREDES_ALTURA[i] >= 3f) {
                 Fachadas.criarCaixa(largura, Constantes.PAREDES_ALTURA[i], profundidade, tp, i)
@@ -152,14 +154,14 @@ class Mundo : Disposable {
         }
         paredes = Array(totalParedes) { i ->
             val instancia = ModelInstance(modelosParedes[i])
-            val centroX = (Constantes.PAREDES[i * 4] + Constantes.PAREDES[i * 4 + 2]) * 0.5f
-            val centroZ = (Constantes.PAREDES[i * 4 + 1] + Constantes.PAREDES[i * 4 + 3]) * 0.5f
-            instancia.transform.setToTranslation(
-                centroX,
-                Constantes.PAREDES_BASE[i] + Constantes.PAREDES_ALTURA[i] * 0.5f,
-                centroZ
-            )
+            posicionarParede(instancia, i, Constantes.PAREDES_ALTURA[i])
             instancia
+        }
+        caixasLocais = Array(totalParedes) { i ->
+            if (ang(i) == 0f) BoundingBox() else BoundingBox(
+                Vector3(-Constantes.PAREDES_OBB[i * 4 + 2], Constantes.PAREDES_BASE[i], -Constantes.PAREDES_OBB[i * 4 + 3]),
+                Vector3(Constantes.PAREDES_OBB[i * 4 + 2], Constantes.PAREDES_BASE[i] + Constantes.PAREDES_ALTURA[i], Constantes.PAREDES_OBB[i * 4 + 3])
+            )
         }
         caixasParedes = Array(totalParedes) { i ->
             BoundingBox(
@@ -220,13 +222,35 @@ class Mundo : Disposable {
                 Vector3(c[i * 4], Constantes.PAREDES_BASE[i], c[i * 4 + 1]),
                 Vector3(c[i * 4 + 2], Constantes.PAREDES_BASE[i] + alturasOriginais[i], c[i * 4 + 3])
             )
-            paredes[i].transform.setToTranslation(
-                (c[i * 4] + c[i * 4 + 2]) * 0.5f,
-                Constantes.PAREDES_BASE[i] + alturasOriginais[i] * 0.5f,
-                (c[i * 4 + 1] + c[i * 4 + 3]) * 0.5f
-            )
+            posicionarParede(paredes[i], i, alturasOriginais[i])
         }
         if (mudou) Navegacao.reconstruir()
+    }
+
+    private fun ang(i: Int): Float = if (i < Constantes.PAREDES_ROT.size) Constantes.PAREDES_ROT[i] else 0f
+
+    private fun posicionarParede(inst: ModelInstance, i: Int, altura: Float) {
+        val a = ang(i)
+        val cx: Float; val cz: Float
+        if (a != 0f) { cx = Constantes.PAREDES_OBB[i * 4]; cz = Constantes.PAREDES_OBB[i * 4 + 1] }
+        else { cx = (Constantes.PAREDES[i * 4] + Constantes.PAREDES[i * 4 + 2]) * 0.5f; cz = (Constantes.PAREDES[i * 4 + 1] + Constantes.PAREDES[i * 4 + 3]) * 0.5f }
+        inst.transform.setToTranslation(cx, Constantes.PAREDES_BASE[i] + altura * 0.5f, cz)
+        if (a != 0f) inst.transform.rotateRad(Vector3.Y, a)
+    }
+
+    private val rayoLocal = com.badlogic.gdx.math.collision.Ray()
+
+    /** Distancia do raio atual ate a parede `i` (-1 se nao acerta). Considera o giro e portoes abertos. */
+    private fun raioParede(i: Int): Float {
+        if (removida[i]) return -1f
+        val a = ang(i)
+        if (a == 0f) return if (Intersector.intersectRayBounds(raio, caixasParedes[i], ponto)) ponto.dst(raio.origin) else -1f
+        val o = Constantes.PAREDES_OBB
+        val c = kotlin.math.cos(a); val s = kotlin.math.sin(a)
+        val ox = raio.origin.x - o[i * 4]; val oz = raio.origin.z - o[i * 4 + 1]
+        rayoLocal.origin.set(ox * c - oz * s, raio.origin.y, ox * s + oz * c)
+        rayoLocal.direction.set(raio.direction.x * c - raio.direction.z * s, raio.direction.y, raio.direction.x * s + raio.direction.z * c)
+        return if (Intersector.intersectRayBounds(rayoLocal, caixasLocais[i], ponto)) ponto.dst(rayoLocal.origin) else -1f
     }
 
     /** A parede `i` esta a menos de `raio` metros de (px, pz)? So desenho. */
@@ -588,10 +612,8 @@ class Mundo : Disposable {
         raio.set(origem, direcao)
         var melhor = alcance
         for (i in caixasParedes.indices) {
-            if (Intersector.intersectRayBounds(raio, caixasParedes[i], ponto)) {
-                val d = ponto.dst(origem)
-                if (d < melhor) melhor = d
-            }
+            val d = raioParede(i)
+            if (d >= 0f && d < melhor) melhor = d
         }
         for (i in inimigos.indices) {
             val inimigo = inimigos[i]
@@ -614,10 +636,8 @@ class Mundo : Disposable {
         var limite = alcance
         // Vale o primeiro acerto: uma parede mais perto que o inimigo bloqueia o tiro.
         for (i in caixasParedes.indices) {
-            if (Intersector.intersectRayBounds(raio, caixasParedes[i], ponto)) {
-                val distanciaParede = ponto.dst(origem)
-                if (distanciaParede < limite) limite = distanciaParede
-            }
+            val distanciaParede = raioParede(i)
+            if (distanciaParede >= 0f && distanciaParede < limite) limite = distanciaParede
         }
         impactoTipo = 0
         impactoMorreu = false
@@ -712,26 +732,27 @@ class Mundo : Disposable {
         )
     }
 
-    /** Chao em quadrados de 2 m, cada um com um tom de verde/terra um pouco diferente (cor por vertice): sem cara de tabuleiro. */
+    /** Chao em quadrados, cada um com um tom diferente (cor por vertice). Na cidade segue o relevo (Terreno). */
     private fun criarModeloChao(): Model {
         val atributos = (Usage.Position or Usage.Normal or Usage.ColorPacked).toLong()
-        val lado = Constantes.CHAO_LADO_QUADRADO
+        val relevo = Terreno.ativo
+        val lado = if (relevo) 2f else Constantes.CHAO_LADO_QUADRADO
         val quantidade = (Constantes.CHAO_TAMANHO / lado).toInt()
         val inicio = -Constantes.CHAO_TAMANHO / 2f
         val construtor = ModelBuilder()
         construtor.begin()
-        val parte = construtor.part(
-            "chao", GL20.GL_TRIANGLES, atributos,
-            Material(IntAttribute.createCullFace(GL20.GL_NONE))
-        )
         val asfalto = Fases.atual.cidade
         val rnd = java.util.Random(42)
+        val n = com.badlogic.gdx.math.Vector3()
         for (i in 0 until quantidade) {
+            val parte = construtor.part(
+                "chao" + (i / 12), GL20.GL_TRIANGLES, atributos,
+                Material(IntAttribute.createCullFace(GL20.GL_NONE))
+            )
             for (j in 0 until quantidade) {
                 val x0 = inicio + i * lado
                 val z0 = inicio + j * lado
-                // manchas grandes (ondas) + variacao pequena por quadrado; um pouco mais seco/amarelado em algumas zonas
-                val onda = MathUtils.sin(i * 0.23f) * MathUtils.cos(j * 0.19f) * 0.5f + 0.5f
+                val onda = MathUtils.sin(i * 0.23f * lado / 4f) * MathUtils.cos(j * 0.19f * lado / 4f) * 0.5f + 0.5f
                 val seco = MathUtils.clamp(onda * 0.8f + rnd.nextFloat() * 0.25f - 0.1f, 0f, 1f)
                 val brilho = 0.86f + rnd.nextFloat() * 0.22f
                 if (asfalto) {
@@ -743,12 +764,17 @@ class Mundo : Disposable {
                     MathUtils.lerp(0.20f, 0.24f, seco) * brilho,
                     1f
                 )
+                val h00 = Terreno.alturaChao(x0, z0); val h01 = Terreno.alturaChao(x0, z0 + lado)
+                val h11 = Terreno.alturaChao(x0 + lado, z0 + lado); val h10 = Terreno.alturaChao(x0 + lado, z0)
+                // normal do quadrado a partir das inclinacoes medias
+                val sx = (h10 + h11 - h00 - h01) / (2f * lado); val sz = (h01 + h11 - h00 - h10) / (2f * lado)
+                n.set(-sx, 1f, -sz).nor()
                 parte.rect(
-                    x0, 0f, z0,
-                    x0, 0f, z0 + lado,
-                    x0 + lado, 0f, z0 + lado,
-                    x0 + lado, 0f, z0,
-                    0f, 1f, 0f
+                    x0, h00, z0,
+                    x0, h01, z0 + lado,
+                    x0 + lado, h11, z0 + lado,
+                    x0 + lado, h10, z0,
+                    n.x, n.y, n.z
                 )
             }
         }

@@ -98,7 +98,9 @@ class CameraTerceiraPessoa {
         }
         cameraY = maxOf(Constantes.CAMERA_ALTURA_MINIMA, pivoY + (cameraY - pivoY) * fator)
 
-        camera.position.set(alvo.x + dx * fator, cameraY, alvo.z + dz * fator)
+        val cx = alvo.x + dx * fator; val cz = alvo.z + dz * fator
+        cameraY = maxOf(cameraY, com.sobrevivente.jogo.mundo.Terreno.alturaChao(cx, cz) + 0.5f)
+        camera.position.set(cx, cameraY, cz)
         camera.direction.set(frenteX, frenteY, frenteZ)
         camera.up.set(0f, 1f, 0f)
         camera.update()

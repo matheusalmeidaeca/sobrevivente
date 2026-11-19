@@ -52,9 +52,73 @@ class MapaBuilder {
     private val zumbis = ArrayList<Float>()
     private val spawns = ArrayList<Float>()
     private val portoes = ArrayList<Int>()
+    private val parRot = ArrayList<Float>()
+    private val parObb = ArrayList<Float>()
+    private var girou = false
+
+    /** Deformacao do mapa (x, z) -> (x', z', giro em radianos). Null = mapa reto. */
+    var warp: ((Float, Float) -> FloatArray)? = null
+    /** Transformacao rigida ativa (grupo): origem x/z, destino x/z, giro. */
+    private var rig: FloatArray? = null
+    /** Altura do chao mais alto sob o grupo ativo (topo dos predios acompanha). */
+    private var rigTopo = 0f
+
+    /** Tudo o que for criado dentro de `corpo` sofre UMA transformacao rigida (centrada em cx, cz): predios inteiros giram juntos. */
+    fun grupo(cx: Float, cz: Float, escala: Float = 1f, corpo: () -> Unit) {
+        val w = warp
+        if (w == null || rig != null) { corpo(); return }
+        val r = w(cx, cz)
+        rig = floatArrayOf(cx, cz, r[0], r[1], r[2], escala)
+        rigTopo = if (Terreno.ativo) Terreno.maxEm(r[0] - 12f * escala, r[1] - 12f * escala, r[0] + 12f * escala, r[1] + 12f * escala) else 0f
+        corpo()
+        rig = null
+    }
+
+    /** Ponto do mapa reto -> mundo. Devolve (x, z, giro). */
+    private fun tp(x: Float, z: Float): FloatArray {
+        val g = rig
+        if (g != null) {
+            val c = kotlin.math.cos(g[4]); val s = kotlin.math.sin(g[4])
+            val lx = (x - g[0]) * g[5]; val lz = (z - g[1]) * g[5]
+            return floatArrayOf(g[2] + lx * c + lz * s, g[3] - lx * s + lz * c, g[4])
+        }
+        val w = warp ?: return floatArrayOf(x, z, 0f)
+        return w(x, z)
+    }
+
+    /** Posicao (x, z) no mundo. */
+    private fun px(x: Float, z: Float) = tp(x, z)
+
+    private fun adicionarGirada(cx: Float, cz: Float, hx: Float, hz: Float, ang: Float, alt: Float, tipo: Int, base: Float) {
+        val c = kotlin.math.abs(kotlin.math.cos(ang)); val s = kotlin.math.abs(kotlin.math.sin(ang))
+        val ex = hx * c + hz * s; val ez = hx * s + hz * c
+        par.add(cx - ex); par.add(cz - ez); par.add(cx + ex); par.add(cz + ez)
+        parBase.add(base); parAlt.add(alt); parTipo.add(tipo)
+        parRot.add(ang); parObb.add(cx); parObb.add(cz); parObb.add(hx); parObb.add(hz)
+        if (ang != 0f) girou = true
+    }
 
     /** Caixa de colisao e desenho (tipo: 0 casa, 1 pedra, 3 celeiro, 4 grade, 6 creme, 7 ocre, 8 cinza azulado; 5 tronco e 9 caixote so colidem). */
     fun caixa(x0: Float, z0: Float, x1: Float, z1: Float, alt: Float = 3f, tipo: Int = 0, base: Float = 0f) {
+        if (warp != null) {
+            val ax = minOf(x0, x1); val az = minOf(z0, z1); val bx = maxOf(x0, x1); val bz = maxOf(z0, z1)
+            if (rig != null) {
+                val r = tp((ax + bx) / 2f, (az + bz) / 2f)
+                adicionarGirada(r[0], r[1], (bx - ax) / 2f * rig!![5], (bz - az) / 2f * rig!![5], r[2], alt, tipo, base)
+            } else {
+                // peca solta: fatia em trechos de ate ~10 m, cada um com o giro do lugar (a parede acompanha a curva)
+                val nx = kotlin.math.ceil((bx - ax) / 10f).toInt().coerceAtLeast(1)
+                val nz = kotlin.math.ceil((bz - az) / 10f).toInt().coerceAtLeast(1)
+                for (i in 0 until nx) for (j in 0 until nz) {
+                    val xa = ax + (bx - ax) * i / nx - (if (i > 0) 0.15f else 0f); val xb = ax + (bx - ax) * (i + 1) / nx + (if (i < nx - 1) 0.15f else 0f)
+                    val za = az + (bz - az) * j / nz - (if (j > 0) 0.15f else 0f); val zb = az + (bz - az) * (j + 1) / nz + (if (j < nz - 1) 0.15f else 0f)
+                    val r = tp((xa + xb) / 2f, (za + zb) / 2f)
+                    adicionarGirada(r[0], r[1], (xb - xa) / 2f, (zb - za) / 2f, r[2], alt, tipo, base)
+                }
+            }
+            return
+        }
+        parRot.add(0f); parObb.add(0f); parObb.add(0f); parObb.add(0f); parObb.add(0f)
         par.add(minOf(x0, x1)); par.add(minOf(z0, z1)); par.add(maxOf(x0, x1)); par.add(maxOf(z0, z1))
         parBase.add(base); parAlt.add(alt); parTipo.add(tipo)
     }
@@ -98,6 +162,15 @@ class MapaBuilder {
         x0: Float, z0: Float, x1: Float, z1: Float, lado: Int, pos: Float,
         larg: Float = 3f, alt: Float = 3f, tipo: Int = 0, telhado: Boolean = true
     ) {
+        if (warp != null && rig == null) {
+            grupo((x0 + x1) / 2f, (z0 + z1) / 2f, 0.88f) { predio(x0, z0, x1, z1, lado, pos, larg, alt, tipo, telhado) }
+            return
+        }
+        if (warp != null) {
+            // girado: sem piso/telhado de modelo (so ficam alinhados aos eixos); laje fina no lugar do piso
+            predioParedes(x0, z0, x1, z1, lado, pos, larg, alt, tipo)
+            return
+        }
         val t = 0.4f
         val nada = floatArrayOf()
         val v = floatArrayOf(pos)
@@ -114,6 +187,16 @@ class MapaBuilder {
         }
     }
 
+    private fun predioParedes(x0: Float, z0: Float, x1: Float, z1: Float, lado: Int, pos: Float, larg: Float, alt: Float, tipo: Int) {
+        val t = 0.4f
+        val nada = floatArrayOf()
+        val v = floatArrayOf(pos)
+        muro(x0, z0, x1, z0, alt, tipo, if (lado == 0) v else nada, larg)
+        muro(x0, z1 - t, x1, z1 - t, alt, tipo, if (lado == 2) v else nada, larg)
+        muro(x0, z0 + t, x0, z1 - t, alt, tipo, if (lado == 3) v else nada, larg)
+        muro(x1 - t, z0 + t, x1 - t, z1 - t, alt, tipo, if (lado == 1) v else nada, larg)
+    }
+
     /** Cerca/muro ao redor da area jogavel. */
     fun cerco(x0: Float, z0: Float, x1: Float, z1: Float, alt: Float = 3f, tipo: Int = 4) {
         muro(x0, z0, x1, z0, alt, tipo)
@@ -123,12 +206,21 @@ class MapaBuilder {
     }
 
     /** Forma so de desenho: forma 0 caixa, 1 esfera, 2 cilindro, 3 cone. */
-    fun dec(cx: Float, cy: Float, cz: Float, sx: Float, sy: Float, sz: Float, r: Float, g: Float, b: Float, forma: Int = 0, rot: Float = 0f) {
+    fun dec(cx: Float, cy: Float, cz: Float, sx0: Float, sy: Float, sz0: Float, r: Float, g: Float, b: Float, forma: Int = 0, rot: Float = 0f) {
+        var cx = cx; var cz = cz; var rot = rot; var sx = sx0; var sz = sz0
+        if (warp != null) {
+            val r = tp(cx, cz); cx = r[0]; cz = r[1]; rot += r[2] * 57.29578f
+            val e = rig?.get(5) ?: 1f
+            if (e != 1f) { sx *= e; sz *= e }
+        }
+        var cy = cy
+        if (Terreno.ativo) cy += if (rig != null && cy > 2f) rigTopo else Terreno.alturaChao(cx, cz)
         decor.add(cx); decor.add(cy); decor.add(cz); decor.add(sx); decor.add(sy); decor.add(sz)
         decor.add(rot); decor.add(r); decor.add(g); decor.add(b); decor.add(forma.toFloat())
     }
 
     fun arvore(x: Float, z: Float, pinheiro: Boolean = false) {
+        if (warp != null && rig == null) { grupo(x, z) { arvore(x, z, pinheiro) }; return }
         caixa(x - 0.3f, z - 0.3f, x + 0.3f, z + 0.3f, 3f, 5)
         // variacao deterministica por posicao: cada arvore e diferente
         val h = kotlin.math.abs(kotlin.math.sin(x * 12.9898f + z * 78.233f) * 43758.547f)
@@ -165,12 +257,14 @@ class MapaBuilder {
     }
 
     fun container(cx: Float, cz: Float, aoLongoX: Boolean, tipo: Int = 8) {
+        if (warp != null && rig == null) { grupo(cx, cz) { container(cx, cz, aoLongoX, tipo) }; return }
         val c = if (aoLongoX) floatArrayOf(3f, 1.25f) else floatArrayOf(1.25f, 3f)
         caixa(cx - c[0], cz - c[1], cx + c[0], cz + c[1], 2.6f, tipo)
         dec(cx, 2.68f, cz, c[0] * 2 + 0.1f, 0.12f, c[1] * 2 + 0.1f, 0.20f, 0.20f, 0.20f)
     }
 
     fun carro(cx: Float, cz: Float, aoLongoX: Boolean, tipo: Int = 8) {
+        if (warp != null && rig == null) { grupo(cx, cz) { carro(cx, cz, aoLongoX, tipo) }; return }
         val a = if (aoLongoX) floatArrayOf(2.1f, 0.9f) else floatArrayOf(0.9f, 2.1f)
         caixa(cx - a[0], cz - a[1], cx + a[0], cz + a[1], 1.0f, tipo)
         val b = if (aoLongoX) floatArrayOf(2.0f, 1.7f) else floatArrayOf(1.7f, 2.0f)
@@ -180,23 +274,32 @@ class MapaBuilder {
     fun bancada(x0: Float, z0: Float, x1: Float, z1: Float, tipo: Int = 1) = caixa(x0, z0, x1, z1, 1.0f, tipo)
 
     fun item(x: Float, z: Float, tipo: Int, y: Float = 0f) {
+        var x = x; var z = z
+        if (warp != null) { val r = tp(x, z); x = r[0]; z = r[1] }
         itensXZ.add(x); itensXZ.add(z); itensY.add(y); itensTipo.add(tipo)
     }
 
     fun zumbi(x: Float, z: Float) {
+        if (warp != null) { val r = tp(x, z); zumbis.add(r[0]); zumbis.add(r[1]); return }
         zumbis.add(x); zumbis.add(z)
     }
 
     fun nascedouros(pares: FloatArray) {
+        if (warp != null) {
+            for (k in 0 until pares.size / 2) { val r = tp(pares[k * 2], pares[k * 2 + 1]); spawns.add(r[0]); spawns.add(r[1]) }
+            return
+        }
         for (v in pares) spawns.add(v)
     }
 
     /** Despeja o que foi montado nas constantes do jogo (antes de criar o Mundo). */
-    fun aplicar() {
+    fun aplicar(relevo: Boolean = false) {
         Constantes.PAREDES = par.toFloatArray()
         Constantes.PAREDES_BASE = parBase.toFloatArray()
         Constantes.PAREDES_ALTURA = parAlt.toFloatArray()
         Constantes.PAREDES_TIPO = parTipo.toIntArray()
+        Constantes.PAREDES_ROT = if (girou) parRot.toFloatArray() else FloatArray(0)
+        Constantes.PAREDES_OBB = if (girou) parObb.toFloatArray() else FloatArray(0)
         Constantes.PISOS = pisos.toFloatArray()
         Constantes.ALTOS = FloatArray(0)
         Constantes.ALTOS_ALTURA = FloatArray(0)
@@ -212,6 +315,23 @@ class MapaBuilder {
         VilaDecoracao.CAIXAS = decor.toFloatArray()
         VilaDecoracao.TELHADOS = telhados.toFloatArray()
         Fases.portoes = portoes.toIntArray()
+        if (relevo && Terreno.ativo) aplicarRelevo()
+    }
+
+    /** Sobe paredes, decoracao, telhados e itens para o relevo (predios ficam em plataformas planas). */
+    private fun aplicarRelevo() {
+        val p = Constantes.PAREDES
+        for (k in 0 until p.size / 4) {
+            if (Constantes.PAREDES_BASE[k] != 0f) {
+                Constantes.PAREDES_BASE[k] += Terreno.alturaChao((p[k * 4] + p[k * 4 + 2]) / 2f, (p[k * 4 + 1] + p[k * 4 + 3]) / 2f) // verga de porta
+                continue
+            }
+            Constantes.PAREDES_ALTURA[k] += Terreno.maxEm(p[k * 4], p[k * 4 + 1], p[k * 4 + 2], p[k * 4 + 3])
+        }
+        val t = VilaDecoracao.TELHADOS
+        for (k in 0 until t.size / 11) t[k * 11 + 4] += Terreno.maxEm(t[k * 11], t[k * 11 + 1], t[k * 11 + 2], t[k * 11 + 3])
+        val it = Constantes.ITENS_XZ
+        for (k in 0 until it.size / 2) Constantes.ITENS_Y[k] += Terreno.alturaChao(it[k * 2], it[k * 2 + 1])
     }
 }
 
@@ -234,6 +354,7 @@ object Fases {
     private fun restaurarVila() {
         val o = original
         Constantes.PAREDES = o.par; Constantes.PAREDES_BASE = o.base; Constantes.PAREDES_ALTURA = o.alt; Constantes.PAREDES_TIPO = o.tipo
+        Constantes.PAREDES_ROT = FloatArray(0); Constantes.PAREDES_OBB = FloatArray(0)
         Constantes.PISOS = o.pisos; Constantes.ALTOS = o.altos; Constantes.ALTOS_ALTURA = o.altosAlt
         Constantes.RAMPAS = o.rampas; Constantes.RAMPAS_ALTURAS = o.rampasAlt; Constantes.RAMPAS_EIXO = o.rampasEixo
         Constantes.BLOQUEIOS_INIMIGO = o.bloq; Constantes.ITENS_XZ = o.itXZ; Constantes.ITENS_Y = o.itY; Constantes.ITENS_TIPO = o.itTipo
@@ -270,12 +391,13 @@ object Fases {
         atual = d
         val construir = d.construir
         portoes = IntArray(0)
+        Terreno.limpar()
         if (construir == null) {
             restaurarVila()
         } else {
             val b = MapaBuilder()
             construir(b)
-            b.aplicar()
+            b.aplicar(d.cidade)
         }
         Navegacao.reconstruir()
     }

@@ -39,6 +39,11 @@ object Colisao {
                 val dz = posicao.z - maisPertoZ
                 val quadrado = dx * dx + dz * dz
                 if (quadrado >= raio * raio) continue
+                val rots = Constantes.PAREDES_ROT
+                if (i < rots.size && rots[i] != 0f) {
+                    if (empurrarObb(posicao, raio, i, rots[i])) empurrou = true
+                    continue
+                }
 
                 if (quadrado > EPSILON) {
                     // Centro fora da caixa: empurra ao longo da normal até encostar.
@@ -53,6 +58,46 @@ object Colisao {
             }
             if (!empurrou) return
         }
+    }
+
+    /** Circulo contra a caixa girada `i` (centro, meias-medidas em PAREDES_OBB). Devolve true se empurrou. */
+    private fun empurrarObb(posicao: Vector3, raio: Float, i: Int, ang: Float): Boolean {
+        val o = Constantes.PAREDES_OBB
+        val cx = o[i * 4]; val cz = o[i * 4 + 1]; val hx = o[i * 4 + 2]; val hz = o[i * 4 + 3]
+        val c = kotlin.math.cos(ang); val s = kotlin.math.sin(ang)
+        val dx = posicao.x - cx; val dz = posicao.z - cz
+        val lx = dx * c - dz * s
+        val lz = dx * s + dz * c
+        val px = minOf(maxOf(lx, -hx), hx)
+        val pz = minOf(maxOf(lz, -hz), hz)
+        val ex = lx - px; val ez = lz - pz
+        val q = ex * ex + ez * ez
+        if (q >= raio * raio) return false
+        var nx: Float; var nz: Float
+        if (q > EPSILON) {
+            val d = sqrt(q); val pen = raio - d
+            nx = ex / d * pen; nz = ez / d * pen
+        } else {
+            // centro dentro: sai pelo lado mais perto
+            val a = hx - abs(lx); val b = hz - abs(lz)
+            if (a < b) { nx = (if (lx >= 0f) a + raio else -(a + raio)); nz = 0f }
+            else { nx = 0f; nz = (if (lz >= 0f) b + raio else -(b + raio)) }
+        }
+        posicao.x += nx * c + nz * s
+        posicao.z += -nx * s + nz * c
+        return true
+    }
+
+    /** O ponto (x, z) esta dentro da parede `i` (considera o giro)? Sem folga. */
+    fun dentroDaParede(i: Int, x: Float, z: Float): Boolean {
+        val p = Constantes.PAREDES
+        if (x <= p[i * 4] || x >= p[i * 4 + 2] || z <= p[i * 4 + 1] || z >= p[i * 4 + 3]) return false
+        val rots = Constantes.PAREDES_ROT
+        if (i >= rots.size || rots[i] == 0f) return true
+        val o = Constantes.PAREDES_OBB
+        val c = kotlin.math.cos(rots[i]); val s = kotlin.math.sin(rots[i])
+        val dx = x - o[i * 4]; val dz = z - o[i * 4 + 1]
+        return abs(dx * c - dz * s) < o[i * 4 + 2] && abs(dx * s + dz * c) < o[i * 4 + 3]
     }
 
     /** Obstaculo baixo (base no chao, topo entre 0,35 e 1,1 m) a ate ~1,1 m a frente e nada alto no mesmo ponto? */

@@ -1099,3 +1099,17 @@ Estado em 15/11/2026: o `gerar-modelo.yml` já está no repositório com a etapa
 - **Zumbis:** cabeca = dano x2,2 + estalo + cambaleio; pernas = cai/cambaleia; tronco = recua. Escopeta empurra (ate ~4 m a queima-roupa; derruba a <4 m, 80%); fuzil atravessa ate 2 zumbis (2o com 60% do dano) e causa choque (cambaleio longo); pistola desequilibra de leve. Chefes quase nao saem do lugar. Zumbis mais rapidos (2,7 m/s), visao 18 m, golpe a 1,5 m com bote (avanca ao atacar).
 - **Visual:** `Fachadas.kt` gera texturas de concreto/tijolo/vidro/reboco com janelas (3 variantes: apagada, acesa, quebrada), UV em metros reais; predios com soco, cornija, quinas e coberturas variadas; arvores irregulares (copa de varios tufos, pinheiros em camadas, arvores secas).
 - Nao testado em aparelho: sensibilidade da camera, intensidade do empurrao e custo das texturas precisam de ajuste fino.
+
+## F24 - Relevo e mapa com imagem
+- Minimapa usa android/assets/mapa/ravenport.jpg (janela 300x300 px que segue o jogador; toque abre o mapa grande). Mapeamento nao uniforme: u=(x+160)/320*1408, v=(z+160)/320*768.
+- Terreno.kt: relevo so na cidade. Mapa de alturas de 1 m (colinas, inclinacao max ~0,37); predios (>=40 m2, altura>=3) ficam em plataformas planas com 4 m de transicao.
+- MapaBuilder.aplicarRelevo: paredes ganham a altura do terreno sob elas, decoracao/telhados/itens sobem com o chao.
+- Jogador cola no chao ao descer ate 0,45 m; zumbis seguem Terreno.alturaChao; camera nunca fica abaixo do chao.
+- Chao da cidade: quadrados de 2 m com vertices na altura do terreno.
+- Relevo agora SEM plataformas: predios acompanham o chao (paredes sobem ate o ponto mais alto sob elas; verga de porta e decoracao seguem).
+
+## F25 - Cidade organica (paredes giradas)
+- Constantes.PAREDES_ROT / PAREDES_OBB: parede girada guarda a caixa envolvente em PAREDES (para visao, navegacao grossa, camera) e a caixa de verdade em PAREDES_OBB. Colisao (circulo x caixa girada), Navegacao, tiros (raio no espaco local) e Mundo (desenho) respeitam o giro.
+- CidadeMapa.w(x, z): deformacao suave (<=10 m, inclinacao ~0,2) aplicada ao mapa em malha. MapaBuilder.warp + grupo(): cada quarteirao/predio/carro/arvore recebe UMA transformacao rigida (giro do local); pecas longas (muralhas, cerco) sao fatiadas em trechos de ~10 m que seguem a curva. Quarteiroes sao encolhidos a 88% para sobrar folga nas ruas.
+- Pontos da missao (CidadeMapa.*_W) sao passados por w(). Pisos/telhados de modelo nao existem em predios girados.
+- PENDENTE (F26): rio com pontes (Raven River) e bairros por regiao conforme a imagem.

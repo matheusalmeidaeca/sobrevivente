@@ -661,6 +661,7 @@ class Inimigo(modelo: Model, x: Float, z: Float, private val animado: Boolean = 
     }
 
     private fun atualizarTransformacao() {
+        if (Terreno.ativo) posicao.y = Terreno.alturaChao(posicao.x, posicao.z)
         if (animado) {
             // Modelo do F2: origem nos pes, frente = -Z.
             val queda = faseQueda()

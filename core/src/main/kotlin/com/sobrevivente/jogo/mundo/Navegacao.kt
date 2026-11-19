@@ -3,6 +3,8 @@ package com.sobrevivente.jogo.mundo
 
 import com.sobrevivente.jogo.Constantes
 import kotlin.math.abs
+import kotlin.math.cos
+import kotlin.math.sin
 import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.min
@@ -78,10 +80,23 @@ object Navegacao {
                 for (gx in gx0..gx1) {
                     val cx = centroX(gx)
                     val cz = centroX(gz)
-                    if (cx > x0 && cx < x1 && cz > z0 && cz < z1) bloqueada[gz * lado + gx] = true
+                    if (cx > x0 && cx < x1 && cz > z0 && cz < z1) {
+                        if (comAltura && girada(i, cx, cz, folga)) continue
+                        bloqueada[gz * lado + gx] = true
+                    }
                 }
             }
         }
+    }
+
+    /** Parede girada `i`: o ponto esta FORA da caixa de verdade engordada por `folga`? */
+    private fun girada(i: Int, x: Float, z: Float, folga: Float): Boolean {
+        val rots = Constantes.PAREDES_ROT
+        if (i >= rots.size || rots[i] == 0f) return false
+        val o = Constantes.PAREDES_OBB
+        val c = cos(rots[i]); val s = sin(rots[i])
+        val dx = x - o[i * 4]; val dz = z - o[i * 4 + 1]
+        return abs(dx * c - dz * s) >= o[i * 4 + 2] + folga || abs(dx * s + dz * c) >= o[i * 4 + 3] + folga
     }
 
     private fun centroX(g: Int) = -metade + (g + 0.5f) * CELULA
@@ -118,7 +133,7 @@ object Navegacao {
             while (i < p.size) {
                 // cercas baixas (1 m) e o guarda-corpo nao bloqueiam o ataque; paredes de verdade sim
                 if (Constantes.PAREDES_ALTURA[i / 4] >= 2f && Constantes.PAREDES_BASE[i / 4] < 0.5f &&
-                    x > p[i] && x < p[i + 2] && z > p[i + 1] && z < p[i + 3]
+                    Colisao.dentroDaParede(i / 4, x, z)
                 ) return true
                 i += 4
             }

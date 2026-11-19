@@ -379,7 +379,7 @@ class Jogador : Disposable {
 
         // Vertical: gravidade, pulo, rampas e andar alto (Terreno).
         val chaoY = Terreno.alturaSuporte(posicao.x, posicao.z, posicao.y)
-        if (noChao && velY <= 0f && chaoY >= posicao.y - 0.01f) {
+        if (noChao && velY <= 0f && chaoY >= posicao.y - 0.45f) {
             posicao.y = chaoY // sobe degrau/rampa
         } else {
             velY -= Constantes.GRAVIDADE * dt
@@ -393,7 +393,7 @@ class Jogador : Disposable {
                 noChao = false
             }
         }
-        if (noChao && chaoY < posicao.y - 0.01f) noChao = false // saiu da borda: cai
+        if (noChao && chaoY < posicao.y - 0.46f) noChao = false // saiu da borda: cai
         if (deslocando || !noChao || empurrando || tempoDeslize > 0f) Colisao.resolver(posicao, Constantes.JOGADOR_RAIO)
 
         atualizarTransformacao()
