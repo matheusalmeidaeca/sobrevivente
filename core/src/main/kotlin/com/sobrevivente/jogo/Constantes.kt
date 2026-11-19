@@ -203,11 +203,11 @@ object Constantes {
     // Inimigo básico (seção 13 do mapa)
     const val ENIMIGO_VIDA = 100
     const val ENIMIGO_VELOCIDADE = 2.7f // m/s (menor que a do jogador)
-    const val ENIMIGO_VISAO = 18f // começa a perseguir a até 12 m
+    const val ENIMIGO_VISAO = 26f // começa a perseguir a até 12 m
     const val ENIMIGO_PERDE_JOGADOR = 18f // volta a ficar parado acima de 18 m
     const val ENIMIGO_ALCANCE_ATAQUE = 1.5f
     const val ENIMIGO_DANO = 10
-    const val ENIMIGO_INTERVALO_ATAQUE = 0.8f // segundos entre golpes
+    const val ENIMIGO_INTERVALO_ATAQUE = 0.7f // segundos entre golpes
     // Navegacao e vagar dos inimigos (pedido do dono, v2.16)
     const val NAV_CELULA = 0.5f // tamanho da celula da grade do A* (m)
     const val NAV_MARGEM = 0.08f // folga extra alem do raio do inimigo ao engordar as paredes (m)
@@ -640,7 +640,7 @@ object Constantes {
     const val ZUMBI_TINTA_FLASH = 2.2f
 
     // ---- F5: movimento estilo CoD Mobile (sem deslizar), vila e respawn ----
-    const val JOGADOR_SPRINT_FATOR = 1.45f // corrida automatica com o joystick no maximo
+    const val JOGADOR_SPRINT_FATOR = 1.6f // corrida automatica com o joystick no maximo
     const val JOGADOR_SPRINT_LIMIAR = 0.92f
     const val JOGADOR_FATOR_AGACHADO = 0.5f
     const val JOGADOR_FATOR_ATIRANDO = 0.7f // andar atirando/recarregando
@@ -740,7 +740,7 @@ object Constantes {
     const val ATROPELO_RAIO = 0.80f           // distancia para o zumbi rapido atropelar um mais lento
     const val ATROPELO_RAZAO_VEL = 1.25f      // so atropela quem e pelo menos 25% mais lento
     const val LOOT_CHANCE = 0.55f             // chance de um zumbi nascer carregando loot
-    const val LOOT_CHANCE_CURA = 0.35f        // dos que carregam: 35% cura, 65% municao
+    const val LOOT_CHANCE_CURA = 0.18f        // dos que carregam: 18% cura, 82% municao (metade de antes)
     const val LOOT_MUNICAO_MIN = 6
     const val LOOT_MUNICAO_MAX = 18
     const val LOOT_MAX_NO_CHAO = 24

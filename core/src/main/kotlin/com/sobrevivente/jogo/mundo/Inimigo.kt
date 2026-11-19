@@ -48,6 +48,18 @@ enum class TipoZumbi(
  */
 class Inimigo(modelo: Model, x: Float, z: Float, private val animado: Boolean = false) {
 
+    /** Ondas: quanto mais ondas, mais rapidos e resistentes (definido pelo Mundo). */
+    object Onda {
+        var velocidade = 0.8f
+        var vida = 1f
+    }
+
+
+    /** Jeito de se mover (estilo Zombies): 0 andador (arrasta, bracos esticados), 1 corredor, 2 velocista (bote ao chegar perto). */
+    private var estilo = 0
+    private var velEstilo = 1f
+
+
     enum class Estado { PARADO, VAGANDO, CACANDO, PERSEGUINDO, ATACANDO, MORTO }
 
     val instancia = ModelInstance(modelo)
@@ -133,7 +145,14 @@ class Inimigo(modelo: Model, x: Float, z: Float, private val animado: Boolean = 
     /** Sorteia aparencia: magro/gordo, alto/baixo e um tom de pele (so com o modelo animado). */
     private fun sortearAparencia(forcado: TipoZumbi? = null, fatorVida: Float = 1f) {
         tipo = forcado ?: TipoZumbi.sortear()
-        vida = (tipo.vida * fatorVida).toInt()
+        vida = (tipo.vida * fatorVida * (if (forcado != null) 1f else Onda.vida)).toInt()
+        estilo = when {
+            forcado != null -> 1
+            tipo == TipoZumbi.RAPIDO -> 2
+            tipo == TipoZumbi.LENTO -> 0
+            else -> { val r = MathUtils.random(); if (r < 0.40f) 0 else if (r < 0.85f) 1 else 2 }
+        }
+        velEstilo = when (estilo) { 0 -> 0.85f; 1 -> 1.2f; else -> 1.5f }
         vidaMaxima = vida
         loot = if (forcado != null) 0 else if (MathUtils.randomBoolean(Constantes.LOOT_CHANCE)) {
             if (MathUtils.randomBoolean(Constantes.LOOT_CHANCE_CURA)) 2 else 1
@@ -159,7 +178,7 @@ class Inimigo(modelo: Model, x: Float, z: Float, private val animado: Boolean = 
 
     /** Fator de velocidade do tipo; cambaleando anda bem mais devagar. */
     private fun fatorVel(): Float =
-        tipo.velocidade * (if (tempoCambaleio > 0f) Constantes.ZUMBI_CAMBALEIO_VEL else 1f)
+        tipo.velocidade * velEstilo * Onda.velocidade * (if (tempoCambaleio > 0f) Constantes.ZUMBI_CAMBALEIO_VEL else 1f)
 
     init {
         sortearAparencia()
@@ -284,7 +303,7 @@ class Inimigo(modelo: Model, x: Float, z: Float, private val animado: Boolean = 
                         tempoReplano = Constantes.ENIMIGO_REPLANEJAR_S + MathUtils.random(0f, 0.1f)
                         planejar(jogador.posicao.x, jogador.posicao.z)
                     }
-                    if (!seguirTrajeto(dt, Constantes.ENIMIGO_VELOCIDADE * fatorVel())) {
+                    if (!seguirTrajeto(dt, Constantes.ENIMIGO_VELOCIDADE * fatorVel() * (if (estilo == 2 && distancia < 4.5f) 1.35f else 1f))) {
                         // sem caminho (ou chegou ao fim): encara o jogador e tenta de novo no proximo replano
                         rumoYaw = MathUtils.atan2(-dx, -dz) * MathUtils.radiansToDegrees
                         tempoReplano = 0f
@@ -306,7 +325,7 @@ class Inimigo(modelo: Model, x: Float, z: Float, private val animado: Boolean = 
                         if (distancia > 0.01f) {
                             jogador.receberImpacto(dx / distancia, dz / distancia, Constantes.IMPACTO_GOLPE_FORCA * (0.6f + tipo.dano / 25f))
                         }
-                        tempoAtaque = Constantes.ENIMIGO_INTERVALO_ATAQUE
+                        tempoAtaque = Constantes.ENIMIGO_INTERVALO_ATAQUE * (if (estilo == 0) 1.2f else if (estilo == 2) 0.8f else 1f)
                     }
                 }
             }
@@ -575,14 +594,18 @@ class Inimigo(modelo: Model, x: Float, z: Float, private val animado: Boolean = 
         val t = Constantes.ANIM_TRANSICAO_S
         when (novo) {
             Estado.PARADO -> animador.tocar("parado", -1, 1f, t)
-            Estado.CACANDO -> animador.tocar(
-                "andar", -1, Constantes.ENIMIGO_VELOCIDADE_CACA * tipo.velocidade / Constantes.ENIMIGO_VAGAR_REF, Constantes.ANIM_TRANSICAO_MARCHA_S
+            Estado.CACANDO -> if (estilo >= 1) animador.tocar(
+                "correr", -1, MathUtils.clamp(Constantes.ZUMBI_ANIM_VELOCIDADE * tipo.velocidade * velEstilo * Onda.velocidade * 0.8f, 0.55f, 1.9f), Constantes.ANIM_TRANSICAO_MARCHA_S
+            ) else animador.tocar(
+                "andar", -1, Constantes.ENIMIGO_VELOCIDADE_CACA * tipo.velocidade * velEstilo / Constantes.ENIMIGO_VAGAR_REF, Constantes.ANIM_TRANSICAO_MARCHA_S
             )
             Estado.VAGANDO -> animador.tocar(
                 "andar", -1, Constantes.ENIMIGO_VELOCIDADE_VAGAR * tipo.velocidade / Constantes.ENIMIGO_VAGAR_REF, Constantes.ANIM_TRANSICAO_MARCHA_S
             )
-            Estado.PERSEGUINDO -> animador.tocar(
-                "correr", -1, MathUtils.clamp(Constantes.ZUMBI_ANIM_VELOCIDADE * tipo.velocidade, 0.55f, 1.9f), Constantes.ANIM_TRANSICAO_MARCHA_S
+            Estado.PERSEGUINDO -> if (estilo >= 1) animador.tocar(
+                "correr", -1, MathUtils.clamp(Constantes.ZUMBI_ANIM_VELOCIDADE * tipo.velocidade * velEstilo, 0.55f, 1.9f), Constantes.ANIM_TRANSICAO_MARCHA_S
+            ) else animador.tocar(
+                "andar", -1, Constantes.ENIMIGO_VELOCIDADE * tipo.velocidade * velEstilo / Constantes.ENIMIGO_VAGAR_REF, Constantes.ANIM_TRANSICAO_MARCHA_S
             )
             Estado.ATACANDO -> animador.tocar("atacar", -1, Constantes.ENIMIGO_ATAQUE_ANIM_VEL, t)
             Estado.MORTO -> animador.tocar("morrer", 1, 1f, t)

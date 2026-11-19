@@ -52,6 +52,7 @@ class Jogador : Disposable {
     private var tempoClarao = 0f
     private var tempoEncarar = 0f
     private var intensidadeMovimento = 0f
+    val intensidadeMov: Float get() = intensidadeMovimento
     private var intensidadeSuave = 0f   // filtrada: evita tremer entre andar/correr
     private var andando = false           // histerese parado <-> andar
     private var correndo = false          // histerese andar <-> correr

@@ -375,7 +375,7 @@ object CidadeMapa {
                 if (distInicio(x, z) < 32f) continue
                 val idx = k + r * 3 + bi
                 if (idx % 4 == 0) b.zumbi(x, z)
-                if (idx % 4 == 2) b.item(x - 1.2f, z + 1.2f, if ((k + r) % 3 == 0) 0 else 1)
+                if (idx % 4 == 2) b.item(x - 1.2f, z + 1.2f, if ((k + r) % 6 == 0) 0 else 1)
                 if (idx % 3 == 1) { sp.add(x); sp.add(z) }
             }
         }

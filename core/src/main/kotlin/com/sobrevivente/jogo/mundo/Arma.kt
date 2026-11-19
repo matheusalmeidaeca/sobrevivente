@@ -56,6 +56,47 @@ class Arma {
     var tipo = TipoArma.PISTOLA
         private set
 
+    // Equipamentos e melhorias por arma (comprados no mercador)
+    private val nivel = IntArray(tipos.size)
+    private val pente = IntArray(tipos.size)
+    private val coronha = IntArray(tipos.size)
+    private val mira = IntArray(tipos.size)
+
+    val nivelAtual: Int get() = nivel[tipo.ordinal]
+    val temPente: Boolean get() = pente[tipo.ordinal] > 0
+    val temCoronha: Boolean get() = coronha[tipo.ordinal] > 0
+    val temMira: Boolean get() = mira[tipo.ordinal] > 0
+
+    fun carregadorMax(i: Int): Int = (tipos[i].carregador * (1f + 0.5f * pente[i])).toInt()
+    val carregadorMaxAtual: Int get() = carregadorMax(tipo.ordinal)
+    /** Dano por projetil com a melhoria (+30% por nivel). */
+    val danoAtual: Int get() = (tipo.dano * (1f + 0.30f * nivel[tipo.ordinal])).toInt()
+    /** Dispersao com coronha (-30%) e mira (-10%). */
+    val dispersaoAtual: Float get() = tipo.dispersao * (1f - 0.30f * coronha[tipo.ordinal]) * (1f - 0.10f * mira[tipo.ordinal])
+    /** Estabilidade extra da coronha, somada ao tiro andando. */
+    val coronhaFator: Float get() = 1f - 0.4f * coronha[tipo.ordinal]
+    private fun cadenciaAtual(): Float = tipo.cadencia * (1f + 0.08f * nivel[tipo.ordinal])
+    private fun recargaAtual(): Float = tipo.recargaS * (1f + 0.15f * pente[tipo.ordinal]) * (1f - 0.10f * nivel[tipo.ordinal])
+    /** FOV da mira: mira telescopica aproxima mais. */
+    val fovMira: Float get() = if (mira[tipo.ordinal] > 0) 38f else Constantes.RE4_FOV_MIRA
+    /** Velocidade de levantar a mira (coronha ajuda). */
+    val velMira: Float get() = Constantes.RE4_ENTRAR_MIRA * (1f + 0.35f * coronha[tipo.ordinal])
+    val nomeComNivel: String get() = if (nivel[tipo.ordinal] > 0) tipo.nome + " +" + nivel[tipo.ordinal] else tipo.nome
+
+    fun precoNivel(): Int = 150 * (nivel[tipo.ordinal] + 1)
+    fun comprarNivel(): Boolean { if (nivel[tipo.ordinal] >= 3) return false; nivel[tipo.ordinal]++; return true }
+    fun comprarPente(): Boolean { if (pente[tipo.ordinal] > 0) return false; pente[tipo.ordinal] = 1; return true }
+    fun comprarCoronha(): Boolean { if (coronha[tipo.ordinal] > 0) return false; coronha[tipo.ordinal] = 1; return true }
+    fun comprarMira(): Boolean { if (mira[tipo.ordinal] > 0) return false; mira[tipo.ordinal] = 1; return true }
+
+    /** Guarda/recupera as melhorias (4 numeros por arma) para passar de fase. */
+    fun exportar(dest: IntArray) {
+        for (i in tipos.indices) { dest[i * 4] = nivel[i]; dest[i * 4 + 1] = pente[i]; dest[i * 4 + 2] = coronha[i]; dest[i * 4 + 3] = mira[i] }
+    }
+    fun importar(src: IntArray) {
+        for (i in tipos.indices) { nivel[i] = src[i * 4]; pente[i] = src[i * 4 + 1]; coronha[i] = src[i * 4 + 2]; mira[i] = src[i * 4 + 3] }
+    }
+
     val carregador: Int
         get() = carregadores[tipo.ordinal]
     val reserva: Int
@@ -103,7 +144,7 @@ class Arma {
             return false // não atira durante a recarga
         }
 
-        if (pedidoRecarga && carregadores[i] < tipo.carregador && reservas[i] > 0) {
+        if (pedidoRecarga && carregadores[i] < carregadorMax(i) && reservas[i] > 0) {
             iniciarRecarga()
             return false
         }
@@ -111,7 +152,7 @@ class Arma {
         if (atirando && tempoCadencia <= 0f) {
             if (carregadores[i] > 0) {
                 carregadores[i]--
-                tempoCadencia = 1f / tipo.cadencia
+                tempoCadencia = 1f / cadenciaAtual()
                 return true
             }
             // Carregador vazio: recarrega sozinho se houver reserva.
@@ -153,7 +194,7 @@ class Arma {
         val i = t.ordinal
         val nova = !liberadas[i]
         liberadas[i] = true
-        if (nova) carregadores[i] = t.carregador else reservas[i] += t.reservaInicial / 2
+        if (nova) carregadores[i] = carregadorMax(i) else reservas[i] += t.reservaInicial / 2
         if (!recarregando) {
             tipo = t
             faca = false
@@ -165,7 +206,7 @@ class Arma {
     /** Volta ao estado inicial (carregadores cheios, reservas iniciais, pistola). Usado ao reiniciar depois da morte. */
     fun reiniciar() {
         for (i in tipos.indices) {
-            carregadores[i] = tipos[i].carregador
+            carregadores[i] = carregadorMax(i)
             reservas[i] = tipos[i].reservaInicial
         }
         for (i in liberadas.indices) liberadas[i] = i == 0
@@ -184,12 +225,12 @@ class Arma {
 
     private fun iniciarRecarga() {
         recarregando = true
-        tempoRecarga = tipo.recargaS
+        tempoRecarga = recargaAtual()
     }
 
     private fun concluirRecarga() {
         val i = tipo.ordinal
-        val falta = tipo.carregador - carregadores[i]
+        val falta = carregadorMax(i) - carregadores[i]
         val movida = minOf(falta, reservas[i])
         carregadores[i] += movida
         reservas[i] -= movida

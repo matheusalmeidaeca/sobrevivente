@@ -360,7 +360,16 @@ class Mundo : Disposable {
      * Atualiza a IA dos inimigos e o respawn. Chamar uma vez por frame (jogo rodando).
      * (dirX, dirZ) = frente da camera no plano XZ (para nascer fora da vista).
      */
+    /** Onda atual (a cada 12 abates): zumbis mais rapidos e resistentes. */
+    var onda = 1
+        private set
+    var aoOnda: ((Int) -> Unit)? = null
+
     fun atualizar(dt: Float, jogador: Jogador, dirX: Float, dirZ: Float) {
+        val nova = 1 + abates / 12
+        if (nova != onda) { onda = nova; aoOnda?.invoke(onda) }
+        Inimigo.Onda.velocidade = minOf(1.7f, 0.75f + 0.12f * (onda - 1))
+        Inimigo.Onda.vida = minOf(2.2f, 1f + 0.08f * (onda - 1))
         for (i in inimigos.indices) {
             inimigos[i].atualizar(dt, jogador)
         }

@@ -58,7 +58,6 @@ class TelaJogo(
     private var ouroNoInicio = 0
     /** Menu modal aberto: 0 = pausa, 1 = loja do mercador, 2 = fase concluida. */
     private var modo = 0
-    private val rotulosLoja = arrayOf("", "", "", "", "FECHAR")
     private var jogador = Jogador() // var: é recriado ao reiniciar depois da morte
     private val arma = Arma()
     private val direcaoTiro = Vector3() // reaproveitado: dispersao dos bagos da escopeta
@@ -115,6 +114,7 @@ class TelaJogo(
     private fun aplicarProgresso() {
         if (Progresso.fuzil && maleta.adicionarArma(TipoArma.FUZIL)) arma.liberar(TipoArma.FUZIL)
         if (Progresso.escopeta && maleta.adicionarArma(TipoArma.ESCOPETA)) arma.liberar(TipoArma.ESCOPETA)
+        arma.importar(Progresso.mods)
         arma.adicionarReserva(Progresso.reserva)
         if (Progresso.curas > 0) maleta.adicionar(TipoItem.CURA, Progresso.curas)
     }
@@ -128,6 +128,7 @@ class TelaJogo(
         } else Historia(mundo, Fases.atual)
         h.aoMensagem = { t -> hud.mostrarMensagem(t) }
         h.aoAbrirLoja = { abrirMenu(1) }
+        mundo.aoOnda = { n -> if (n > 1) hud.mostrarMensagem("ONDA " + n + " - os zumbis estao mais rapidos!") }
         h.aoConcluir = { concluirFase() }
         historia = h
         hud.historia = h
@@ -138,6 +139,7 @@ class TelaJogo(
         Progresso.fuzil = arma.estaLiberada(TipoArma.FUZIL)
         Progresso.escopeta = arma.estaLiberada(TipoArma.ESCOPETA)
         Progresso.reserva = arma.reserva
+        arma.exportar(Progresso.mods)
         Progresso.curas = maleta.total(TipoItem.CURA)
         som.tocar("fase_completa", 0.9f)
         abrirMenu(2)
@@ -223,9 +225,8 @@ class TelaJogo(
             }
             1 -> {
                 hud.menuTitulo = "MERCADOR"
-                atualizarLoja("Escolha o que comprar")
-                hud.menuRotulos = rotulosLoja
-                hud.menuCores = intArrayOf(2, 2, 2, 2, 1)
+                lojaPagina = 0
+                montarLoja("Escolha o que comprar")
             }
             else -> {
                 hud.menuTitulo = Fases.atual.nome + " CONCLUIDA"
@@ -254,32 +255,90 @@ class TelaJogo(
         Gdx.app.log("TELA", "menu fechado")
     }
 
-    private val precosLoja = intArrayOf(20, 35, 150, 180)
+    /** Pagina da loja: 0 principal, 1 armas, 2 equipamentos da arma equipada. */
+    private var lojaPagina = 0
+    private val PRECO_MUNICAO = 20
+    private val PRECO_CURA = 35
+    private val PRECO_FUZIL = 150
+    private val PRECO_ESCOPETA = 180
+    private val PRECO_PENTE = 120
+    private val PRECO_CORONHA = 100
+    private val PRECO_MIRA = 110
 
-    private fun atualizarLoja(aviso: String) {
-        rotulosLoja[0] = "MUNICAO +30  (20)"
-        rotulosLoja[1] = "CURA  (35)"
-        rotulosLoja[2] = if (arma.estaLiberada(TipoArma.FUZIL)) "FUZIL  (ja tem)" else "FUZIL  (150)"
-        rotulosLoja[3] = if (arma.estaLiberada(TipoArma.ESCOPETA)) "ESCOPETA  (ja tem)" else "ESCOPETA  (180)"
-        hud.menuSubtitulo = "Ouro: " + Progresso.ouro + "  -  " + aviso
+    private fun montarLoja(aviso: String) {
+        val r: Array<String>
+        val c: IntArray
+        when (lojaPagina) {
+            1 -> {
+                r = arrayOf(
+                    if (arma.estaLiberada(TipoArma.FUZIL)) "FUZIL  (ja tem)" else "FUZIL  ($PRECO_FUZIL)",
+                    if (arma.estaLiberada(TipoArma.ESCOPETA)) "ESCOPETA  (ja tem)" else "ESCOPETA  ($PRECO_ESCOPETA)",
+                    "VOLTAR"
+                )
+                c = intArrayOf(2, 2, 1)
+            }
+            2 -> {
+                val f = arma.faca
+                r = arrayOf(
+                    if (f) "PENTE MAIOR  (sem arma)" else if (arma.temPente) "PENTE MAIOR  (comprado)" else "PENTE MAIOR  ($PRECO_PENTE)",
+                    if (f) "CORONHA  (sem arma)" else if (arma.temCoronha) "CORONHA  (comprada)" else "CORONHA  ($PRECO_CORONHA)",
+                    if (f) "MIRA  (sem arma)" else if (arma.temMira) "MIRA  (comprada)" else "MIRA  ($PRECO_MIRA)",
+                    if (f) "MELHORAR ARMA" else if (arma.nivelAtual >= 3) "MELHORAR  (maximo)" else "MELHORAR ARMA +" + (arma.nivelAtual + 1) + "  (" + arma.precoNivel() + ")",
+                    "VOLTAR"
+                )
+                c = intArrayOf(2, 2, 2, 0, 1)
+            }
+            else -> {
+                r = arrayOf("MUNICAO +30  ($PRECO_MUNICAO)", "CURA  ($PRECO_CURA)", "ARMAS >", "EQUIPAMENTOS >", "FECHAR")
+                c = intArrayOf(2, 2, 2, 2, 1)
+            }
+        }
+        hud.menuRotulos = r
+        hud.menuCores = c
+        controles.definirMenu(r.size)
+        val arm = if (lojaPagina == 2 && !arma.faca) "  -  " + arma.nomeComNivel else ""
+        hud.menuSubtitulo = "Ouro: " + Progresso.ouro + arm + (if (aviso.isNotEmpty()) "  -  $aviso" else "")
     }
 
-    /** Toque num botao da loja (0..3 = itens, 4 = fechar). */
+    private fun atualizarLoja(aviso: String) = montarLoja(aviso)
+
+    /** Gasta `preco` se der e roda `efeito` (devolve a mensagem, ou null se nao pode). */
+    private fun gastar(preco: Int, efeito: () -> String?) {
+        if (Progresso.ouro < preco) { montarLoja("Ouro insuficiente"); return }
+        val msg = efeito()
+        if (msg == null) return
+        Progresso.ouro -= preco
+        montarLoja(msg)
+    }
+
+    /** Toque num botao da loja (indice na pagina atual). */
     private fun comprar(i: Int) {
-        if (i == 4) { fecharMenu(); return }
-        if (Progresso.ouro < precosLoja[i]) { atualizarLoja("Ouro insuficiente"); return }
-        val resultado: String = when (i) {
-            0 -> { arma.adicionarReserva(30); "Comprou municao" }
-            1 -> if (maleta.adicionar(TipoItem.CURA, 1)) "Comprou cura" else { atualizarLoja(Constantes.MSG_MALETA_CHEIA); return }
-            2 -> if (arma.estaLiberada(TipoArma.FUZIL)) { atualizarLoja("Voce ja tem o fuzil"); return }
-                 else if (maleta.adicionarArma(TipoArma.FUZIL)) { arma.liberar(TipoArma.FUZIL); "Comprou o fuzil" }
-                 else { atualizarLoja(Constantes.MSG_MALETA_CHEIA); return }
-            else -> if (arma.estaLiberada(TipoArma.ESCOPETA)) { atualizarLoja("Voce ja tem a escopeta"); return }
-                 else if (maleta.adicionarArma(TipoArma.ESCOPETA)) { arma.liberar(TipoArma.ESCOPETA); "Comprou a escopeta" }
-                 else { atualizarLoja(Constantes.MSG_MALETA_CHEIA); return }
+        when (lojaPagina) {
+            0 -> when (i) {
+                0 -> gastar(PRECO_MUNICAO) { arma.adicionarReserva(30); "Comprou municao" }
+                1 -> gastar(PRECO_CURA) { if (maleta.adicionar(TipoItem.CURA, 1)) "Comprou cura" else { montarLoja(Constantes.MSG_MALETA_CHEIA); null } }
+                2 -> { lojaPagina = 1; montarLoja("") }
+                3 -> { lojaPagina = 2; montarLoja("") }
+                else -> fecharMenu()
+            }
+            1 -> when (i) {
+                0 -> if (arma.estaLiberada(TipoArma.FUZIL)) montarLoja("Voce ja tem o fuzil")
+                     else gastar(PRECO_FUZIL) { if (maleta.adicionarArma(TipoArma.FUZIL)) { arma.liberar(TipoArma.FUZIL); "Comprou o fuzil" } else { montarLoja(Constantes.MSG_MALETA_CHEIA); null } }
+                1 -> if (arma.estaLiberada(TipoArma.ESCOPETA)) montarLoja("Voce ja tem a escopeta")
+                     else gastar(PRECO_ESCOPETA) { if (maleta.adicionarArma(TipoArma.ESCOPETA)) { arma.liberar(TipoArma.ESCOPETA); "Comprou a escopeta" } else { montarLoja(Constantes.MSG_MALETA_CHEIA); null } }
+                else -> { lojaPagina = 0; montarLoja("") }
+            }
+            else -> {
+                if (i == 4) { lojaPagina = 0; montarLoja(""); return }
+                if (arma.faca) { montarLoja("Equipe uma arma de fogo"); return }
+                when (i) {
+                    0 -> if (arma.temPente) montarLoja("Ja comprado") else gastar(PRECO_PENTE) { arma.comprarPente(); "Pente maior instalado" }
+                    1 -> if (arma.temCoronha) montarLoja("Ja comprada") else gastar(PRECO_CORONHA) { arma.comprarCoronha(); "Coronha instalada" }
+                    2 -> if (arma.temMira) montarLoja("Ja comprada") else gastar(PRECO_MIRA) { arma.comprarMira(); "Mira instalada" }
+                    else -> if (arma.nivelAtual >= 3) montarLoja("Ja esta no maximo") else gastar(arma.precoNivel()) { arma.comprarNivel(); "Arma melhorada" }
+                }
+            }
         }
-        Progresso.ouro -= precosLoja[i]
-        atualizarLoja(resultado)
     }
 
     /** Botao tocado no menu modal (indice na lista do menu aberto). */
@@ -315,6 +374,8 @@ class TelaJogo(
         val giroX = controles.consumirGiroX() / densidade
         val giroY = controles.consumirGiroY() / densidade
         cameraJogo.girar(giroX, giroY)
+        cameraJogo.fovMira = arma.fovMira
+        cameraJogo.velMira = arma.velMira
         if (controles.consumirPressao(ControlesToque.ACAO_MIRAR) && !arma.faca) { mirando = !mirando; mirandoManual = mirando }
         val apertouAtirar = controles.acaoPressionada(ControlesToque.ACAO_ATIRAR) ||
             controles.acaoPressionada(ControlesToque.ACAO_ATIRAR_ESQ)
@@ -323,6 +384,10 @@ class TelaJogo(
         // mira levantada so por causa do tiro baixa sozinha depois de um tempo sem atirar
         if (apertouAtirar) tempoSemAtirar = 0f else tempoSemAtirar += dt
         if (mirando && !mirandoManual && tempoSemAtirar > 1.6f) mirando = false
+        // correr abaixa a arma (como no Call of Duty): sprint cancela a mira se nao esta atirando
+        if (mirando && !apertouAtirar && kotlin.math.sqrt(controles.movimentoX * controles.movimentoX + controles.movimentoY * controles.movimentoY) >= Constantes.JOGADOR_SPRINT_LIMIAR) {
+            mirando = false; mirandoManual = false
+        }
         mirandoAntes = mirando
         jogador.mover(dt, controles.movimentoX, controles.movimentoY, mirando, cameraJogo.yaw)
         if (mirando) jogador.manterMira()
@@ -346,11 +411,13 @@ class TelaJogo(
             var acertou = false
             for (i in 0 until tipo.projeteis) {
                 direcaoTiro.set(cameraJogo.camera.direction)
-                if (tipo.dispersao > 0f) {
-                    val d = tipo.dispersao
+                // andando a mira abre (tiro menos preciso); coronha segura
+                val abre = if (jogador.intensidadeMov > 0.3f) 0.010f * arma.coronhaFator else 0f
+                val d = arma.dispersaoAtual + abre
+                if (d > 0f) {
                     direcaoTiro.add(MathUtils.random(-d, d), MathUtils.random(-d, d), MathUtils.random(-d, d)).nor()
                 }
-                if (mundo.atirar(cameraJogo.camera.position, direcaoTiro, tipo.alcance, tipo.dano, tipo)) acertou = true
+                if (mundo.atirar(cameraJogo.camera.position, direcaoTiro, tipo.alcance, arma.danoAtual, tipo)) acertou = true
             }
             if (acertou) hud.mostrarAcerto()
             // recuo: o tiro desequilibra um pouco o personagem para tras (escopeta bem mais)
@@ -708,7 +775,7 @@ class TelaJogo(
             if (!morto && jogador.vida <= 0) morrer()
         }
         if (arma.faca) hud.definirMunicao("FACA", -1, 0, false)
-        else hud.definirMunicao(arma.tipo.nome, arma.carregador, arma.reserva, arma.recarregando)
+        else hud.definirMunicao(arma.nomeComNivel, arma.carregador, arma.reserva, arma.recarregando)
         hud.definirArmas(arma.slotAtivo, arma.estaLiberada(com.sobrevivente.jogo.mundo.TipoArma.FUZIL), arma.estaLiberada(com.sobrevivente.jogo.mundo.TipoArma.ESCOPETA))
         hud.definirAbates(mundo.abates)
         hud.definirCuras(maleta.total(TipoItem.CURA))

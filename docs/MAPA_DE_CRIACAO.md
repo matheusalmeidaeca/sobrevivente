@@ -1113,3 +1113,9 @@ Estado em 15/11/2026: o `gerar-modelo.yml` já está no repositório com a etapa
 - CidadeMapa.w(x, z): deformacao suave (<=10 m, inclinacao ~0,2) aplicada ao mapa em malha. MapaBuilder.warp + grupo(): cada quarteirao/predio/carro/arvore recebe UMA transformacao rigida (giro do local); pecas longas (muralhas, cerco) sao fatiadas em trechos de ~10 m que seguem a curva. Quarteiroes sao encolhidos a 88% para sobrar folga nas ruas.
 - Pontos da missao (CidadeMapa.*_W) sao passados por w(). Pisos/telhados de modelo nao existem em predios girados.
 - F27: rios de verdade (vale escavado + agua translucida) ao longo das muralhas dos portoes A e C (o portao e a ponte); baus/chaves/fusiveis/alavancas ficam sobre o chao (Terreno.alturaChao). F28: bairros (residencial, industrial, centro com torres, hospital, estadio, parque) e quarteiroes em L. PENDENTE: bairros nomeados no mapa grande, telhados inclinados de verdade, universidade.
+
+## F29 - Loja, equipamentos, mira e ondas
+- Mercador em paginas: municao, cura, ARMAS (fuzil/escopeta), EQUIPAMENTOS da arma equipada (pente maior +50%, coronha -30% dispersao e mira mais rapida, mira telescopica FOV 38, melhorar arma ate +3: +30% dano, cadencia +8%).
+- Cura: drop de zumbi 18% (antes 35%) e itens de cura do mapa pela metade.
+- Mira: sprint abaixa a arma; andando a dispersao abre (coronha segura); sprint 1.6x.
+- Ondas: a cada 12 abates sobe a onda (velocidade ate 1.7x, vida ate 2.2x), com aviso na tela.

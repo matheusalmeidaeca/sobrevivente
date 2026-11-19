@@ -49,8 +49,12 @@ class CameraTerceiraPessoa {
     /**
      * Camera livre no ombro: o toque direito gira (ver `girar`); aqui so se entra/sai da mira (camera mais colada, FOV menor).
      */
+    /** FOV e velocidade da mira da arma atual (acessorios). */
+    var fovMira = Constantes.RE4_FOV_MIRA
+    var velMira = Constantes.RE4_ENTRAR_MIRA
+
     fun atualizar(dt: Float, alvo: Vector3, mirando: Boolean) {
-        val k = minOf(1f, Constantes.RE4_ENTRAR_MIRA * dt)
+        val k = minOf(1f, velMira * dt)
         mira += ((if (mirando) 1f else 0f) - mira) * k
         seguir(alvo)
     }
@@ -74,7 +78,7 @@ class CameraTerceiraPessoa {
 
         val distancia = MathUtils.lerp(Constantes.RE4_DISTANCIA, Constantes.RE4_DISTANCIA_MIRA, mira)
         val ombro = MathUtils.lerp(Constantes.RE4_OMBRO, Constantes.RE4_OMBRO_MIRA, mira)
-        camera.fieldOfView = MathUtils.lerp(Constantes.CAMERA_FOV, Constantes.RE4_FOV_MIRA, mira)
+        camera.fieldOfView = MathUtils.lerp(Constantes.CAMERA_FOV, fovMira, mira)
         val pivoY = alvo.y + Constantes.RE4_PIVO_ALTURA
         var cameraY = pivoY - frenteY * distancia
         if (cameraY < Constantes.CAMERA_ALTURA_MINIMA) {
