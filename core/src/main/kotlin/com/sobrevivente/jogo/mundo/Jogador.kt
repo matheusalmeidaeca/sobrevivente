@@ -87,6 +87,27 @@ class Jogador : Disposable {
     private var ultDirZ = -1f
     val deslizando: Boolean
         get() = tempoDeslize > 0f
+    // Equipamento visivel (preso aos ossos) e protecao
+    var colete = 0
+        private set
+    var capacete = false
+        private set
+    var mochila = false
+        private set
+    /** Sujeira/sangue acumulados (0..1): escurece o corpo conforme a vida cai. */
+    private var inclinacaoCorrida = 0f
+    private val equipModelos = ArrayList<Model>()
+    private lateinit var instMochila: ModelInstance
+    private lateinit var instColete: ModelInstance
+    private lateinit var instCapacete: ModelInstance
+    private var noTorso: Node? = null
+    private var noCabeca: Node? = null
+    private val visiveis = ArrayList<ModelInstance>()
+    /** Pecas de equipamento que devem ser desenhadas agora. */
+    val equipamentos: List<ModelInstance> get() = visiveis
+    /** True durante o rolamento (meio segundo sem tomar dano). */
+    val invulneravel: Boolean
+        get() = tempoDeslize > Constantes.DESLIZE_S * 0.35f
     private var recargaTravada = false
     private var recargaAndando = false
 
@@ -173,12 +194,16 @@ class Jogador : Disposable {
         instanciaFacaLamina = ModelInstance(modeloFacaLamina)
         instanciaFacaCabo = ModelInstance(modeloFacaCabo)
 
+        criarEquipamento(construtor, atributos)
+
         corpo = ModelInstance(modeloCorpo)
         nariz = ModelInstance(modeloNariz)
         clarao = ModelInstance(modeloClarao)
         animador = Animador(corpo)
         if (animado) {
             noMao = corpo.getNode("mao_dir", true)
+            noTorso = corpo.getNode("coluna2", true)
+            noCabeca = corpo.getNode("cabeca", true)
             for (i in nomesReacao.indices) nosReacao[i] = corpo.getNode(nomesReacao[i], true)
             for (tipo in TipoArma.values()) {
                 val m = CarregadorModelos.carregar(tipo.modelo)
@@ -190,6 +215,85 @@ class Jogador : Disposable {
         }
         atualizarTransformacao()
         atualizarArma()
+    }
+
+    private fun caixas(c: ModelBuilder, atr: Long, partes: List<FloatArray>): Model {
+        c.begin()
+        val m = Matrix4()
+        for (i in partes.indices) {
+            val p = partes[i]
+            val mp = c.part("e" + i, com.badlogic.gdx.graphics.GL20.GL_TRIANGLES, atr,
+                Material(ColorAttribute.createDiffuse(p[6], p[7], p[8], 1f)))
+            m.setToTranslation(p[0], p[1], p[2])
+            mp.setVertexTransform(m)
+            mp.box(p[3], p[4], p[5])
+        }
+        val modelo = c.end()
+        equipModelos.add(modelo)
+        return modelo
+    }
+
+    /**
+     * Pecas medidas no modelo humano (coluna2 em y=1,238; tronco x +-0,20, costas em z=+0,17; cabeca de y 1,49 a 1,83).
+     * Cada peca e presa ao osso (posicao relativa ao osso, eixos do repouso: Y para cima, frente = -Z).
+     */
+    private fun criarEquipamento(c: ModelBuilder, atr: Long) {
+        instMochila = ModelInstance(caixas(c, atr, listOf(
+            floatArrayOf(0f, 0.01f, 0.245f, 0.28f, 0.34f, 0.12f, 0.22f, 0.25f, 0.15f),
+            floatArrayOf(0f, 0.18f, 0.245f, 0.26f, 0.05f, 0.11f, 0.14f, 0.17f, 0.10f),
+            floatArrayOf(0.09f, -0.06f, 0.315f, 0.08f, 0.14f, 0.04f, 0.15f, 0.18f, 0.11f),
+            floatArrayOf(-0.09f, -0.06f, 0.315f, 0.08f, 0.14f, 0.04f, 0.15f, 0.18f, 0.11f),
+            floatArrayOf(0.11f, 0.12f, 0.17f, 0.04f, 0.04f, 0.16f, 0.09f, 0.10f, 0.07f),
+            floatArrayOf(-0.11f, 0.12f, 0.17f, 0.04f, 0.04f, 0.16f, 0.09f, 0.10f, 0.07f)
+        )))
+        // colete tatico: placas na frente e nas costas, bolsos e alcas de ombro
+        instColete = ModelInstance(caixas(c, atr, listOf(
+            floatArrayOf(0f, 0.09f, -0.176f, 0.34f, 0.26f, 0.04f, 0.17f, 0.20f, 0.15f),
+            floatArrayOf(0f, 0.09f, 0.195f, 0.34f, 0.26f, 0.04f, 0.17f, 0.20f, 0.15f),
+            floatArrayOf(0.09f, -0.07f, -0.205f, 0.10f, 0.09f, 0.05f, 0.12f, 0.14f, 0.10f),
+            floatArrayOf(-0.09f, -0.07f, -0.205f, 0.10f, 0.09f, 0.05f, 0.12f, 0.14f, 0.10f),
+            floatArrayOf(0.10f, 0.215f, 0.01f, 0.06f, 0.025f, 0.38f, 0.14f, 0.17f, 0.12f),
+            floatArrayOf(-0.10f, 0.215f, 0.01f, 0.06f, 0.025f, 0.38f, 0.14f, 0.17f, 0.12f)
+        )))
+        // capacete: calota, aba e protecao de nuca (medido em render: olhos y~1,66, testa y~1,73, topo do cabelo y~1,83;
+        // osso `cabeca` em y=1,707, z=-0,036)
+        instCapacete = ModelInstance(caixas(c, atr, listOf(
+            floatArrayOf(0f, 0.090f, 0.036f, 0.235f, 0.105f, 0.265f, 0.20f, 0.23f, 0.17f),
+            floatArrayOf(0f, 0.036f, 0.040f, 0.245f, 0.028f, 0.272f, 0.17f, 0.20f, 0.14f),
+            floatArrayOf(0f, -0.010f, 0.158f, 0.21f, 0.07f, 0.03f, 0.16f, 0.19f, 0.13f)
+        )))
+    }
+
+    /** Quanto mais machucado, mais sujo e avermelhado o corpo (tinge o material; a textura continua). */
+    private fun atualizarSujeira() {
+        if (!animado) return
+        val f = 1f - vida.toFloat() / Constantes.JOGADOR_VIDA_MAXIMA
+        val k = if (f < 0.25f) 0f else (f - 0.25f) / 0.75f
+        for (m in corpo.materials) {
+            val a = m.get(ColorAttribute.Diffuse) as? ColorAttribute ?: continue
+            a.color.set(1f - 0.25f * k, 1f - 0.5f * k, 1f - 0.5f * k, 1f)
+        }
+    }
+
+    /** Equipamento vindo do progresso/loja. */
+    fun equipar(nivelColete: Int, comCapacete: Boolean, comMochila: Boolean) {
+        colete = nivelColete.coerceIn(0, 3)
+        capacete = comCapacete
+        mochila = comMochila
+        visiveis.clear()
+        if (!animado) return
+        if (mochila) visiveis.add(instMochila)
+        if (colete > 0) visiveis.add(instColete)
+        if (capacete) visiveis.add(instCapacete)
+        atualizarEquipamento()
+    }
+
+    private fun atualizarEquipamento() {
+        val torso = noTorso ?: return
+        val cab = noCabeca ?: return
+        instMochila.transform.set(corpo.transform).mul(torso.globalTransform)
+        instColete.transform.set(corpo.transform).mul(torso.globalTransform)
+        instCapacete.transform.set(corpo.transform).mul(cab.globalTransform)
     }
 
     /** Troca a arma na mao (chamar quando Arma.tipo mudar). */
@@ -242,7 +346,7 @@ class Jogador : Disposable {
      * NESSA direcao, leva um empurrao e anda um pouco mais devagar por IMPACTO_TEMPO_S, mas continua controlavel.
      */
     fun receberImpacto(dx: Float, dz: Float, forca: Float) {
-        if (vida <= 0) return
+        if (vida <= 0 || invulneravel) return
         reacao.disparar(dx, dz, forca)
         val l = sqrt(dx * dx + dz * dz)
         if (l > 1e-4f) {
@@ -283,12 +387,16 @@ class Jogador : Disposable {
     }
 
     fun receberDano(dano: Int) {
-        vida = maxOf(0, vida - dano)
+        if (invulneravel) return
+        val d = if (colete > 0) maxOf(1, (dano * (1f - 0.15f * colete)).toInt()) else dano
+        vida = maxOf(0, vida - d)
+        atualizarSujeira()
     }
 
     /** Recupera vida (item de cura, Marco 1.7), sem passar do máximo. */
     fun curar(valor: Int) {
         vida = minOf(Constantes.JOGADOR_VIDA_MAXIMA, vida + valor)
+        atualizarSujeira()
     }
 
     private var giroRapidoRestante = 0f
@@ -376,6 +484,9 @@ class Jogador : Disposable {
             posicao.z = MathUtils.clamp(posicao.z + frenteZ * v * dt, -Constantes.MAPA_LIMITE, Constantes.MAPA_LIMITE)
             Colisao.resolver(posicao, Constantes.JOGADOR_RAIO) // desliza nas paredes (Marco 1.8)
         }
+
+        val alvoInc = if (sprintando && tempoDeslize <= 0f) 9f else 0f
+        inclinacaoCorrida += (alvoInc - inclinacaoCorrida) * minOf(1f, 7f * dt)
 
         // Vertical: gravidade, pulo, rampas e andar alto (Terreno).
         val chaoY = Terreno.alturaSuporte(posicao.x, posicao.z, posicao.y)
@@ -567,7 +678,14 @@ class Jogador : Disposable {
         if (animado) {
             // Modelo do F2: origem nos pes, frente = -Z.
             corpo.transform.setToTranslation(posicao.x, posicao.y, posicao.z).rotate(Vector3.Y, yaw)
-                .rotate(Vector3.X, -(reacao.pitch + recuo.pitch) * 0.4f).rotate(Vector3.Z, inclinacao + (reacao.roll + recuo.roll) * 0.4f)
+            // rolamento: cambalhota nos primeiros 65% do deslize (gira em torno do centro do corpo)
+            val rolar = tempoDeslize > Constantes.DESLIZE_S * 0.35f
+            if (rolar) {
+                val k = 1f - (tempoDeslize - Constantes.DESLIZE_S * 0.35f) / (Constantes.DESLIZE_S * 0.65f)
+                corpo.transform.translate(0f, 0.55f, 0f).rotate(Vector3.X, -360f * MathUtils.clamp(k, 0f, 1f)).translate(0f, -0.55f, 0f)
+            }
+            corpo.transform
+                .rotate(Vector3.X, -(reacao.pitch + recuo.pitch) * 0.4f - inclinacaoCorrida).rotate(Vector3.Z, inclinacao + (reacao.roll + recuo.roll) * 0.4f)
         } else {
             corpo.transform.setToTranslation(
                 posicao.x,
@@ -581,6 +699,7 @@ class Jogador : Disposable {
             .translate(0f, 0f, -Constantes.NARIZ_DESLOCAMENTO_FRENTE)
         val alturaClarao = if (animado) Constantes.CLARAO_MODELO_ALTURA else Constantes.CLARAO_ALTURA_DO_CHAO
         val frenteClarao = if (animado) Constantes.CLARAO_MODELO_FRENTE else Constantes.CLARAO_DESLOCAMENTO_FRENTE
+        if (animado) atualizarEquipamento()
         if (armaVisivel == null) {
             clarao.transform
                 .setToTranslation(posicao.x, posicao.y + alturaClarao, posicao.z)
@@ -596,6 +715,7 @@ class Jogador : Disposable {
         modeloNariz.dispose()
         modeloClarao.dispose()
         for (m in modelosArma) m?.dispose()
+        for (m in equipModelos) m.dispose()
         modeloFacaLamina.dispose()
         modeloFacaCabo.dispose()
     }

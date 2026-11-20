@@ -9,18 +9,21 @@ import com.badlogic.gdx.graphics.g3d.attributes.IntAttribute
 import com.badlogic.gdx.graphics.g3d.loader.G3dModelLoader
 import com.badlogic.gdx.graphics.g3d.utils.AnimationController
 import com.badlogic.gdx.utils.JsonReader
+import com.badlogic.gdx.utils.UBJsonReader
 
 /** Carrega modelos .g3dj (Marco F3). Se o arquivo faltar ou falhar, devolve null e o jogo usa a capsula. */
 object CarregadorModelos {
 
     fun carregar(caminho: String): Model? {
-        val arquivo = Gdx.files.internal(caminho)
+        // Preferimos o binario (.g3db, ferramentas/g3dj_para_g3db.py): carrega bem mais rapido que o JSON.
+        val bin = Gdx.files.internal(caminho.removeSuffix(".g3dj") + ".g3db")
+        val arquivo = if (caminho.endsWith(".g3dj") && bin.exists()) bin else Gdx.files.internal(caminho)
         if (!arquivo.exists()) {
             Gdx.app.log("MODELO", "nao encontrado (usando capsula): " + caminho)
             return null
         }
         return try {
-            val modelo = G3dModelLoader(JsonReader()).loadModel(arquivo)
+            val modelo = G3dModelLoader(if (arquivo.extension() == "g3db") UBJsonReader() else JsonReader()).loadModel(arquivo)
             // Sem descarte de faces: garante que nenhuma face apareca invisivel por ordem de vertices.
             for (i in 0 until modelo.materials.size) {
                 modelo.materials.get(i).set(IntAttribute.createCullFace(GL20.GL_NONE))

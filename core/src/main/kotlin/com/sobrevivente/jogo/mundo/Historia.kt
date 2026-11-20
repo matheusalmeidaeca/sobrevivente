@@ -29,9 +29,13 @@ object Progresso {
     val mods = IntArray(20)
     /** Maior fase ja liberada (0 = so a primeira). */
     var faseMaxima = 0
+    var colete = 0
+    var capacete = false
+    var mochila = false
 
     fun novo() {
         ouro = 0; fuzil = false; escopeta = false; smg = false; sniper = false; reserva = 0; curas = 0; java.util.Arrays.fill(mods, 0)
+        colete = 0; capacete = false; mochila = false
     }
 
     private var carregado = false
@@ -43,7 +47,7 @@ object Progresso {
             val p = app.getPreferences("sobrevivente")
             p.putInteger("ouro", ouro); p.putBoolean("fuzil", fuzil); p.putBoolean("escopeta", escopeta)
             p.putBoolean("smg", smg); p.putBoolean("sniper", sniper); p.putInteger("reserva", reserva)
-            p.putInteger("curas", curas); p.putInteger("fase", faseMaxima)
+            p.putInteger("curas", curas); p.putInteger("colete", colete); p.putBoolean("capacete", capacete); p.putBoolean("mochila", mochila); p.putInteger("fase", faseMaxima)
             p.putString("mods", mods.joinToString(","))
             p.flush()
         } catch (e: Exception) { }
@@ -59,7 +63,7 @@ object Progresso {
             if (!p.contains("fase")) return
             ouro = p.getInteger("ouro"); fuzil = p.getBoolean("fuzil"); escopeta = p.getBoolean("escopeta")
             smg = p.getBoolean("smg"); sniper = p.getBoolean("sniper"); reserva = p.getInteger("reserva")
-            curas = p.getInteger("curas"); faseMaxima = p.getInteger("fase")
+            curas = p.getInteger("curas"); colete = p.getInteger("colete"); capacete = p.getBoolean("capacete"); mochila = p.getBoolean("mochila"); faseMaxima = p.getInteger("fase")
             val m = p.getString("mods").split(",")
             for (i in mods.indices) mods[i] = m.getOrNull(i)?.toIntOrNull() ?: 0
         } catch (e: Exception) { }

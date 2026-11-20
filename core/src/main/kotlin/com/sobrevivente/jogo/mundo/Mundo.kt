@@ -461,6 +461,11 @@ class Mundo : Disposable {
             val morreu = inimigo.receberTiro(Constantes.FACA_DANO, 1.1f, dirX, dirZ)
             impactoMorreu = morreu
             if (morreu) soltarLoot(inimigo)
+            else if (d > 0.05f) { // empurrao: abre espaco para fugir
+                inimigo.posicao.x += dirX * 0.9f
+                inimigo.posicao.z += dirZ * 0.9f
+                Colisao.resolver(inimigo.posicao, Constantes.ENIMIGO_RAIO)
+            }
         }
         return acertou
     }

@@ -117,6 +117,7 @@ class TelaJogo(
         if (Progresso.smg && maleta.adicionarArma(TipoArma.SUBMETRALHADORA)) arma.liberar(TipoArma.SUBMETRALHADORA)
         if (Progresso.sniper && maleta.adicionarArma(TipoArma.SNIPER)) arma.liberar(TipoArma.SNIPER)
         arma.importar(Progresso.mods)
+        jogador.equipar(Progresso.colete, Progresso.capacete, Progresso.mochila)
         arma.adicionarReserva(Progresso.reserva)
         if (Progresso.curas > 0) maleta.adicionar(TipoItem.CURA, Progresso.curas)
     }
@@ -190,6 +191,7 @@ class TelaJogo(
         }
         loteSombra.render(jogador.corpo)
         jogador.armaVisivel?.let { loteSombra.render(it) }
+        for (e in jogador.equipamentos) loteSombra.render(e)
         jogador.facaCabo?.let { loteSombra.render(it) }
         for (i in mundo.inimigos.indices) {
             val inimigo = mundo.inimigos[i]
@@ -275,6 +277,9 @@ class TelaJogo(
     private val PRECO_PENTE = 120
     private val PRECO_CORONHA = 100
     private val PRECO_MIRA = 110
+    private val PRECO_CAPACETE = 120
+    private val PRECO_MOCHILA = 90
+    private fun precoColete() = 140 + 90 * Progresso.colete
 
     private fun montarLoja(aviso: String) {
         val r: Array<String>
@@ -301,9 +306,18 @@ class TelaJogo(
                 )
                 c = intArrayOf(2, 2, 2, 0, 1)
             }
+            3 -> {
+                r = arrayOf(
+                    if (Progresso.colete >= 3) "COLETE  (maximo)" else "COLETE +" + (Progresso.colete + 1) + "  (" + precoColete() + ")  -" + 15 * (Progresso.colete + 1) + "% dano",
+                    if (Progresso.capacete) "CAPACETE  (comprado)" else "CAPACETE  ($PRECO_CAPACETE)",
+                    if (Progresso.mochila) "MOCHILA  (comprada)" else "MOCHILA  ($PRECO_MOCHILA)",
+                    "VOLTAR"
+                )
+                c = intArrayOf(2, 2, 2, 1)
+            }
             else -> {
-                r = arrayOf("MUNICAO +30  ($PRECO_MUNICAO)", "CURA  ($PRECO_CURA)", "ARMAS >", "EQUIPAMENTOS >", "FECHAR")
-                c = intArrayOf(2, 2, 2, 2, 1)
+                r = arrayOf("MUNICAO +30  ($PRECO_MUNICAO)", "CURA  ($PRECO_CURA)", "ARMAS >", "EQUIPAMENTOS >", "PROTECAO >", "FECHAR")
+                c = intArrayOf(2, 2, 2, 2, 2, 1)
             }
         }
         hud.menuRotulos = r
@@ -334,6 +348,7 @@ class TelaJogo(
                 1 -> gastar(PRECO_CURA) { if (maleta.adicionar(TipoItem.CURA, 1)) "Comprou cura" else { montarLoja(Constantes.MSG_MALETA_CHEIA); null } }
                 2 -> { lojaPagina = 1; montarLoja("") }
                 3 -> { lojaPagina = 2; montarLoja("") }
+                4 -> { lojaPagina = 3; montarLoja("") }
                 else -> fecharMenu()
             }
             1 -> when (i) {
@@ -345,6 +360,12 @@ class TelaJogo(
                      else gastar(PRECO_SMG) { if (maleta.adicionarArma(TipoArma.SUBMETRALHADORA)) { arma.liberar(TipoArma.SUBMETRALHADORA); "Comprou a submetralhadora" } else { montarLoja(Constantes.MSG_MALETA_CHEIA); null } }
                 3 -> if (arma.estaLiberada(TipoArma.SNIPER)) montarLoja("Voce ja tem o rifle")
                      else gastar(PRECO_SNIPER) { if (maleta.adicionarArma(TipoArma.SNIPER)) { arma.liberar(TipoArma.SNIPER); "Comprou o rifle de precisao" } else { montarLoja(Constantes.MSG_MALETA_CHEIA); null } }
+                else -> { lojaPagina = 0; montarLoja("") }
+            }
+            3 -> when (i) {
+                0 -> if (Progresso.colete >= 3) montarLoja("Colete no maximo") else gastar(precoColete()) { Progresso.colete++; jogador.equipar(Progresso.colete, Progresso.capacete, Progresso.mochila); "Colete +" + Progresso.colete }
+                1 -> if (Progresso.capacete) montarLoja("Ja comprado") else gastar(PRECO_CAPACETE) { Progresso.capacete = true; jogador.equipar(Progresso.colete, true, Progresso.mochila); "Capacete comprado" }
+                2 -> if (Progresso.mochila) montarLoja("Ja comprada") else gastar(PRECO_MOCHILA) { Progresso.mochila = true; jogador.equipar(Progresso.colete, Progresso.capacete, true); "Mochila comprada" }
                 else -> { lojaPagina = 0; montarLoja("") }
             }
             else -> {
@@ -857,6 +878,7 @@ class TelaJogo(
         loteModelos.render(jogador.corpo, mundo.ambiente)
         if (!jogador.animado) loteModelos.render(jogador.nariz, mundo.ambiente)
         jogador.armaVisivel?.let { loteModelos.render(it, mundo.ambiente) }
+        for (e in jogador.equipamentos) loteModelos.render(e, mundo.ambiente)
         jogador.facaCabo?.let { loteModelos.render(it, mundo.ambiente) }
         if (jogador.claraoVisivel) loteModelos.render(jogador.clarao, mundo.ambiente)
         for (i in mundo.inimigos.indices) {

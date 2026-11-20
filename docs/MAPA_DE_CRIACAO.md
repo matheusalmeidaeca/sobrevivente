@@ -1127,3 +1127,12 @@ Estado em 15/11/2026: o `gerar-modelo.yml` já está no repositório com a etapa
 - Tela de morte escurece/avermelha gradualmente (`Hud.tempoMorto`).
 - Chuva/neblina 2D em ciclo (`Hud.desenharClima`).
 - Mapa grande: nomes dos bairros (`CidadeMapa.BAIRROS`) e marcador pulsante do objetivo (`Missao.alvoMapa()`).
+
+## F33 - Personagem: rolamento, equipamento, sujeira, modelo binario
+- Rolamento: correr + AGACHAR faz cambalhota (deslize) e os primeiros ~65% dão invulnerabilidade (`Jogador.invulneravel`).
+- Inclinação do corpo para frente ao correr (9 graus, suavizada).
+- Faca empurra o zumbi 0,9 m (abre espaço para fugir).
+- Equipamento visível preso aos ossos (medido no .g3dj: coluna2 y=1,238, costas z=+0,17, cabeça y 1,49-1,83): mochila, colete (3 níveis, -15% de dano cada), capacete. Loja: "PROTECAO >". Salvo em `Progresso`.
+- Corpo tinge de vermelho/sujo conforme a vida cai (`atualizarSujeira`).
+- `ferramentas/g3dj_para_g3db.py` converte modelos para binário; `CarregadorModelos` usa o .g3db quando existe. ATENÇÃO: se o CI regenerar o .g3dj, rode o conversor de novo (senão o .g3db antigo é usado). Teste `ModeloBinarioTest` confere que ambos carregam iguais.
+- F33b: posicao do equipamento conferida com render do proprio modelo (rasterizador Python: olhos y~1,66, topo do cabelo y~1,83). Colete virou placas frente/costas + alcas; capacete cobre so o cabelo; mochila menor.
